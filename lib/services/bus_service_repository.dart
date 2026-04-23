@@ -23,6 +23,8 @@ class BusServiceRepository {
     'transtu_hub_carthage',
     'transtu_hub_jardin_thameur',
     'transtu_hub_montazah',
+    'transtu_hub_bel_houan',
+    'transtu_hub_kabaa',
   };
 
   BusServiceRepository([FirebaseFirestore? firestore])
@@ -159,6 +161,7 @@ class BusServiceRepository {
   Future<List<BusService>> findServicesConnectingStations({
     required String fromStationId,
     required String toStationId,
+    bool isReverseDirection = false,
   }) async {
     if (kDebugMode) {
       debugPrint('[BusServiceRepo] Finding services from $fromStationId to $toStationId');
@@ -174,7 +177,7 @@ class BusServiceRepository {
 
     // Case 2: Destination to Hub (reverse direction - user wants to go from destination to hub)
     if (!fromIsHub && toIsHub) {
-      return _findServicesFromDestinationToHub(fromStationId, toStationId);
+      return _findServicesFromDestinationToHub(fromStationId, toStationId, isReverse: true);
     }
 
     // Case 3: Hub to Hub (direct connection between two hubs)
@@ -239,8 +242,9 @@ class BusServiceRepository {
   /// Find services from a destination to a hub (reverse direction)
   Future<List<BusService>> _findServicesFromDestinationToHub(
     String destinationId,
-    String hubId,
-  ) async {
+    String hubId, {
+    bool isReverse = false,
+  }) async {
     if (kDebugMode) {
       debugPrint('[BusServiceRepo] Looking for destination→hub: $destinationId → $hubId');
     }

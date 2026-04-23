@@ -59,6 +59,7 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
     BusService service, {
     String? hubName,
     String? nextDeparture,
+    bool isReverseDirection = false,
   }) {
     final parts = (hubName ?? '').split(' → ');
     return Journey(
@@ -67,8 +68,14 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
       arrivalStation: parts.length > 1
           ? parts.last
           : (service.destinationNameFr ?? service.directionAr),
-      departureTime: nextDeparture ?? service.firstDepartureFromHub ?? '--:--',
-      arrivalTime: service.lastDepartureFromHub,
+      departureTime: nextDeparture ??
+          (isReverseDirection
+              ? service.firstDepartureFromSuburb
+              : service.firstDepartureFromHub) ??
+          '--:--',
+      arrivalTime: isReverseDirection
+          ? service.lastDepartureFromSuburb
+          : service.lastDepartureFromHub,
       price: (service.price ?? 0.5).toStringAsFixed(3),
       type: 'Bus TRANSTU',
       iconKey: 'bus',

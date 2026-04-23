@@ -270,8 +270,14 @@ class JourneySearchController extends ChangeNotifier {
           String? bestTime;
           int bestMinutes = -1;
 
+          // Detect reverse direction: user is going from a destination to a hub.
+          final isReverse = _busServiceRepository.isTranstuHub(toStation.id) &&
+              !_busServiceRepository.isTranstuHub(fromStation.id);
+
           for (final svc in busServices) {
-            final nextDep = svc.nextDepartureFromHub(now: searchDateTime);
+            final nextDep = isReverse
+                ? svc.nextDepartureFromSuburb(now: searchDateTime)
+                : svc.nextDepartureFromHub(now: searchDateTime);
             if (nextDep == null) continue; // service ended for today
 
             final parts = nextDep.split(':');
@@ -312,14 +318,16 @@ class JourneySearchController extends ChangeNotifier {
           // All services ended for today — show the earliest departure tomorrow.
           final sorted = List<BusService>.from(busServices)
             ..sort((BusService a, BusService b) =>
-                (a.parseTimePublic(a.firstDepartureFromHub) ?? 9999).compareTo(
-                    b.parseTimePublic(b.firstDepartureFromHub) ?? 9999));
+                (a.parseTimePublic(isReverse ? a.firstDepartureFromSuburb : a.firstDepartureFromHub) ?? 9999).compareTo(
+                    b.parseTimePublic(isReverse ? b.firstDepartureFromSuburb : b.firstDepartureFromHub) ?? 9999));
 
           _emit(_state.copyWith(
             isLoading: false,
             clearBus: true,
             bestBusService: sorted.first,
-            bestBusDepartureTime: sorted.first.firstDepartureFromHub,
+            bestBusDepartureTime: isReverse
+                ? sorted.first.firstDepartureFromSuburb
+                : sorted.first.firstDepartureFromHub,
             busHubName:
                 '${fromStation.localizedName('fr')} → ${toStation.localizedName('fr')}',
             error: 'Service terminé pour ce soir. Prochain départ demain.',

@@ -89,6 +89,8 @@ class StationRepository {
     'transtu_hub_charguia':      ['charguia', 'charguia bus', 'sharqiya', 'el charguia', 'la charguia'],
     'transtu_hub_intilaka':      ['intilaka', 'intileka', 'intilaqa', 'انطلاقة'],
     'transtu_hub_bellevie':      ['bellevue', 'bellevie', 'belle vue'],
+    'transtu_hub_bel_houan':     ['ali belhouan', 'bel houan', 'belhouan', 'belhouane', 'علي بلهوان'],
+    'transtu_hub_kabaa':         ['kabaa', 'قباعة'],
     'transtu_hub_khaireddine':   ['kheireddine', 'khaireddine', 'khaireddin', 'kheredine'],
     'transtu_hub_montazah':      ['montazah', 'montazeh', 'منتزه'],
     'transtu_hub_morneg':        ['mornag', 'morneg', 'مرناق'],

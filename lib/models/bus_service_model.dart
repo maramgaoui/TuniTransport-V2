@@ -133,6 +133,30 @@ class BusService {
     return '${(dep ~/ 60).toString().padLeft(2, '0')}:${(dep % 60).toString().padLeft(2, '0')}';
   }
 
+  /// Returns the next departure time from the suburb (reverse direction) as "HH:MM".
+  /// Used when the user is travelling FROM the destination back TO the hub.
+  String? nextDepartureFromSuburb({DateTime? now}) {
+    final t = now ?? DateTime.now();
+    final first = _parseTime(firstDepartureFromSuburb);
+    final last = _parseTime(lastDepartureFromSuburb);
+    final freq = peakFrequencyMinutes;
+
+    if (first == null || freq == null) return firstDepartureFromSuburb;
+
+    final nowMinutes = t.hour * 60 + t.minute;
+
+    if (last != null && nowMinutes > last) return null;
+
+    var dep = first;
+    while (dep < nowMinutes) {
+      dep += freq;
+    }
+
+    if (last != null && dep > last) return null;
+
+    return '${(dep ~/ 60).toString().padLeft(2, '0')}:${(dep % 60).toString().padLeft(2, '0')}';
+  }
+
   /// Parses "HH:MM" into total minutes from midnight. Returns null on failure.
   int? _parseTime(String? timeStr) {
     if (timeStr == null || !timeStr.contains(':')) return null;
