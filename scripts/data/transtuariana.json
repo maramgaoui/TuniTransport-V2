@@ -12,12 +12,92 @@
     "typeId": "bus"
   },
   "stations": [
-    { "id": "transtu_hub_ariana", "name": "Ariana", "nameAr": "أريانة", "cityId": "ariana", "order": 1, "lat": 36.8625, "lng": 10.1956, "isMainHub": true },
-    { "id": "transtu_dest_manji_salim", "name": "Cité Manji Salim", "nameAr": "حي منجي سليم", "cityId": "ariana", "order": 2, "lat": 36.8700, "lng": 10.1900, "isMainHub": false },
-    { "id": "transtu_dest_sidi_salah", "name": "Sidi Salah", "nameAr": "سيدي صالح", "cityId": "ariana", "order": 3, "lat": 36.8550, "lng": 10.1850, "isMainHub": false },
-    { "id": "transtu_dest_kalaat_alandalous", "name": "Kalaat El Andalous", "nameAr": "قلعة الأندلس", "cityId": "ariana", "order": 4, "lat": 36.9200, "lng": 10.1200, "isMainHub": false },
-    { "id": "transtu_dest_menzah9", "name": "Menzah 9", "nameAr": "المنزه 9", "cityId": "tunis", "order": 5, "lat": 36.8400, "lng": 10.2000, "isMainHub": false },
-    { "id": "transtu_dest_manouba", "name": "Manouba", "nameAr": "منوبة", "cityId": "manouba", "order": 6, "lat": 36.8083, "lng": 10.0978, "isMainHub": false }
+    {
+      "id": "transtu_hub_ariana",
+      "name": "Ariana",
+      "nameAr": "أريانة",
+      "cityId": "ariana",
+      "order": 1,
+      "lat": 36.8625,
+      "lng": 10.1956,
+      "isMainHub": true,
+      "searchAliases": [
+        "ariana",
+        "أريانة",
+        "hub ariana"
+      ]
+    },
+    {
+      "id": "transtu_dest_manji_salim",
+      "name": "Cité Manji Salim",
+      "nameAr": "حي منجي سليم",
+      "cityId": "ariana",
+      "order": 2,
+      "lat": 36.87,
+      "lng": 10.19,
+      "isMainHub": false,
+      "searchAliases": [
+        "manji slim",
+        "monji slim",
+        "منجي سليم",
+        "hay monji"
+      ]
+    },
+    {
+      "id": "transtu_dest_sidi_salah",
+      "name": "Sidi Salah",
+      "nameAr": "سيدي صالح",
+      "cityId": "ariana",
+      "order": 3,
+      "lat": 36.855,
+      "lng": 10.185,
+      "isMainHub": false
+    },
+    {
+      "id": "transtu_dest_kalaat_alandalous",
+      "name": "Kalaat El Andalous",
+      "nameAr": "قلعة الأندلس",
+      "cityId": "ariana",
+      "order": 4,
+      "lat": 36.92,
+      "lng": 10.12,
+      "isMainHub": false,
+      "searchAliases": [
+        "kalaat andalous",
+        "klaat andalous",
+        "قلعة الأندلس"
+      ]
+    },
+    {
+      "id": "transtu_dest_menzah9",
+      "name": "Menzah 9",
+      "nameAr": "المنزه 9",
+      "cityId": "tunis",
+      "order": 5,
+      "lat": 36.84,
+      "lng": 10.2,
+      "isMainHub": false,
+      "searchAliases": [
+        "menzeh 9",
+        "menzah 9",
+        "المنزه 9",
+        "منزه 9"
+      ]
+    },
+    {
+      "id": "transtu_dest_manouba",
+      "name": "Manouba",
+      "nameAr": "منوبة",
+      "cityId": "manouba",
+      "order": 6,
+      "lat": 36.8083,
+      "lng": 10.0978,
+      "isMainHub": false,
+      "searchAliases": [
+        "manouba",
+        "منوبة"
+      ]
+    }
   ],
   "routes": [
     {
@@ -28,7 +108,20 @@
       "originStationId": "transtu_hub_ariana",
       "destinationStationId": "transtu_dest_manji_salim",
       "trips": [
-        { "tripNumber": "18_1", "departureTime": "06:00", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_manji_salim" }
+        {
+          "tripNumber": "18_1",
+          "departureTime": "06:00",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_dest_manji_salim"
+        }
       ],
       "firstDepartureFromHub": "06:00",
       "lastDepartureFromHub": "19:15",
@@ -46,7 +139,20 @@
       "originStationId": "transtu_hub_ariana",
       "destinationStationId": "transtu_dest_sidi_salah",
       "trips": [
-        { "tripNumber": "18b_1", "departureTime": "06:00", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_sidi_salah" }
+        {
+          "tripNumber": "18b_1",
+          "departureTime": "06:00",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_dest_sidi_salah"
+        }
       ],
       "firstDepartureFromHub": "06:00",
       "lastDepartureFromHub": "21:40",
@@ -64,7 +170,20 @@
       "originStationId": "transtu_hub_ariana",
       "destinationStationId": "transtu_dest_kalaat_alandalous",
       "trips": [
-        { "tripNumber": "44a_1", "departureTime": "06:30", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_kalaat_alandalous" }
+        {
+          "tripNumber": "44a_1",
+          "departureTime": "06:30",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_dest_kalaat_alandalous"
+        }
       ],
       "firstDepartureFromHub": "06:30",
       "lastDepartureFromHub": "19:45",
@@ -82,7 +201,20 @@
       "originStationId": "transtu_hub_ariana",
       "destinationStationId": "transtu_dest_menzah9",
       "trips": [
-        { "tripNumber": "47a_1", "departureTime": "06:00", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_menzah9" }
+        {
+          "tripNumber": "47a_1",
+          "departureTime": "06:00",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_dest_menzah9"
+        }
       ],
       "firstDepartureFromHub": "06:00",
       "lastDepartureFromHub": "18:50",
@@ -100,7 +232,20 @@
       "originStationId": "transtu_hub_ariana",
       "destinationStationId": "transtu_dest_manouba",
       "trips": [
-        { "tripNumber": "460_1", "departureTime": "05:30", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_manouba" }
+        {
+          "tripNumber": "460_1",
+          "departureTime": "05:30",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_dest_manouba"
+        }
       ],
       "firstDepartureFromHub": "05:30",
       "lastDepartureFromHub": "20:30",
@@ -109,29 +254,314 @@
       "peakFrequencyMinutes": 30,
       "zone": "urbaine",
       "price": 0.5
+    },
+    {
+      "id": "route_transtu_ariana_ligne18_rev",
+      "lineNumber": "18",
+      "name": "Cité Manji Salim → Ariana",
+      "direction": "reverse",
+      "originStationId": "transtu_dest_manji_salim",
+      "destinationStationId": "transtu_hub_ariana",
+      "firstDepartureFromHub": "05:00",
+      "lastDepartureFromHub": "18:30",
+      "firstDepartureFromSuburb": "06:00",
+      "lastDepartureFromSuburb": "19:15",
+      "peakFrequencyMinutes": 100,
+      "zone": "urbaine",
+      "price": 0.5,
+      "trips": [
+        {
+          "tripNumber": "18_rev_1",
+          "departureTime": "05:00",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_hub_ariana"
+        }
+      ]
+    },
+    {
+      "id": "route_transtu_ariana_ligne44a_rev",
+      "lineNumber": "44أ",
+      "name": "Kalaat El Andalous → Ariana",
+      "direction": "reverse",
+      "originStationId": "transtu_dest_kalaat_alandalous",
+      "destinationStationId": "transtu_hub_ariana",
+      "firstDepartureFromHub": "05:20",
+      "lastDepartureFromHub": "18:40",
+      "firstDepartureFromSuburb": "06:30",
+      "lastDepartureFromSuburb": "19:45",
+      "peakFrequencyMinutes": 55,
+      "zone": "urbaine",
+      "price": 0.5,
+      "trips": [
+        {
+          "tripNumber": "44a_rev_1",
+          "departureTime": "05:20",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_hub_ariana"
+        }
+      ]
+    },
+    {
+      "id": "route_transtu_ariana_ligne47a_rev",
+      "lineNumber": "47أ",
+      "name": "Menzah 9 → Ariana",
+      "direction": "reverse",
+      "originStationId": "transtu_dest_menzah9",
+      "destinationStationId": "transtu_hub_ariana",
+      "firstDepartureFromHub": "05:30",
+      "lastDepartureFromHub": "19:30",
+      "firstDepartureFromSuburb": "06:00",
+      "lastDepartureFromSuburb": "18:50",
+      "peakFrequencyMinutes": 40,
+      "zone": "urbaine",
+      "price": 0.5,
+      "trips": [
+        {
+          "tripNumber": "47a_rev_1",
+          "departureTime": "05:30",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_hub_ariana"
+        }
+      ]
+    },
+    {
+      "id": "route_transtu_ariana_ligne460_rev",
+      "lineNumber": "460",
+      "name": "Manouba → Ariana",
+      "direction": "reverse",
+      "originStationId": "transtu_dest_manouba",
+      "destinationStationId": "transtu_hub_ariana",
+      "firstDepartureFromHub": "05:30",
+      "lastDepartureFromHub": "21:20",
+      "firstDepartureFromSuburb": "05:30",
+      "lastDepartureFromSuburb": "20:30",
+      "peakFrequencyMinutes": 30,
+      "zone": "urbaine",
+      "price": 0.5,
+      "trips": [
+        {
+          "tripNumber": "460_rev_1",
+          "departureTime": "05:30",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_hub_ariana"
+        }
+      ]
+    },
+    {
+      "id": "route_transtu_ariana_ligne18b_rev",
+      "lineNumber": "18ب",
+      "name": "Sidi Salah → Ariana",
+      "direction": "reverse",
+      "originStationId": "transtu_dest_sidi_salah",
+      "destinationStationId": "transtu_hub_ariana",
+      "firstDepartureFromHub": "05:30",
+      "lastDepartureFromHub": "21:10",
+      "firstDepartureFromSuburb": "06:00",
+      "lastDepartureFromSuburb": "21:40",
+      "peakFrequencyMinutes": 15,
+      "zone": "urbaine",
+      "price": 0.5,
+      "trips": [
+        {
+          "tripNumber": "18b_rev_1",
+          "departureTime": "05:30",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_hub_ariana"
+        }
+      ]
     }
   ],
   "routeStops": [
-    { "routeId": "route_transtu_ariana_ligne18", "stationId": "transtu_hub_ariana", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0 },
-    { "routeId": "route_transtu_ariana_ligne18", "stationId": "transtu_dest_manji_salim", "stopOrder": 2, "estimatedArrivalTimeMinutes": 20 },
-    { "routeId": "route_transtu_ariana_ligne18b", "stationId": "transtu_hub_ariana", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0 },
-    { "routeId": "route_transtu_ariana_ligne18b", "stationId": "transtu_dest_sidi_salah", "stopOrder": 2, "estimatedArrivalTimeMinutes": 15 },
-    { "routeId": "route_transtu_ariana_ligne44a", "stationId": "transtu_hub_ariana", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0 },
-    { "routeId": "route_transtu_ariana_ligne44a", "stationId": "transtu_dest_kalaat_alandalous", "stopOrder": 2, "estimatedArrivalTimeMinutes": 45 },
-    { "routeId": "route_transtu_ariana_ligne47a", "stationId": "transtu_hub_ariana", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0 },
-    { "routeId": "route_transtu_ariana_ligne47a", "stationId": "transtu_dest_menzah9", "stopOrder": 2, "estimatedArrivalTimeMinutes": 25 },
-    { "routeId": "route_transtu_ariana_ligne460", "stationId": "transtu_hub_ariana", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0 },
-    { "routeId": "route_transtu_ariana_ligne460", "stationId": "transtu_dest_manouba", "stopOrder": 2, "estimatedArrivalTimeMinutes": 30 }
+    {
+      "routeId": "route_transtu_ariana_ligne18",
+      "stationId": "transtu_hub_ariana",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne18",
+      "stationId": "transtu_dest_manji_salim",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 20
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne18b",
+      "stationId": "transtu_hub_ariana",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne18b",
+      "stationId": "transtu_dest_sidi_salah",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 15
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne44a",
+      "stationId": "transtu_hub_ariana",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne44a",
+      "stationId": "transtu_dest_kalaat_alandalous",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 45
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne47a",
+      "stationId": "transtu_hub_ariana",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne47a",
+      "stationId": "transtu_dest_menzah9",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 25
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne460",
+      "stationId": "transtu_hub_ariana",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne460",
+      "stationId": "transtu_dest_manouba",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 30
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne18_rev",
+      "stationId": "transtu_dest_manji_salim",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne18_rev",
+      "stationId": "transtu_hub_ariana",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 25
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne44a_rev",
+      "stationId": "transtu_dest_kalaat_alandalous",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne44a_rev",
+      "stationId": "transtu_hub_ariana",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 25
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne47a_rev",
+      "stationId": "transtu_dest_menzah9",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne47a_rev",
+      "stationId": "transtu_hub_ariana",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 25
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne460_rev",
+      "stationId": "transtu_dest_manouba",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne460_rev",
+      "stationId": "transtu_hub_ariana",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 25
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne18b_rev",
+      "stationId": "transtu_dest_sidi_salah",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_ariana_ligne18b_rev",
+      "stationId": "transtu_hub_ariana",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 15
+    }
   ],
   "pricing": {
     "currency": "TND",
     "notes": "TRANSTU urban fare: 0.500 DT for all routes from Ariana hub.",
     "estimatedFares": [
-      { "from": "transtu_hub_ariana", "to": "transtu_dest_manji_salim", "price": 0.5 },
-      { "from": "transtu_hub_ariana", "to": "transtu_dest_sidi_salah", "price": 0.5 },
-      { "from": "transtu_hub_ariana", "to": "transtu_dest_kalaat_alandalous", "price": 0.5 },
-      { "from": "transtu_hub_ariana", "to": "transtu_dest_menzah9", "price": 0.5 },
-      { "from": "transtu_hub_ariana", "to": "transtu_dest_manouba", "price": 0.5 }
+      {
+        "from": "transtu_hub_ariana",
+        "to": "transtu_dest_manji_salim",
+        "price": 0.5
+      },
+      {
+        "from": "transtu_hub_ariana",
+        "to": "transtu_dest_sidi_salah",
+        "price": 0.5
+      },
+      {
+        "from": "transtu_hub_ariana",
+        "to": "transtu_dest_kalaat_alandalous",
+        "price": 0.5
+      },
+      {
+        "from": "transtu_hub_ariana",
+        "to": "transtu_dest_menzah9",
+        "price": 0.5
+      },
+      {
+        "from": "transtu_hub_ariana",
+        "to": "transtu_dest_manouba",
+        "price": 0.5
+      }
     ]
   }
 }
