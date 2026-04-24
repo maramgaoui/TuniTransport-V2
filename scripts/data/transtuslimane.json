@@ -1,13 +1,13 @@
 {
   "metadata": {
-    "line_name": "TRANSTU - Slimane Kahia Hub",
+    "line_name": "TRANSTU - Slimane Belkahia Hub",
     "validFrom": "2025-09-01",
     "validTo": "2026-06-30",
-    "notes": "TRANSTU bus services from Slimane Kahia hub (Manouba). Winter 2025-2026 schedule.",
+    "notes": "TRANSTU bus services from Slimane Belkahia hub. Winter 2025-2026 schedule. Corrected timetable.",
     "dataQuality": "high",
     "hubId": "transtu_hub_slimlen_kahia",
-    "hubName": "Slimane Kahia",
-    "hubNameAr": "سليمان كاهية"
+    "hubName": "Slimane Belkahia",
+    "hubNameAr": "سليمان بلكاهية"
   },
   "operator": {
     "id": "transtu",
@@ -20,42 +20,47 @@
     "currency": "TND",
     "zone": "urbaine",
     "baseFare": 0.5,
-    "notes": "TRANSTU urban fare: 0.500 DT for all routes from Slimane Kahia hub."
+    "notes": "TRANSTU urban fare: 0.500 DT for all routes from Slimane Belkahia hub."
   },
   "stations": [
     {
       "id": "transtu_hub_slimlen_kahia",
-      "name": "Slimane Kahia",
-      "nameAr": "سليمان كاهية",
+      "name": "Slimane Belkahia",
+      "nameAr": "سليمان بلكاهية",
       "cityId": "manouba",
       "cityName": "Manouba",
       "isMainHub": true,
       "order": 1,
       "lat": 36.8083,
       "lng": 10.0978,
-      "transportTypes": [
-        "bus"
-      ],
-      "operatorsHere": [
-        "transtu"
-      ]
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
     },
     {
-      "id": "transtu_dest_borj_amri_hafsia",
-      "name": "Borj El Amri / Hafsia",
-      "nameAr": "برج العامري / الحفصية",
+      "id": "transtu_dest_hafsia",
+      "name": "Hafsia",
+      "nameAr": "الحفصية",
       "cityId": "manouba",
       "cityName": "Manouba",
       "isMainHub": false,
       "order": 2,
       "lat": 36.75,
       "lng": 9.88,
-      "transportTypes": [
-        "bus"
-      ],
-      "operatorsHere": [
-        "transtu"
-      ]
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
+    },
+    {
+      "id": "transtu_dest_borj_amri",
+      "name": "Borj El Amri",
+      "nameAr": "برج العامري",
+      "cityId": "manouba",
+      "cityName": "Manouba",
+      "isMainHub": false,
+      "order": 3,
+      "lat": 36.76,
+      "lng": 9.90,
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
     },
     {
       "id": "transtu_dest_20_mars",
@@ -64,15 +69,11 @@
       "cityId": "manouba",
       "cityName": "Manouba",
       "isMainHub": false,
-      "order": 3,
+      "order": 4,
       "lat": 36.805,
       "lng": 10.205,
-      "transportTypes": [
-        "bus"
-      ],
-      "operatorsHere": [
-        "transtu"
-      ]
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
     },
     {
       "id": "transtu_dest_sidi_hamida",
@@ -81,49 +82,24 @@
       "cityId": "manouba",
       "cityName": "Manouba",
       "isMainHub": false,
-      "order": 4,
+      "order": 5,
       "lat": 36.82,
       "lng": 10.08,
-      "transportTypes": [
-        "bus"
-      ],
-      "operatorsHere": [
-        "transtu"
-      ]
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
     },
     {
-      "id": "transtu_dest_prison_mornaguia",
-      "name": "Prison Mornaguia",
-      "nameAr": "سجن المرناقية",
-      "cityId": "manouba",
-      "cityName": "Manouba",
-      "isMainHub": false,
-      "order": 5,
-      "lat": 36.78,
-      "lng": 10.03,
-      "transportTypes": [
-        "bus"
-      ],
-      "operatorsHere": [
-        "transtu"
-      ]
-    },
-    {
-      "id": "transtu_dest_tebourba",
-      "name": "Tebourba",
-      "nameAr": "طبربة",
+      "id": "transtu_dest_griyat",
+      "name": "Griaat",
+      "nameAr": "قريعات",
       "cityId": "manouba",
       "cityName": "Manouba",
       "isMainHub": false,
       "order": 6,
-      "lat": 36.8292,
-      "lng": 9.8375,
-      "transportTypes": [
-        "bus"
-      ],
-      "operatorsHere": [
-        "transtu"
-      ]
+      "lat": 36.78,
+      "lng": 9.95,
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
     },
     {
       "id": "transtu_dest_borj_nour",
@@ -135,16 +111,12 @@
       "order": 7,
       "lat": 36.76,
       "lng": 9.92,
-      "transportTypes": [
-        "bus"
-      ],
-      "operatorsHere": [
-        "transtu"
-      ]
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
     },
     {
       "id": "transtu_dest_sidi_madine",
-      "name": "Sidi Madine",
+      "name": "Sidi Mediene",
       "nameAr": "سيدي مدين",
       "cityId": "manouba",
       "cityName": "Manouba",
@@ -152,33 +124,25 @@
       "order": 8,
       "lat": 36.83,
       "lng": 10.06,
-      "transportTypes": [
-        "bus"
-      ],
-      "operatorsHere": [
-        "transtu"
-      ]
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
     },
     {
       "id": "transtu_dest_tilech_ksar_jdid",
-      "name": "Tilech / Ksar Jedid",
-      "nameAr": "طيلتش / قصر جديد",
+      "name": "Kasr Jedid",
+      "nameAr": "قصر جديد",
       "cityId": "manouba",
       "cityName": "Manouba",
       "isMainHub": false,
       "order": 9,
       "lat": 36.74,
-      "lng": 9.9,
-      "transportTypes": [
-        "bus"
-      ],
-      "operatorsHere": [
-        "transtu"
-      ]
+      "lng": 9.90,
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
     },
     {
       "id": "transtu_dest_cite_bassatine",
-      "name": "Cité Bassatine",
+      "name": "Cité El Bassatine",
       "nameAr": "حي البساتين",
       "cityId": "manouba",
       "cityName": "Manouba",
@@ -186,114 +150,60 @@
       "order": 10,
       "lat": 36.805,
       "lng": 10.18,
-      "transportTypes": [
-        "bus"
-      ],
-      "operatorsHere": [
-        "transtu"
-      ]
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
     },
     {
-      "id": "transtu_dest_cite_radio_tv",
-      "name": "Cité Radio et TV",
-      "nameAr": "حي الإذاعة والتلفزة",
+      "id": "transtu_dest_prison_mornaguia",
+      "name": "Prison Mornaguia",
+      "nameAr": "سجن المرناقية",
       "cityId": "manouba",
       "cityName": "Manouba",
       "isMainHub": false,
       "order": 11,
-      "lat": 36.815,
-      "lng": 10.095,
-      "transportTypes": [
-        "bus"
-      ],
-      "operatorsHere": [
-        "transtu"
-      ]
+      "lat": 36.78,
+      "lng": 10.03,
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
     },
     {
-      "id": "transtu_dest_cite_hassan_belkhodja",
-      "name": "Cité Hassan Belkhodja",
-      "nameAr": "حي حسان بلخوجة",
+      "id": "transtu_dest_cite_radio_tv",
+      "name": "Cité RTT (Radio & TV)",
+      "nameAr": "حي الإذاعة والتلفزة",
       "cityId": "manouba",
       "cityName": "Manouba",
       "isMainHub": false,
       "order": 12,
-      "lat": 36.81,
-      "lng": 10.1,
-      "transportTypes": [
-        "bus"
-      ],
-      "operatorsHere": [
-        "transtu"
-      ]
+      "lat": 36.815,
+      "lng": 10.095,
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
     },
     {
-      "id": "transtu_dest_cite_ortage",
-      "name": "Cité Ortage",
-      "nameAr": "حي البرتقال",
+      "id": "transtu_dest_cite_hassan_belkhodja",
+      "name": "Cité Hassen Belkhodja",
+      "nameAr": "حي حسان بلخوجة",
       "cityId": "manouba",
       "cityName": "Manouba",
       "isMainHub": false,
       "order": 13,
-      "lat": 36.812,
-      "lng": 10.102,
-      "transportTypes": [
-        "bus"
-      ],
-      "operatorsHere": [
-        "transtu"
-      ]
+      "lat": 36.81,
+      "lng": 10.10,
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
     },
     {
-      "id": "transtu_dest_tayeb_mehiri",
-      "name": "Tayeb Mehiri",
-      "nameAr": "طيب المهيري",
+      "id": "transtu_dest_cite_ortage",
+      "name": "Cité El Bortokal",
+      "nameAr": "حي البرتقال",
       "cityId": "manouba",
       "cityName": "Manouba",
       "isMainHub": false,
       "order": 14,
-      "lat": 36.8,
-      "lng": 10.08,
-      "transportTypes": [
-        "bus"
-      ],
-      "operatorsHere": [
-        "transtu"
-      ]
-    },
-    {
-      "id": "transtu_dest_khaled_bn_walid",
-      "name": "Khaled Ibn El Walid",
-      "nameAr": "خالد بن الوليد",
-      "cityId": "manouba",
-      "cityName": "Manouba",
-      "isMainHub": false,
-      "order": 15,
-      "lat": 36.79,
-      "lng": 10.195,
-      "transportTypes": [
-        "bus"
-      ],
-      "operatorsHere": [
-        "transtu"
-      ]
-    },
-    {
-      "id": "transtu_dest_griyat",
-      "name": "Griyat",
-      "nameAr": "قريعات",
-      "cityId": "manouba",
-      "cityName": "Manouba",
-      "isMainHub": false,
-      "order": 16,
-      "lat": 36.78,
-      "lng": 9.95,
-      "transportTypes": [
-        "bus"
-      ],
-      "operatorsHere": [
-        "transtu"
-      ]
+      "lat": 36.812,
+      "lng": 10.102,
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
     },
     {
       "id": "transtu_dest_mghira_slimane",
@@ -302,64 +212,83 @@
       "cityId": "manouba",
       "cityName": "Manouba",
       "isMainHub": false,
-      "order": 17,
+      "order": 15,
       "lat": 36.795,
       "lng": 10.07,
-      "transportTypes": [
-        "bus"
-      ],
-      "operatorsHere": [
-        "transtu"
-      ]
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
+    },
+    {
+      "id": "transtu_dest_tayeb_mehiri",
+      "name": "Taieb Mhiri",
+      "nameAr": "طيب المهيري",
+      "cityId": "manouba",
+      "cityName": "Manouba",
+      "isMainHub": false,
+      "order": 16,
+      "lat": 36.80,
+      "lng": 10.08,
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
+    },
+    {
+      "id": "transtu_dest_tebourba",
+      "name": "Borj El Amri (via Tebourba)",
+      "nameAr": "برج العامري (عبر طبربة)",
+      "cityId": "manouba",
+      "cityName": "Manouba",
+      "isMainHub": false,
+      "order": 17,
+      "lat": 36.8292,
+      "lng": 9.8375,
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
+    },
+    {
+      "id": "transtu_dest_khaled_bn_walid",
+      "name": "Khaled Ibn Walid",
+      "nameAr": "خالد بن الوليد",
+      "cityId": "manouba",
+      "cityName": "Manouba",
+      "isMainHub": false,
+      "order": 18,
+      "lat": 36.79,
+      "lng": 10.195,
+      "transportTypes": ["bus"],
+      "operatorsHere": ["transtu"]
     }
   ],
   "routes": [
     {
-      "id": "route_transtu_slimane_ligne23_borj_amri",
+      "id": "route_transtu_slimane_ligne23_hafsia",
       "lineNumber": "23",
-      "name": "Slimane Kahia → Borj El Amri / Hafsia",
+      "name": "Slimane Belkahia → Hafsia",
       "direction": "forward",
       "originStationId": "transtu_hub_slimlen_kahia",
-      "destinationStationId": "transtu_dest_borj_amri_hafsia",
+      "destinationStationId": "transtu_dest_hafsia",
       "firstDepartureFromHub": "08:00",
       "lastDepartureFromHub": "18:00",
       "firstDepartureFromSuburb": "05:10",
       "lastDepartureFromSuburb": "17:00",
       "peakFrequencyMinutes": 120,
-      "operatingDays": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
     },
     {
-      "id": "route_transtu_slimane_ligne23_borj_amri_variant",
-      "lineNumber": "/23",
-      "name": "Slimane Kahia → Borj El Amri",
+      "id": "route_transtu_slimane_ligne23_borj_amri",
+      "lineNumber": "23",
+      "name": "Slimane Belkahia → Borj El Amri",
       "direction": "forward",
       "originStationId": "transtu_hub_slimlen_kahia",
-      "destinationStationId": "transtu_dest_borj_amri_hafsia",
+      "destinationStationId": "transtu_dest_borj_amri",
       "firstDepartureFromHub": "06:20",
       "lastDepartureFromHub": "19:00",
       "firstDepartureFromSuburb": "07:00",
       "lastDepartureFromSuburb": "18:10",
       "peakFrequencyMinutes": 100,
-      "operatingDays": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -367,7 +296,7 @@
     {
       "id": "route_transtu_slimane_ligne23b",
       "lineNumber": "23ب",
-      "name": "Slimane Kahia → 20 Mars",
+      "name": "Slimane Belkahia → 20 Mars",
       "direction": "forward",
       "originStationId": "transtu_hub_slimlen_kahia",
       "destinationStationId": "transtu_dest_20_mars",
@@ -376,15 +305,7 @@
       "firstDepartureFromSuburb": "05:40",
       "lastDepartureFromSuburb": "18:30",
       "peakFrequencyMinutes": 120,
-      "operatingDays": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -392,7 +313,7 @@
     {
       "id": "route_transtu_slimane_ligne23th",
       "lineNumber": "23ث",
-      "name": "Slimane Kahia → Sidi Hamida",
+      "name": "Slimane Belkahia → Sidi Hamida",
       "direction": "forward",
       "originStationId": "transtu_hub_slimlen_kahia",
       "destinationStationId": "transtu_dest_sidi_hamida",
@@ -401,15 +322,7 @@
       "firstDepartureFromSuburb": "04:40",
       "lastDepartureFromSuburb": "19:00",
       "peakFrequencyMinutes": 35,
-      "operatingDays": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -417,7 +330,7 @@
     {
       "id": "route_transtu_slimane_ligne23j",
       "lineNumber": "23ج",
-      "name": "Slimane Kahia → Griyat",
+      "name": "Slimane Belkahia → Griaat",
       "direction": "forward",
       "originStationId": "transtu_hub_slimlen_kahia",
       "destinationStationId": "transtu_dest_griyat",
@@ -426,15 +339,7 @@
       "firstDepartureFromSuburb": "06:30",
       "lastDepartureFromSuburb": "17:10",
       "peakFrequencyMinutes": 160,
-      "operatingDays": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -442,7 +347,7 @@
     {
       "id": "route_transtu_slimane_ligne23kh",
       "lineNumber": "23خ",
-      "name": "Slimane Kahia → Borj Ennour",
+      "name": "Slimane Belkahia → Borj Ennour",
       "direction": "forward",
       "originStationId": "transtu_hub_slimlen_kahia",
       "destinationStationId": "transtu_dest_borj_nour",
@@ -451,23 +356,15 @@
       "firstDepartureFromSuburb": "04:40",
       "lastDepartureFromSuburb": "11:10",
       "peakFrequencyMinutes": 80,
-      "operatingDays": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
     },
     {
-      "id": "route_transtu_slimane_ligne23s",
+      "id": "route_transtu_slimane_ligne23h",
       "lineNumber": "23ح",
-      "name": "Slimane Kahia → Sidi Madine",
+      "name": "Slimane Belkahia → Sidi Mediene",
       "direction": "forward",
       "originStationId": "transtu_hub_slimlen_kahia",
       "destinationStationId": "transtu_dest_sidi_madine",
@@ -476,15 +373,7 @@
       "firstDepartureFromSuburb": "04:00",
       "lastDepartureFromSuburb": "23:30",
       "peakFrequencyMinutes": 40,
-      "operatingDays": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -492,7 +381,7 @@
     {
       "id": "route_transtu_slimane_ligne23t",
       "lineNumber": "23ط",
-      "name": "Slimane Kahia → Tilech / Ksar Jedid",
+      "name": "Slimane Belkahia → Kasr Jedid",
       "direction": "forward",
       "originStationId": "transtu_hub_slimlen_kahia",
       "destinationStationId": "transtu_dest_tilech_ksar_jdid",
@@ -501,15 +390,7 @@
       "firstDepartureFromSuburb": "04:40",
       "lastDepartureFromSuburb": "20:00",
       "peakFrequencyMinutes": 50,
-      "operatingDays": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -517,7 +398,7 @@
     {
       "id": "route_transtu_slimane_ligne48",
       "lineNumber": "48",
-      "name": "Slimane Kahia → Cité Bassatine",
+      "name": "Slimane Belkahia → Cité El Bassatine",
       "direction": "forward",
       "originStationId": "transtu_hub_slimlen_kahia",
       "destinationStationId": "transtu_dest_cite_bassatine",
@@ -526,15 +407,7 @@
       "firstDepartureFromSuburb": "05:00",
       "lastDepartureFromSuburb": "18:45",
       "peakFrequencyMinutes": 35,
-      "operatingDays": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -542,7 +415,7 @@
     {
       "id": "route_transtu_slimane_ligne61",
       "lineNumber": "61",
-      "name": "Slimane Kahia → Prison Mornaguia",
+      "name": "Slimane Belkahia → Prison Mornaguia",
       "direction": "forward",
       "originStationId": "transtu_hub_slimlen_kahia",
       "destinationStationId": "transtu_dest_prison_mornaguia",
@@ -551,15 +424,7 @@
       "firstDepartureFromSuburb": "09:35",
       "lastDepartureFromSuburb": "16:30",
       "peakFrequencyMinutes": 50,
-      "operatingDays": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -567,7 +432,7 @@
     {
       "id": "route_transtu_slimane_ligne90",
       "lineNumber": "90",
-      "name": "Slimane Kahia → Cité Radio et TV",
+      "name": "Slimane Belkahia → Cité RTT",
       "direction": "forward",
       "originStationId": "transtu_hub_slimlen_kahia",
       "destinationStationId": "transtu_dest_cite_radio_tv",
@@ -576,15 +441,7 @@
       "firstDepartureFromSuburb": "05:20",
       "lastDepartureFromSuburb": "18:50",
       "peakFrequencyMinutes": 60,
-      "operatingDays": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -592,7 +449,7 @@
     {
       "id": "route_transtu_slimane_ligne91",
       "lineNumber": "91",
-      "name": "Slimane Kahia → Cité Hassan Belkhodja",
+      "name": "Slimane Belkahia → Cité Hassen Belkhodja",
       "direction": "forward",
       "originStationId": "transtu_hub_slimlen_kahia",
       "destinationStationId": "transtu_dest_cite_hassan_belkhodja",
@@ -601,15 +458,7 @@
       "firstDepartureFromSuburb": "05:30",
       "lastDepartureFromSuburb": "18:45",
       "peakFrequencyMinutes": 60,
-      "operatingDays": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -617,7 +466,7 @@
     {
       "id": "route_transtu_slimane_ligne92",
       "lineNumber": "92",
-      "name": "Slimane Kahia → Cité Ortage",
+      "name": "Slimane Belkahia → Cité El Bortokal",
       "direction": "forward",
       "originStationId": "transtu_hub_slimlen_kahia",
       "destinationStationId": "transtu_dest_cite_ortage",
@@ -626,90 +475,7 @@
       "firstDepartureFromSuburb": "05:30",
       "lastDepartureFromSuburb": "18:40",
       "peakFrequencyMinutes": 60,
-      "operatingDays": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
-      "zone": "urbaine",
-      "price": 0.5,
-      "trips": []
-    },
-    {
-      "id": "route_transtu_slimane_ligne433",
-      "lineNumber": "433",
-      "name": "Slimane Kahia → Tayeb Mehiri",
-      "direction": "forward",
-      "originStationId": "transtu_hub_slimlen_kahia",
-      "destinationStationId": "transtu_dest_tayeb_mehiri",
-      "firstDepartureFromHub": "06:15",
-      "lastDepartureFromHub": "17:25",
-      "firstDepartureFromSuburb": "05:15",
-      "lastDepartureFromSuburb": "16:05",
-      "peakFrequencyMinutes": 120,
-      "operatingDays": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
-      "zone": "urbaine",
-      "price": 0.5,
-      "trips": []
-    },
-    {
-      "id": "route_transtu_slimane_ligne94",
-      "lineNumber": "94",
-      "name": "Slimane Kahia → Tebourba / Borj El Amri",
-      "direction": "forward",
-      "originStationId": "transtu_hub_slimlen_kahia",
-      "destinationStationId": "transtu_dest_tebourba",
-      "firstDepartureFromHub": "07:00",
-      "lastDepartureFromHub": "19:00",
-      "firstDepartureFromSuburb": "05:45",
-      "lastDepartureFromSuburb": "17:45",
-      "peakFrequencyMinutes": 120,
-      "operatingDays": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
-      "zone": "urbaine",
-      "price": 0.5,
-      "trips": []
-    },
-    {
-      "id": "route_transtu_slimane_ligne95",
-      "lineNumber": "95",
-      "name": "Slimane Kahia → Khaled Ibn El Walid",
-      "direction": "forward",
-      "originStationId": "transtu_hub_slimlen_kahia",
-      "destinationStationId": "transtu_dest_khaled_bn_walid",
-      "firstDepartureFromHub": "06:00",
-      "lastDepartureFromHub": "19:30",
-      "firstDepartureFromSuburb": "05:30",
-      "lastDepartureFromSuburb": "19:00",
-      "peakFrequencyMinutes": 60,
-      "operatingDays": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -717,7 +483,7 @@
     {
       "id": "route_transtu_slimane_ligne87",
       "lineNumber": "87",
-      "name": "Slimane Kahia → Mghira",
+      "name": "Slimane Belkahia → Mghira",
       "direction": "forward",
       "originStationId": "transtu_hub_slimlen_kahia",
       "destinationStationId": "transtu_dest_mghira_slimane",
@@ -726,21 +492,76 @@
       "firstDepartureFromSuburb": "05:45",
       "lastDepartureFromSuburb": "18:30",
       "peakFrequencyMinutes": 135,
-      "operatingDays": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "zone": "urbaine",
+      "price": 0.5,
+      "trips": []
+    },
+    {
+      "id": "route_transtu_slimane_ligne433",
+      "lineNumber": "433",
+      "name": "Slimane Belkahia → Taieb Mhiri",
+      "direction": "forward",
+      "originStationId": "transtu_hub_slimlen_kahia",
+      "destinationStationId": "transtu_dest_tayeb_mehiri",
+      "firstDepartureFromHub": "06:15",
+      "lastDepartureFromHub": "17:25",
+      "firstDepartureFromSuburb": "05:15",
+      "lastDepartureFromSuburb": "16:05",
+      "peakFrequencyMinutes": 120,
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "zone": "urbaine",
+      "price": 0.5,
+      "trips": []
+    },
+    {
+      "id": "route_transtu_slimane_ligne94",
+      "lineNumber": "94",
+      "name": "Slimane Belkahia → Borj El Amri (via Tebourba)",
+      "direction": "forward",
+      "originStationId": "transtu_hub_slimlen_kahia",
+      "destinationStationId": "transtu_dest_tebourba",
+      "firstDepartureFromHub": "07:00",
+      "lastDepartureFromHub": "19:00",
+      "firstDepartureFromSuburb": "05:45",
+      "lastDepartureFromSuburb": "17:45",
+      "peakFrequencyMinutes": 120,
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "zone": "urbaine",
+      "price": 0.5,
+      "trips": []
+    },
+    {
+      "id": "route_transtu_slimane_ligne95",
+      "lineNumber": "95",
+      "name": "Slimane Belkahia → Khaled Ibn Walid",
+      "direction": "forward",
+      "originStationId": "transtu_hub_slimlen_kahia",
+      "destinationStationId": "transtu_dest_khaled_bn_walid",
+      "firstDepartureFromHub": "06:00",
+      "lastDepartureFromHub": "19:30",
+      "firstDepartureFromSuburb": "05:30",
+      "lastDepartureFromSuburb": "19:00",
+      "peakFrequencyMinutes": 60,
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
     }
   ],
   "routeStops": [
+    {
+      "routeId": "route_transtu_slimane_ligne23_hafsia",
+      "stationId": "transtu_hub_slimlen_kahia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne23_hafsia",
+      "stationId": "transtu_dest_hafsia",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 40
+    },
     {
       "routeId": "route_transtu_slimane_ligne23_borj_amri",
       "stationId": "transtu_hub_slimlen_kahia",
@@ -749,7 +570,7 @@
     },
     {
       "routeId": "route_transtu_slimane_ligne23_borj_amri",
-      "stationId": "transtu_dest_borj_amri_hafsia",
+      "stationId": "transtu_dest_borj_amri",
       "stopOrder": 2,
       "estimatedArrivalTimeMinutes": 35
     },
@@ -778,6 +599,66 @@
       "estimatedArrivalTimeMinutes": 30
     },
     {
+      "routeId": "route_transtu_slimane_ligne23j",
+      "stationId": "transtu_hub_slimlen_kahia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne23j",
+      "stationId": "transtu_dest_griyat",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 45
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne23kh",
+      "stationId": "transtu_hub_slimlen_kahia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne23kh",
+      "stationId": "transtu_dest_borj_nour",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 40
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne23h",
+      "stationId": "transtu_hub_slimlen_kahia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne23h",
+      "stationId": "transtu_dest_sidi_madine",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 30
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne23t",
+      "stationId": "transtu_hub_slimlen_kahia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne23t",
+      "stationId": "transtu_dest_tilech_ksar_jdid",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 40
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne48",
+      "stationId": "transtu_hub_slimlen_kahia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne48",
+      "stationId": "transtu_dest_cite_bassatine",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 25
+    },
+    {
       "routeId": "route_transtu_slimane_ligne61",
       "stationId": "transtu_hub_slimlen_kahia",
       "stopOrder": 1,
@@ -790,6 +671,66 @@
       "estimatedArrivalTimeMinutes": 40
     },
     {
+      "routeId": "route_transtu_slimane_ligne90",
+      "stationId": "transtu_hub_slimlen_kahia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne90",
+      "stationId": "transtu_dest_cite_radio_tv",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 20
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne91",
+      "stationId": "transtu_hub_slimlen_kahia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne91",
+      "stationId": "transtu_dest_cite_hassan_belkhodja",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 20
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne92",
+      "stationId": "transtu_hub_slimlen_kahia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne92",
+      "stationId": "transtu_dest_cite_ortage",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 20
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne87",
+      "stationId": "transtu_hub_slimlen_kahia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne87",
+      "stationId": "transtu_dest_mghira_slimane",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 30
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne433",
+      "stationId": "transtu_hub_slimlen_kahia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_slimane_ligne433",
+      "stationId": "transtu_dest_tayeb_mehiri",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 35
+    },
+    {
       "routeId": "route_transtu_slimane_ligne94",
       "stationId": "transtu_hub_slimlen_kahia",
       "stopOrder": 1,
@@ -799,7 +740,7 @@
       "routeId": "route_transtu_slimane_ligne94",
       "stationId": "transtu_dest_tebourba",
       "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 45
+      "estimatedArrivalTimeMinutes": 50
     },
     {
       "routeId": "route_transtu_slimane_ligne95",
@@ -813,11 +754,5 @@
       "stopOrder": 2,
       "estimatedArrivalTimeMinutes": 25
     }
-  ],
-  "summary": {
-    "total_routes": 16,
-    "hub_location": "Slimane Kahia, Manouba Governorate",
-    "sloganAr": "أينما كنتم، نقل تونس ترافقكم",
-    "sloganFr": "Partout, TRANSTU vous accompagne"
-  }
+  ]
 }

@@ -320,18 +320,29 @@ class BusServiceRepository {
     
     // Get services from first hub
     final services = await getServicesForHub(hub1Id);
-    
-    // Check if any service's destination matches hub2
-    final hub2Name = hub2Id.replaceAll('transtu_hub_', '').replaceAll('_', ' ');
-    
+
+    // 1. Try exact destination station ID match first (handles hubs like transtu_hub_morneg).
+    final byId = services
+        .where((s) => s.destinationStationId == hub2Id)
+        .toList();
+    if (byId.isNotEmpty) {
+      if (kDebugMode) {
+        debugPrint('[BusServiceRepo] Matched ${byId.length} hub→hub services by destinationStationId');
+      }
+      return byId;
+    }
+
+    // 2. Fallback: case-insensitive name match.
+    final hub2Name = hub2Id.replaceAll('transtu_hub_', '').replaceAll('_', ' ').toLowerCase();
+
     final matchedServices = services.where((service) {
       return service.destinationNameFr?.toLowerCase().contains(hub2Name) ?? false;
     }).toList();
-    
+
     if (kDebugMode) {
-      debugPrint('[BusServiceRepo] Found ${matchedServices.length} direct hub-to-hub services');
+      debugPrint('[BusServiceRepo] Found ${matchedServices.length} direct hub-to-hub services (name fallback)');
     }
-    
+
     return matchedServices;
   }
 

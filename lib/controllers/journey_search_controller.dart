@@ -270,9 +270,18 @@ class JourneySearchController extends ChangeNotifier {
           String? bestTime;
           int bestMinutes = -1;
 
-          // Detect reverse direction: user is going from a destination to a hub.
+          // Detect reverse direction: user is going from a destination/suburb hub back to
+          // the main departure hub. This covers:
+          //   - dest→hub  (transtu_dest_* → transtu_hub_barcelone)
+          //   - hub→hub where the origin hub is itself served BY lines from the to-hub
+          //     (e.g. transtu_hub_morneg → transtu_hub_barcelone)
           final isReverse = _busServiceRepository.isTranstuHub(toStation.id) &&
-              !_busServiceRepository.isTranstuHub(fromStation.id);
+              (
+                !_busServiceRepository.isTranstuHub(fromStation.id) ||
+                // Hub→Hub reverse: the found services depart FROM toStation TO fromStation,
+                // so fromSuburb times are the correct direction for the user.
+                busServices.any((s) => s.destinationStationId == fromStation.id)
+              );
 
           for (final svc in busServices) {
             final nextDep = isReverse
