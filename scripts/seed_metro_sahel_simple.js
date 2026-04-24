@@ -1,0 +1,209 @@
+const admin = require('firebase-admin');
+const serviceAccount = require('C:/Users/Snaws/Desktop/serviceAccount.json.json');
+
+admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+const db = admin.firestore();
+
+const data = {
+  "metadata": {
+    "validityPeriod": "01 October 2025 - 30 September 2026",
+    "validFrom": "2025-10-01",
+    "validTo": "2026-09-30",
+    "journeyDurationMinutes": 90,
+    "gapBetweenStationsMinutes": 3,
+    "notes": "Métro du Sahel line from Mahdia to Sousse (31 stations). Official SNCFT schedule for the Sahel Metro line. Journey duration calculated as 3 minutes per station gap (30 gaps × 3 min = 90 min total)."
+  },
+  "operator": {
+    "id": "sncft_sahel",
+    "name": "SNCFT - Métro du Sahel",
+    "phone": "+216 73 123 456",
+    "typeId": "train",
+    "website": "https://www.sncft.com.tn",
+    "color": "#1565C0"
+  },
+  "pricing": {
+    "currency": "TND",
+    "sectionFareRules": [
+      { "maxSections": 1, "price": 0.55 },
+      { "maxSections": 4, "price": 0.80 },
+      { "maxSections": 7, "price": 1.05 },
+      { "maxSections": 10, "price": 1.30 },
+      { "maxSections": 13, "price": 1.55 },
+      { "maxSections": 16, "price": 1.80 },
+      { "maxSections": 19, "price": 2.05 },
+      { "maxSections": 22, "price": 2.30 },
+      { "maxSections": 25, "price": 2.55 },
+      { "maxSections": 28, "price": 2.80 },
+      { "maxSections": 30, "price": 3.05 }
+    ],
+    "formula": "0.55 + floor((n-1)/3) * 0.25 per additional 3 sections"
+  },
+  "stations": [
+    { "id": "ms_mahdia", "name": "Mahdia", "nameAr": "المهدية", "cityId": "mahdia", "section": 1, "lat": 35.5047, "lng": 11.0622, "offsetMin": 0, "isMainHub": true, "order": 1 },
+    { "id": "ms_mahdia_ezzahra", "name": "Mahdia - Ezzahra", "nameAr": "المهدية - الزهراء", "cityId": "mahdia", "section": 2, "lat": 35.5095, "lng": 11.0540, "offsetMin": 3, "isMainHub": false, "order": 2 },
+    { "id": "ms_borj_arif", "name": "Borj Arif", "nameAr": "برج عارف", "cityId": "mahdia", "section": 3, "lat": 35.5150, "lng": 11.0450, "offsetMin": 6, "isMainHub": false, "order": 3 },
+    { "id": "ms_sidi_messaoud", "name": "Sidi Messaoud", "nameAr": "سيدي مسعود", "cityId": "mahdia", "section": 4, "lat": 35.5230, "lng": 11.0370, "offsetMin": 9, "isMainHub": false, "order": 4 },
+    { "id": "ms_mahdia_zt", "name": "Mahdia - Zone Touristique", "nameAr": "المهدية - منطقة سياحية", "cityId": "mahdia", "section": 5, "lat": 35.5320, "lng": 11.0260, "offsetMin": 12, "isMainHub": false, "order": 5 },
+    { "id": "ms_baghdadi", "name": "Baghdadi", "nameAr": "بغدادي", "cityId": "mahdia", "section": 6, "lat": 35.5420, "lng": 11.0190, "offsetMin": 15, "isMainHub": false, "order": 6 },
+    { "id": "ms_bekalta", "name": "Bekalta", "nameAr": "بقالطة", "cityId": "moknine", "section": 7, "lat": 35.5810, "lng": 10.9940, "offsetMin": 18, "isMainHub": false, "order": 7 },
+    { "id": "ms_teboulba", "name": "Téboulba", "nameAr": "طبلبة", "cityId": "moknine", "section": 8, "lat": 35.6050, "lng": 10.9780, "offsetMin": 21, "isMainHub": false, "order": 8 },
+    { "id": "ms_teboulba_zi", "name": "Téboulba - Zone Industrielle", "nameAr": "طبلبة - منطقة صناعية", "cityId": "moknine", "section": 9, "lat": 35.6150, "lng": 10.9650, "offsetMin": 24, "isMainHub": false, "order": 9 },
+    { "id": "ms_moknine_zi", "name": "Moknine - Zone Industrielle", "nameAr": "مكنين - منطقة صناعية", "cityId": "moknine", "section": 10, "lat": 35.6250, "lng": 10.9520, "offsetMin": 27, "isMainHub": false, "order": 10 },
+    { "id": "ms_moknine", "name": "Moknine", "nameAr": "مكنين", "cityId": "moknine", "section": 11, "lat": 35.6350, "lng": 10.9380, "offsetMin": 30, "isMainHub": false, "order": 11 },
+    { "id": "ms_moknine_gribaa", "name": "Moknine - Gribaa", "nameAr": "مكنين - قريبة", "cityId": "moknine", "section": 12, "lat": 35.6420, "lng": 10.9230, "offsetMin": 33, "isMainHub": false, "order": 12 },
+    { "id": "ms_ksar_hellal", "name": "Ksar Hellal", "nameAr": "قصر هلال", "cityId": "moknine", "section": 13, "lat": 35.6580, "lng": 10.8920, "offsetMin": 36, "isMainHub": false, "order": 13 },
+    { "id": "ms_ksar_hellal_zi", "name": "Ksar Hellal - Zone Industrielle", "nameAr": "قصر هلال - منطقة صناعية", "cityId": "moknine", "section": 14, "lat": 35.6500, "lng": 10.8850, "offsetMin": 39, "isMainHub": false, "order": 14 },
+    { "id": "ms_sayada", "name": "Sayada", "nameAr": "صيادة", "cityId": "moknine", "section": 15, "lat": 35.6760, "lng": 10.8650, "offsetMin": 42, "isMainHub": false, "order": 15 },
+    { "id": "ms_lamta", "name": "Lamta", "nameAr": "لمطة", "cityId": "moknine", "section": 16, "lat": 35.6890, "lng": 10.8390, "offsetMin": 45, "isMainHub": false, "order": 16 },
+    { "id": "ms_bouhjar", "name": "Bouhjar", "nameAr": "بوحجر", "cityId": "monastir", "section": 17, "lat": 35.7020, "lng": 10.8120, "offsetMin": 48, "isMainHub": false, "order": 17 },
+    { "id": "ms_ksiba_bennane", "name": "Ksiba Bennane", "nameAr": "قصيبة بنان", "cityId": "monastir", "section": 18, "lat": 35.7180, "lng": 10.7750, "offsetMin": 51, "isMainHub": false, "order": 18 },
+    { "id": "ms_khniss_bembla", "name": "Khniss - Bembla", "nameAr": "خنيس - بَمبلة", "cityId": "monastir", "section": 19, "lat": 35.7160, "lng": 10.7890, "offsetMin": 54, "isMainHub": false, "order": 19 },
+    { "id": "ms_monastir_zi", "name": "Monastir - Zone Industrielle", "nameAr": "المنستير - منطقة صناعية", "cityId": "monastir", "section": 20, "lat": 35.7380, "lng": 10.8040, "offsetMin": 57, "isMainHub": false, "order": 20 },
+    { "id": "ms_monastir", "name": "Monastir", "nameAr": "المنستير", "cityId": "monastir", "section": 21, "lat": 35.7441, "lng": 10.8081, "offsetMin": 60, "isMainHub": true, "order": 21 },
+    { "id": "ms_la_faculte", "name": "La Faculté", "nameAr": "الكلية", "cityId": "monastir", "section": 22, "lat": 35.7520, "lng": 10.7720, "offsetMin": 63, "isMainHub": false, "order": 22 },
+    { "id": "ms_aeroport", "name": "Aéroport Skanès-Monastir", "nameAr": "مطار المنستير", "cityId": "monastir", "section": 23, "lat": 35.7572, "lng": 10.7548, "offsetMin": 66, "isMainHub": false, "order": 23 },
+    { "id": "ms_les_hotels", "name": "Les Hôtels", "nameAr": "النزل", "cityId": "sousse", "section": 24, "lat": 35.7750, "lng": 10.7200, "offsetMin": 69, "isMainHub": false, "order": 24 },
+    { "id": "ms_frina", "name": "Frina", "nameAr": "فرنانة", "cityId": "sousse", "section": 25, "lat": 35.7780, "lng": 10.7150, "offsetMin": 72, "isMainHub": false, "order": 25 },
+    { "id": "ms_sahline_sebkha", "name": "Sahline Sebkha", "nameAr": "الساحلين - سبخة", "cityId": "sousse", "section": 26, "lat": 35.7810, "lng": 10.7100, "offsetMin": 75, "isMainHub": false, "order": 26 },
+    { "id": "ms_sahline", "name": "Sahline", "nameAr": "الساحلين", "cityId": "sousse", "section": 27, "lat": 35.7900, "lng": 10.6970, "offsetMin": 78, "isMainHub": false, "order": 27 },
+    { "id": "ms_sousse_zi", "name": "Sousse - Zone Industrielle", "nameAr": "سوسة - منطقة صناعية", "cityId": "sousse", "section": 28, "lat": 35.8100, "lng": 10.6700, "offsetMin": 81, "isMainHub": false, "order": 28 },
+    { "id": "ms_sousse_sud", "name": "Sousse Sud", "nameAr": "سوسة الجنوبية", "cityId": "sousse", "section": 29, "lat": 35.8175, "lng": 10.6550, "offsetMin": 84, "isMainHub": false, "order": 29 },
+    { "id": "ms_sousse_mhmdv", "name": "Sousse - Mohamed V", "nameAr": "سوسة - محمد الخامس", "cityId": "sousse", "section": 30, "lat": 35.8220, "lng": 10.6430, "offsetMin": 87, "isMainHub": false, "order": 30 },
+    { "id": "ms_sousse_bab_jedid", "name": "Sousse - Bab Jedid", "nameAr": "سوسة - باب جديد", "cityId": "sousse", "section": 31, "lat": 35.8256, "lng": 10.6369, "offsetMin": 90, "isMainHub": true, "order": 31 }
+  ],
+  "routeStops": [
+    { "direction": "south", "stationId": "ms_mahdia", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0 },
+    { "direction": "south", "stationId": "ms_mahdia_ezzahra", "stopOrder": 2, "estimatedArrivalTimeMinutes": 3 },
+    { "direction": "south", "stationId": "ms_borj_arif", "stopOrder": 3, "estimatedArrivalTimeMinutes": 6 },
+    { "direction": "south", "stationId": "ms_sidi_messaoud", "stopOrder": 4, "estimatedArrivalTimeMinutes": 9 },
+    { "direction": "south", "stationId": "ms_mahdia_zt", "stopOrder": 5, "estimatedArrivalTimeMinutes": 12 },
+    { "direction": "south", "stationId": "ms_baghdadi", "stopOrder": 6, "estimatedArrivalTimeMinutes": 15 },
+    { "direction": "south", "stationId": "ms_bekalta", "stopOrder": 7, "estimatedArrivalTimeMinutes": 18 },
+    { "direction": "south", "stationId": "ms_teboulba", "stopOrder": 8, "estimatedArrivalTimeMinutes": 21 },
+    { "direction": "south", "stationId": "ms_teboulba_zi", "stopOrder": 9, "estimatedArrivalTimeMinutes": 24 },
+    { "direction": "south", "stationId": "ms_moknine_zi", "stopOrder": 10, "estimatedArrivalTimeMinutes": 27 },
+    { "direction": "south", "stationId": "ms_moknine", "stopOrder": 11, "estimatedArrivalTimeMinutes": 30 },
+    { "direction": "south", "stationId": "ms_moknine_gribaa", "stopOrder": 12, "estimatedArrivalTimeMinutes": 33 },
+    { "direction": "south", "stationId": "ms_ksar_hellal", "stopOrder": 13, "estimatedArrivalTimeMinutes": 36 },
+    { "direction": "south", "stationId": "ms_ksar_hellal_zi", "stopOrder": 14, "estimatedArrivalTimeMinutes": 39 },
+    { "direction": "south", "stationId": "ms_sayada", "stopOrder": 15, "estimatedArrivalTimeMinutes": 42 },
+    { "direction": "south", "stationId": "ms_lamta", "stopOrder": 16, "estimatedArrivalTimeMinutes": 45 },
+    { "direction": "south", "stationId": "ms_bouhjar", "stopOrder": 17, "estimatedArrivalTimeMinutes": 48 },
+    { "direction": "south", "stationId": "ms_ksiba_bennane", "stopOrder": 18, "estimatedArrivalTimeMinutes": 51 },
+    { "direction": "south", "stationId": "ms_khniss_bembla", "stopOrder": 19, "estimatedArrivalTimeMinutes": 54 },
+    { "direction": "south", "stationId": "ms_monastir_zi", "stopOrder": 20, "estimatedArrivalTimeMinutes": 57 },
+    { "direction": "south", "stationId": "ms_monastir", "stopOrder": 21, "estimatedArrivalTimeMinutes": 60 },
+    { "direction": "south", "stationId": "ms_la_faculte", "stopOrder": 22, "estimatedArrivalTimeMinutes": 63 },
+    { "direction": "south", "stationId": "ms_aeroport", "stopOrder": 23, "estimatedArrivalTimeMinutes": 66 },
+    { "direction": "south", "stationId": "ms_les_hotels", "stopOrder": 24, "estimatedArrivalTimeMinutes": 69 },
+    { "direction": "south", "stationId": "ms_frina", "stopOrder": 25, "estimatedArrivalTimeMinutes": 72 },
+    { "direction": "south", "stationId": "ms_sahline_sebkha", "stopOrder": 26, "estimatedArrivalTimeMinutes": 75 },
+    { "direction": "south", "stationId": "ms_sahline", "stopOrder": 27, "estimatedArrivalTimeMinutes": 78 },
+    { "direction": "south", "stationId": "ms_sousse_zi", "stopOrder": 28, "estimatedArrivalTimeMinutes": 81 },
+    { "direction": "south", "stationId": "ms_sousse_sud", "stopOrder": 29, "estimatedArrivalTimeMinutes": 84 },
+    { "direction": "south", "stationId": "ms_sousse_mhmdv", "stopOrder": 30, "estimatedArrivalTimeMinutes": 87 },
+    { "direction": "south", "stationId": "ms_sousse_bab_jedid", "stopOrder": 31, "estimatedArrivalTimeMinutes": 90 }
+  ],
+  "routes": [
+    {
+      "id": "route_ms_504",
+      "lineNumber": "504",
+      "name": "Mahdia → Sousse",
+      "description": "Métro du Sahel: Mahdia vers Sousse - Bab Jedid",
+      "direction": "south",
+      "originStationId": "ms_mahdia",
+      "destinationStationId": "ms_sousse_bab_jedid",
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "trips": [
+        { "tripNumber": 504, "departureTime": "04:55", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 506, "departureTime": "05:25", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 508, "departureTime": "06:10", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 510, "departureTime": "06:40", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 512, "departureTime": "07:50", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 514, "departureTime": "08:55", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 516, "departureTime": "09:50", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 518, "departureTime": "10:55", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 520, "departureTime": "11:30", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 522, "departureTime": "12:05", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 524, "departureTime": "13:25", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 526, "departureTime": "14:30", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 528, "departureTime": "15:35", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 530, "departureTime": "16:25", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 532, "departureTime": "17:05", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 534, "departureTime": "18:15", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 536, "departureTime": "18:50", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 538, "departureTime": "19:50", "operatingDays": [0, 1, 2, 3, 4, 5, 6] }
+      ]
+    },
+    {
+      "id": "route_ms_503",
+      "lineNumber": "503",
+      "name": "Sousse → Mahdia",
+      "description": "Métro du Sahel: Sousse - Bab Jedid vers Mahdia",
+      "direction": "north",
+      "originStationId": "ms_sousse_bab_jedid",
+      "destinationStationId": "ms_mahdia",
+      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "trips": [
+        { "tripNumber": 501, "departureTime": "05:40", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 503, "departureTime": "06:50", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 505, "departureTime": "07:30", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 507, "departureTime": "08:30", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 509, "departureTime": "08:50", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 511, "departureTime": "09:55", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 513, "departureTime": "11:05", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 515, "departureTime": "12:25", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 517, "departureTime": "13:05", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 519, "departureTime": "13:30", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 521, "departureTime": "14:05", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 523, "departureTime": "15:35", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 525, "departureTime": "16:40", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 527, "departureTime": "17:25", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 529, "departureTime": "18:30", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 531, "departureTime": "19:00", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 533, "departureTime": "19:30", "operatingDays": [0, 1, 2, 3, 4, 5, 6] },
+        { "tripNumber": 535, "departureTime": "20:10", "operatingDays": [0, 1, 2, 3, 4, 5, 6] }
+      ]
+    }
+  ]
+};
+
+async function seedMetroSahel() {
+  let batch = db.batch();
+  let ops = 0;
+
+  const flush = async () => {
+    if (ops > 0) {
+      await batch.commit();
+      batch = db.batch();
+      ops = 0;
+    }
+  };
+
+  // Import operator
+  if (data.operator) {
+    batch.set(db.collection('operators').doc(data.operator.id), data.operator);
+    ops++;
+  }
+
+  // Import stations
+  console.log(`📝 Importing ${data.stations.length} stations...`);
+  for (const station of data.stations) {
+    batch.set(db.collection('stations').doc(station.id), station);
+    ops++;
+    if (ops >= 490) await flush();
+  }
+  await flush();
+
+  // Import routes with trips
+  console.log(`📝 Importing ${data.routes.length} routes...`);
+  for (const route of data.routes) {
+    batch.set(db.collection('routes').doc(route.id), route);
+    ops++;
+  }
+  await flush();
+
+  console.log('✅ Metro Sahel data seeded successfully!');
+}
+
+seedMetroSahel().catch(console.error);

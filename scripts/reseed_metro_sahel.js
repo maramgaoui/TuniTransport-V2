@@ -4,7 +4,7 @@
  */
 
 const admin = require('firebase-admin');
-const serviceAccount = require('./firebase-key.json');
+const serviceAccount = require('C:/Users/Snaws/Desktop/serviceAccount.json.json');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -55,7 +55,7 @@ const stations = [
   { id: 'ms_sousse_bab_jedid', name: 'Sousse - Bab Jedid',           cityId: 'sousse',    lat: 35.8256, lng: 10.6369 },
 ];
 
-const MINUTES_PER_GAP = 3; // 30 gaps × 3 = 90 min total (matches real schedule)
+const MINUTES_PER_GAP = 3; // 30 gaps × 3 = 90 min total
 
 function calculatePrice(numberOfStops) {
   if (numberOfStops <= 0) return 0.0;
@@ -169,12 +169,19 @@ async function reseed() {
     }
     console.log(`   ✓ ${tc} tariffs.\n`);
 
-    // Trip arrival times
-    console.log('🕐 Phase 6: Updating trip arrival times...');
+    // Trips
+    console.log('🕐 Phase 6: Creating trips...');
     const totalMin = (stations.length - 1) * MINUTES_PER_GAP; // 90 min
     const base = new Date(2025, 9, 1);
+    const validFrom = admin.firestore.Timestamp.fromDate(new Date(2025, 9, 1));
+    const validTo   = admin.firestore.Timestamp.fromDate(new Date(2026, 8, 30));
+
     function toMin(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
-    function minTs(m) { const d = new Date(base); d.setHours(Math.floor(m / 60), m % 60, 0, 0); return admin.firestore.Timestamp.fromDate(d); }
+    function minTs(m) {
+      const d = new Date(base);
+      d.setHours(Math.floor(m / 60), m % 60, 0, 0);
+      return admin.firestore.Timestamp.fromDate(d);
+    }
 
     const t504 = [
       [504,'04:55'],[506,'05:25'],[508,'06:10'],[510,'06:40'],
@@ -190,18 +197,39 @@ async function reseed() {
       [525,'16:40'],[527,'17:25'],[529,'18:30'],[531,'19:00'],
       [533,'19:30'],[535,'20:10'],
     ];
-    for (const [n, d] of t504) b().update(db.collection('trips').doc(`trip_504_${n}`), { arrivalTime: minTs(toMin(d) + totalMin) });
-    for (const [n, d] of t503) b().update(db.collection('trips').doc(`trip_503_${n}`), { arrivalTime: minTs(toMin(d) + totalMin) });
-    console.log(`   ✓ 36 trips updated (${totalMin} min journey).\n`);
 
-    // Commit
+    for (const [n, depTime] of t504) {
+      const depMin = toMin(depTime);
+      b().set(db.collection('trips').doc(`trip_504_${n}`), {
+        routeId: 'route_ms_504', tripNumber: n,
+        departureTime: minTs(depMin), arrivalTime: minTs(depMin + totalMin),
+        capacity: 300, availableSeats: 300,
+        daysOfWeek: [0,1,2,3,4,5,6],
+        validFrom, validTo, isActive: true,
+        vehicleId: null, driverName: null, createdAt: ts(2025, 1, 1),
+      });
+    }
+    for (const [n, depTime] of t503) {
+      const depMin = toMin(depTime);
+      b().set(db.collection('trips').doc(`trip_503_${n}`), {
+        routeId: 'route_ms_503', tripNumber: n,
+        departureTime: minTs(depMin), arrivalTime: minTs(depMin + totalMin),
+        capacity: 300, availableSeats: 300,
+        daysOfWeek: [0,1,2,3,4,5,6],
+        validFrom, validTo, isActive: true,
+        vehicleId: null, driverName: null, createdAt: ts(2025, 1, 1),
+      });
+    }
+    console.log(`   ✓ ${t504.length + t503.length} trips (${totalMin} min journey).\n`);
+
+    // Commit all batches
     console.log(`⏳ Committing ${batches.length} batch(es)...`);
     for (let i = 0; i < batches.length; i++) {
       await batches[i].commit();
       console.log(`   ✓ Batch ${i + 1}/${batches.length}`);
     }
 
-    console.log(`\n✅ DONE! ${stations.length} stations, ${tc} tariffs, 90 min journey.`);
+    console.log(`\n✅ DONE! ${stations.length} stations, ${tc} tariffs, 36 trips, 90 min journey.`);
     process.exit(0);
   } catch (err) {
     console.error('❌', err);
