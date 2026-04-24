@@ -3,7 +3,7 @@
     "line_name": "TRANSTU - Barcelone Hub",
     "validFrom": "2025-09-01",
     "validTo": "2026-06-30",
-    "notes": "TRANSTU bus services from Barcelone hub. Winter 2025-2026 schedule. Data extracted and corrected from official TRANSTU image."
+    "notes": "TRANSTU bus services from Barcelone hub. Winter 2025-2026 schedule. Corrected: added missing lines 19ت,19ك,19ث,19ج,22(Yasminettes),59أ,82,714; fixed line 75 frequency (120 not 60)."
   },
   "operator": {
     "id": "transtu",
@@ -21,15 +21,11 @@
       "lat": 36.8086,
       "lng": 10.1806,
       "isMainHub": true,
-      "searchAliases": [
-        "barcelone",
-        "برشلونة",
-        "barcelona"
-      ]
+      "searchAliases": ["barcelone", "برشلونة", "barcelona"]
     },
     {
       "id": "transtu_dest_hay_thameur",
-      "name": "Hay Thameur",
+      "name": "Cité Thameur",
       "nameAr": "حي ثامر",
       "cityId": "tunis",
       "order": 2,
@@ -42,35 +38,81 @@
       "name": "Port de Radès",
       "nameAr": "ميناء رادس",
       "cityId": "rades",
-      "order": 6,
+      "order": 3,
       "lat": 36.77,
       "lng": 10.28,
       "isMainHub": false
     },
     {
       "id": "transtu_dest_megrine_coteau",
-      "name": "Megrine Coteau",
+      "name": "Megrine Coteaux",
       "nameAr": "مقرين كوطو",
       "cityId": "ben_arous",
-      "order": 7,
+      "order": 4,
       "lat": 36.77,
       "lng": 10.22,
       "isMainHub": false,
-      "searchAliases": [
-        "megrine coteau",
-        "megrine coteaux",
-        "مقرين كوطو",
-        "مقرين"
-      ]
+      "searchAliases": ["megrine coteau", "megrine coteaux", "مقرين كوطو", "مقرين"]
+    },
+    {
+      "id": "transtu_dest_nouvelle_medina_1",
+      "name": "Nouvelle Medina 1",
+      "nameAr": "المدينة الجديدة 1",
+      "cityId": "ben_arous",
+      "order": 5,
+      "lat": 36.765,
+      "lng": 10.215,
+      "isMainHub": false,
+      "searchAliases": ["nouvelle medina", "المدينة الجديدة"]
+    },
+    {
+      "id": "transtu_dest_nouvelle_medina_123",
+      "name": "Nouvelle Medina 123",
+      "nameAr": "المدينة الجديدة 123",
+      "cityId": "ben_arous",
+      "order": 6,
+      "lat": 36.763,
+      "lng": 10.213,
+      "isMainHub": false
+    },
+    {
+      "id": "transtu_dest_rades_foret",
+      "name": "Radès Forêt",
+      "nameAr": "رادس الغابة",
+      "cityId": "rades",
+      "order": 7,
+      "lat": 36.775,
+      "lng": 10.285,
+      "isMainHub": false
+    },
+    {
+      "id": "transtu_dest_megrine_chaker",
+      "name": "Megrine Chaker",
+      "nameAr": "مقرين شاكر",
+      "cityId": "ben_arous",
+      "order": 8,
+      "lat": 36.768,
+      "lng": 10.225,
+      "isMainHub": false
     },
     {
       "id": "transtu_dest_ben_arous",
       "name": "Ben Arous",
       "nameAr": "بن عروس",
       "cityId": "ben_arous",
-      "order": 10,
+      "order": 9,
       "lat": 36.7533,
       "lng": 10.2189,
+      "isMainHub": false
+    },
+    {
+      "id": "transtu_dest_yasminettes",
+      "name": "Les Yasminettes",
+      "nameAr": "الياسمينات",
+      "cityId": "ben_arous",
+      "order": 10,
+      "lat": 36.752,
+      "lng": 10.220,
       "isMainHub": false
     },
     {
@@ -82,20 +124,26 @@
       "lat": 36.75,
       "lng": 10.23,
       "isMainHub": false,
-      "searchAliases": [
-        "mornag",
-        "morneg",
-        "مرناق"
-      ]
+      "searchAliases": ["mornag", "morneg", "مرناق"]
     },
     {
-      "id": "transtu_dest_belvedere",
-      "name": "Belvédère",
-      "nameAr": "بلفي",
-      "cityId": "tunis",
+      "id": "transtu_dest_mornag_challa",
+      "name": "Mornag (Challa)",
+      "nameAr": "مرناق (شالة)",
+      "cityId": "ben_arous",
       "order": 12,
-      "lat": 36.825,
-      "lng": 10.17,
+      "lat": 36.748,
+      "lng": 10.228,
+      "isMainHub": false
+    },
+    {
+      "id": "transtu_dest_el_mourouj_1",
+      "name": "El Mourouj 1",
+      "nameAr": "المروج 1",
+      "cityId": "ben_arous",
+      "order": 13,
+      "lat": 36.74,
+      "lng": 10.205,
       "isMainHub": false
     },
     {
@@ -110,12 +158,32 @@
     },
     {
       "id": "transtu_dest_boumhal",
-      "name": "Boumhal",
+      "name": "Boumhel",
       "nameAr": "بومهل",
       "cityId": "ben_arous",
       "order": 15,
       "lat": 36.745,
       "lng": 10.215,
+      "isMainHub": false
+    },
+    {
+      "id": "transtu_dest_boumhal_gp1",
+      "name": "Boumhel (via GP1)",
+      "nameAr": "بومهل (عبر الوطنية 1)",
+      "cityId": "ben_arous",
+      "order": 16,
+      "lat": 36.744,
+      "lng": 10.214,
+      "isMainHub": false
+    },
+    {
+      "id": "transtu_dest_jaama_el_houda",
+      "name": "Jâama El Houda",
+      "nameAr": "جامع الهدى - القرية المتوسطية",
+      "cityId": "ben_arous",
+      "order": 17,
+      "lat": 36.742,
+      "lng": 10.210,
       "isMainHub": false
     }
   ],
@@ -123,26 +191,11 @@
     {
       "id": "route_transtu_barcelone_ligne9b",
       "lineNumber": "9ب",
-      "name": "Barcelone → Hay Thameur",
+      "name": "Barcelone → Cité Thameur",
       "direction": "forward",
       "originStationId": "transtu_hub_barcelone",
       "destinationStationId": "transtu_dest_hay_thameur",
-      "trips": [
-        {
-          "tripNumber": "9b_1",
-          "departureTime": "06:35",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_dest_hay_thameur"
-        }
-      ],
+      "trips": [{"tripNumber": "9b_1", "departureTime": "06:35", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_hay_thameur"}],
       "firstDepartureFromHub": "06:35",
       "lastDepartureFromHub": "20:10",
       "firstDepartureFromSuburb": "06:00",
@@ -158,22 +211,7 @@
       "direction": "forward",
       "originStationId": "transtu_hub_barcelone",
       "destinationStationId": "transtu_dest_port_rades",
-      "trips": [
-        {
-          "tripNumber": "17_1",
-          "departureTime": "05:15",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_dest_port_rades"
-        }
-      ],
+      "trips": [{"tripNumber": "17_1", "departureTime": "05:15", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_port_rades"}],
       "firstDepartureFromHub": "05:15",
       "lastDepartureFromHub": "19:20",
       "firstDepartureFromSuburb": "05:00",
@@ -183,28 +221,13 @@
       "price": 0.5
     },
     {
-      "id": "route_transtu_barcelone_ligne19_coteau",
+      "id": "route_transtu_barcelone_ligne19",
       "lineNumber": "19",
-      "name": "Barcelone → Megrine Coteau",
+      "name": "Barcelone → Megrine Coteaux",
       "direction": "forward",
       "originStationId": "transtu_hub_barcelone",
       "destinationStationId": "transtu_dest_megrine_coteau",
-      "trips": [
-        {
-          "tripNumber": "19_1",
-          "departureTime": "04:40",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_dest_megrine_coteau"
-        }
-      ],
+      "trips": [{"tripNumber": "19_1", "departureTime": "04:40", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_megrine_coteau"}],
       "firstDepartureFromHub": "04:40",
       "lastDepartureFromHub": "21:50",
       "firstDepartureFromSuburb": "04:15",
@@ -214,28 +237,93 @@
       "price": 0.5
     },
     {
-      "id": "route_transtu_barcelone_ligne222q",
+      "id": "route_transtu_barcelone_ligne19t",
+      "lineNumber": "19ت",
+      "name": "Barcelone → Nouvelle Medina 1",
+      "direction": "forward",
+      "originStationId": "transtu_hub_barcelone",
+      "destinationStationId": "transtu_dest_nouvelle_medina_1",
+      "trips": [{"tripNumber": "19t_1", "departureTime": "05:00", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_nouvelle_medina_1"}],
+      "firstDepartureFromHub": "05:00",
+      "lastDepartureFromHub": "22:10",
+      "firstDepartureFromSuburb": "04:30",
+      "lastDepartureFromSuburb": "21:15",
+      "peakFrequencyMinutes": 35,
+      "zone": "urbaine",
+      "price": 0.5
+    },
+    {
+      "id": "route_transtu_barcelone_ligne19k",
+      "lineNumber": "19ك",
+      "name": "Barcelone → Nouvelle Medina 123",
+      "direction": "forward",
+      "originStationId": "transtu_hub_barcelone",
+      "destinationStationId": "transtu_dest_nouvelle_medina_123",
+      "trips": [{"tripNumber": "19k_1", "departureTime": "06:20", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_nouvelle_medina_123"}],
+      "firstDepartureFromHub": "06:20",
+      "lastDepartureFromHub": "14:40",
+      "firstDepartureFromSuburb": "05:30",
+      "lastDepartureFromSuburb": null,
+      "peakFrequencyMinutes": 50,
+      "zone": "urbaine",
+      "price": 0.5
+    },
+    {
+      "id": "route_transtu_barcelone_ligne19th",
+      "lineNumber": "19ث",
+      "name": "Barcelone → Radès Forêt",
+      "direction": "forward",
+      "originStationId": "transtu_hub_barcelone",
+      "destinationStationId": "transtu_dest_rades_foret",
+      "trips": [{"tripNumber": "19th_1", "departureTime": "06:00", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_rades_foret"}],
+      "firstDepartureFromHub": "06:00",
+      "lastDepartureFromHub": "18:25",
+      "firstDepartureFromSuburb": "06:45",
+      "lastDepartureFromSuburb": "17:50",
+      "peakFrequencyMinutes": 30,
+      "zone": "urbaine",
+      "price": 0.5
+    },
+    {
+      "id": "route_transtu_barcelone_ligne19j",
+      "lineNumber": "19ج",
+      "name": "Barcelone → Megrine Chaker",
+      "direction": "forward",
+      "originStationId": "transtu_hub_barcelone",
+      "destinationStationId": "transtu_dest_megrine_chaker",
+      "trips": [{"tripNumber": "19j_1", "departureTime": "06:05", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_megrine_chaker"}],
+      "firstDepartureFromHub": "06:05",
+      "lastDepartureFromHub": "18:05",
+      "firstDepartureFromSuburb": "05:35",
+      "lastDepartureFromSuburb": "17:35",
+      "peakFrequencyMinutes": 60,
+      "zone": "urbaine",
+      "price": 0.5
+    },
+    {
+      "id": "route_transtu_barcelone_ligne22",
       "lineNumber": "22",
       "name": "Barcelone → Ben Arous",
       "direction": "forward",
       "originStationId": "transtu_hub_barcelone",
       "destinationStationId": "transtu_dest_ben_arous",
-      "trips": [
-        {
-          "tripNumber": "222q_1",
-          "departureTime": "06:10",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_dest_ben_arous"
-        }
-      ],
+      "trips": [{"tripNumber": "22_1", "departureTime": "06:10", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_ben_arous"}],
+      "firstDepartureFromHub": "06:10",
+      "lastDepartureFromHub": "19:00",
+      "firstDepartureFromSuburb": "05:30",
+      "lastDepartureFromSuburb": "18:10",
+      "peakFrequencyMinutes": 85,
+      "zone": "urbaine",
+      "price": 0.5
+    },
+    {
+      "id": "route_transtu_barcelone_ligne22y",
+      "lineNumber": "22",
+      "name": "Barcelone → Les Yasminettes",
+      "direction": "forward",
+      "originStationId": "transtu_hub_barcelone",
+      "destinationStationId": "transtu_dest_yasminettes",
+      "trips": [{"tripNumber": "22y_1", "departureTime": "06:10", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_yasminettes"}],
       "firstDepartureFromHub": "06:10",
       "lastDepartureFromHub": "19:00",
       "firstDepartureFromSuburb": "05:30",
@@ -251,22 +339,7 @@
       "direction": "forward",
       "originStationId": "transtu_hub_barcelone",
       "destinationStationId": "transtu_hub_morneg",
-      "trips": [
-        {
-          "tripNumber": "26_1",
-          "departureTime": "05:30",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_hub_morneg"
-        }
-      ],
+      "trips": [{"tripNumber": "26_1", "departureTime": "05:30", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_hub_morneg"}],
       "firstDepartureFromHub": "05:30",
       "lastDepartureFromHub": "22:00",
       "firstDepartureFromSuburb": "04:30",
@@ -276,33 +349,34 @@
       "price": 0.5
     },
     {
-      "id": "route_transtu_barcelone_ligne26a",
-      "lineNumber": "26أ",
-      "name": "Barcelone → Mornag via RN1",
+      "id": "route_transtu_barcelone_ligne26b",
+      "lineNumber": "26ب",
+      "name": "Barcelone → Mornag (Challa)",
       "direction": "forward",
       "originStationId": "transtu_hub_barcelone",
-      "destinationStationId": "transtu_hub_morneg",
-      "trips": [
-        {
-          "tripNumber": "26a_1",
-          "departureTime": "06:10",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_hub_morneg"
-        }
-      ],
+      "destinationStationId": "transtu_dest_mornag_challa",
+      "trips": [{"tripNumber": "26b_1", "departureTime": "06:10", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_mornag_challa"}],
       "firstDepartureFromHub": "06:10",
       "lastDepartureFromHub": "22:30",
       "firstDepartureFromSuburb": "05:00",
       "lastDepartureFromSuburb": "21:30",
       "peakFrequencyMinutes": 35,
+      "zone": "urbaine",
+      "price": 0.5
+    },
+    {
+      "id": "route_transtu_barcelone_ligne59a",
+      "lineNumber": "59أ",
+      "name": "Barcelone → El Mourouj 1",
+      "direction": "forward",
+      "originStationId": "transtu_hub_barcelone",
+      "destinationStationId": "transtu_dest_el_mourouj_1",
+      "trips": [{"tripNumber": "59a_1", "departureTime": "06:00", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_el_mourouj_1"}],
+      "firstDepartureFromHub": "06:00",
+      "lastDepartureFromHub": "22:30",
+      "firstDepartureFromSuburb": "05:30",
+      "lastDepartureFromSuburb": "22:00",
+      "peakFrequencyMinutes": 80,
       "zone": "urbaine",
       "price": 0.5
     },
@@ -313,22 +387,7 @@
       "direction": "forward",
       "originStationId": "transtu_hub_barcelone",
       "destinationStationId": "transtu_dest_ibn_sina",
-      "trips": [
-        {
-          "tripNumber": "60_1",
-          "departureTime": "05:30",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_dest_ibn_sina"
-        }
-      ],
+      "trips": [{"tripNumber": "60_1", "departureTime": "05:30", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_ibn_sina"}],
       "firstDepartureFromHub": "05:30",
       "lastDepartureFromHub": "23:15",
       "firstDepartureFromSuburb": "05:00",
@@ -340,57 +399,59 @@
     {
       "id": "route_transtu_barcelone_ligne75",
       "lineNumber": "75",
-      "name": "Barcelone → Boumhal",
+      "name": "Barcelone → Boumhel",
       "direction": "forward",
       "originStationId": "transtu_hub_barcelone",
       "destinationStationId": "transtu_dest_boumhal",
-      "trips": [
-        {
-          "tripNumber": "75_1",
-          "departureTime": "06:30",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_dest_boumhal"
-        }
-      ],
+      "trips": [{"tripNumber": "75_1", "departureTime": "06:30", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_boumhal"}],
       "firstDepartureFromHub": "06:30",
       "lastDepartureFromHub": "18:30",
       "firstDepartureFromSuburb": "05:30",
       "lastDepartureFromSuburb": "17:30",
+      "peakFrequencyMinutes": 120,
+      "zone": "urbaine",
+      "price": 0.5
+    },
+    {
+      "id": "route_transtu_barcelone_ligne82",
+      "lineNumber": "82",
+      "name": "Barcelone → Boumhel (via GP1)",
+      "direction": "forward",
+      "originStationId": "transtu_hub_barcelone",
+      "destinationStationId": "transtu_dest_boumhal_gp1",
+      "trips": [{"tripNumber": "82_1", "departureTime": "06:00", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_boumhal_gp1"}],
+      "firstDepartureFromHub": "06:00",
+      "lastDepartureFromHub": "19:00",
+      "firstDepartureFromSuburb": "05:10",
+      "lastDepartureFromSuburb": "18:00",
       "peakFrequencyMinutes": 60,
+      "zone": "urbaine",
+      "price": 0.5
+    },
+    {
+      "id": "route_transtu_barcelone_ligne714",
+      "lineNumber": "714",
+      "name": "Barcelone → Jâama El Houda",
+      "direction": "forward",
+      "originStationId": "transtu_hub_barcelone",
+      "destinationStationId": "transtu_dest_jaama_el_houda",
+      "trips": [{"tripNumber": "714_1", "departureTime": "06:30", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_jaama_el_houda"}],
+      "firstDepartureFromHub": "06:30",
+      "lastDepartureFromHub": "18:30",
+      "firstDepartureFromSuburb": "05:50",
+      "lastDepartureFromSuburb": "18:00",
+      "peakFrequencyMinutes": 90,
       "zone": "urbaine",
       "price": 0.5
     },
     {
       "id": "route_transtu_barcelone_ligne9b_rev",
       "lineNumber": "9ب",
-      "name": "Hay Thameur → Barcelone",
+      "name": "Cité Thameur → Barcelone",
       "direction": "reverse",
       "originStationId": "transtu_dest_hay_thameur",
       "destinationStationId": "transtu_hub_barcelone",
-      "trips": [
-        {
-          "tripNumber": "9ب_rev_1",
-          "departureTime": "06:00",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_hub_barcelone"
-        }
-      ],
+      "trips": [{"tripNumber": "9b_rev_1", "departureTime": "06:00", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_hub_barcelone"}],
       "firstDepartureFromHub": "06:00",
       "lastDepartureFromHub": "19:40",
       "firstDepartureFromSuburb": "06:35",
@@ -406,22 +467,7 @@
       "direction": "reverse",
       "originStationId": "transtu_dest_port_rades",
       "destinationStationId": "transtu_hub_barcelone",
-      "trips": [
-        {
-          "tripNumber": "17_rev_1",
-          "departureTime": "05:00",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_hub_barcelone"
-        }
-      ],
+      "trips": [{"tripNumber": "17_rev_1", "departureTime": "05:00", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_hub_barcelone"}],
       "firstDepartureFromHub": "05:00",
       "lastDepartureFromHub": "20:30",
       "firstDepartureFromSuburb": "05:15",
@@ -431,28 +477,13 @@
       "price": 0.5
     },
     {
-      "id": "route_transtu_barcelone_ligne19_coteau_rev",
+      "id": "route_transtu_barcelone_ligne19_rev",
       "lineNumber": "19",
-      "name": "Megrine Coteau → Barcelone",
+      "name": "Megrine Coteaux → Barcelone",
       "direction": "reverse",
       "originStationId": "transtu_dest_megrine_coteau",
       "destinationStationId": "transtu_hub_barcelone",
-      "trips": [
-        {
-          "tripNumber": "19_rev_1",
-          "departureTime": "04:15",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_hub_barcelone"
-        }
-      ],
+      "trips": [{"tripNumber": "19_rev_1", "departureTime": "04:15", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_hub_barcelone"}],
       "firstDepartureFromHub": "04:15",
       "lastDepartureFromHub": "22:20",
       "firstDepartureFromSuburb": "04:40",
@@ -462,28 +493,93 @@
       "price": 0.5
     },
     {
-      "id": "route_transtu_barcelone_ligne222q_rev",
+      "id": "route_transtu_barcelone_ligne19t_rev",
+      "lineNumber": "19ت",
+      "name": "Nouvelle Medina 1 → Barcelone",
+      "direction": "reverse",
+      "originStationId": "transtu_dest_nouvelle_medina_1",
+      "destinationStationId": "transtu_hub_barcelone",
+      "trips": [{"tripNumber": "19t_rev_1", "departureTime": "04:30", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_hub_barcelone"}],
+      "firstDepartureFromHub": "04:30",
+      "lastDepartureFromHub": "21:15",
+      "firstDepartureFromSuburb": "05:00",
+      "lastDepartureFromSuburb": "22:10",
+      "peakFrequencyMinutes": 35,
+      "zone": "urbaine",
+      "price": 0.5
+    },
+    {
+      "id": "route_transtu_barcelone_ligne19k_rev",
+      "lineNumber": "19ك",
+      "name": "Nouvelle Medina 123 → Barcelone",
+      "direction": "reverse",
+      "originStationId": "transtu_dest_nouvelle_medina_123",
+      "destinationStationId": "transtu_hub_barcelone",
+      "trips": [{"tripNumber": "19k_rev_1", "departureTime": "05:30", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_hub_barcelone"}],
+      "firstDepartureFromHub": "05:30",
+      "lastDepartureFromHub": null,
+      "firstDepartureFromSuburb": "06:20",
+      "lastDepartureFromSuburb": "14:40",
+      "peakFrequencyMinutes": 50,
+      "zone": "urbaine",
+      "price": 0.5
+    },
+    {
+      "id": "route_transtu_barcelone_ligne19th_rev",
+      "lineNumber": "19ث",
+      "name": "Radès Forêt → Barcelone",
+      "direction": "reverse",
+      "originStationId": "transtu_dest_rades_foret",
+      "destinationStationId": "transtu_hub_barcelone",
+      "trips": [{"tripNumber": "19th_rev_1", "departureTime": "06:45", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_hub_barcelone"}],
+      "firstDepartureFromHub": "06:45",
+      "lastDepartureFromHub": "17:50",
+      "firstDepartureFromSuburb": "06:00",
+      "lastDepartureFromSuburb": "18:25",
+      "peakFrequencyMinutes": 30,
+      "zone": "urbaine",
+      "price": 0.5
+    },
+    {
+      "id": "route_transtu_barcelone_ligne19j_rev",
+      "lineNumber": "19ج",
+      "name": "Megrine Chaker → Barcelone",
+      "direction": "reverse",
+      "originStationId": "transtu_dest_megrine_chaker",
+      "destinationStationId": "transtu_hub_barcelone",
+      "trips": [{"tripNumber": "19j_rev_1", "departureTime": "05:35", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_hub_barcelone"}],
+      "firstDepartureFromHub": "05:35",
+      "lastDepartureFromHub": "17:35",
+      "firstDepartureFromSuburb": "06:05",
+      "lastDepartureFromSuburb": "18:05",
+      "peakFrequencyMinutes": 60,
+      "zone": "urbaine",
+      "price": 0.5
+    },
+    {
+      "id": "route_transtu_barcelone_ligne22_rev",
       "lineNumber": "22",
       "name": "Ben Arous → Barcelone",
       "direction": "reverse",
       "originStationId": "transtu_dest_ben_arous",
       "destinationStationId": "transtu_hub_barcelone",
-      "trips": [
-        {
-          "tripNumber": "222ق_rev_1",
-          "departureTime": "05:30",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_hub_barcelone"
-        }
-      ],
+      "trips": [{"tripNumber": "22_rev_1", "departureTime": "05:30", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_hub_barcelone"}],
+      "firstDepartureFromHub": "05:30",
+      "lastDepartureFromHub": "18:10",
+      "firstDepartureFromSuburb": "06:10",
+      "lastDepartureFromSuburb": "19:00",
+      "peakFrequencyMinutes": 85,
+      "zone": "urbaine",
+      "price": 0.5
+    },
+    {
+      "id": "route_transtu_barcelone_ligne22y_rev",
+      "lineNumber": "22",
+      "name": "Les Yasminettes → Barcelone",
+      "direction": "reverse",
+      "originStationId": "transtu_dest_yasminettes",
+      "destinationStationId": "transtu_hub_barcelone",
+      "trips": [{"tripNumber": "22y_rev_1", "departureTime": "05:30", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_hub_barcelone"}],
       "firstDepartureFromHub": "05:30",
       "lastDepartureFromHub": "18:10",
       "firstDepartureFromSuburb": "06:10",
@@ -499,22 +595,7 @@
       "direction": "reverse",
       "originStationId": "transtu_hub_morneg",
       "destinationStationId": "transtu_hub_barcelone",
-      "trips": [
-        {
-          "tripNumber": "26_rev_1",
-          "departureTime": "04:30",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_hub_barcelone"
-        }
-      ],
+      "trips": [{"tripNumber": "26_rev_1", "departureTime": "04:30", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_hub_barcelone"}],
       "firstDepartureFromHub": "04:30",
       "lastDepartureFromHub": "22:00",
       "firstDepartureFromSuburb": "05:30",
@@ -524,33 +605,34 @@
       "price": 0.5
     },
     {
-      "id": "route_transtu_barcelone_ligne26a_rev",
-      "lineNumber": "26أ",
-      "name": "Mornag → Barcelone",
+      "id": "route_transtu_barcelone_ligne26b_rev",
+      "lineNumber": "26ب",
+      "name": "Mornag (Challa) → Barcelone",
       "direction": "reverse",
-      "originStationId": "transtu_hub_morneg",
+      "originStationId": "transtu_dest_mornag_challa",
       "destinationStationId": "transtu_hub_barcelone",
-      "trips": [
-        {
-          "tripNumber": "26أ_rev_1",
-          "departureTime": "05:00",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_hub_barcelone"
-        }
-      ],
+      "trips": [{"tripNumber": "26b_rev_1", "departureTime": "05:00", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_hub_barcelone"}],
       "firstDepartureFromHub": "05:00",
       "lastDepartureFromHub": "21:30",
       "firstDepartureFromSuburb": "06:10",
       "lastDepartureFromSuburb": "22:30",
       "peakFrequencyMinutes": 35,
+      "zone": "urbaine",
+      "price": 0.5
+    },
+    {
+      "id": "route_transtu_barcelone_ligne59a_rev",
+      "lineNumber": "59أ",
+      "name": "El Mourouj 1 → Barcelone",
+      "direction": "reverse",
+      "originStationId": "transtu_dest_el_mourouj_1",
+      "destinationStationId": "transtu_hub_barcelone",
+      "trips": [{"tripNumber": "59a_rev_1", "departureTime": "05:30", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_hub_barcelone"}],
+      "firstDepartureFromHub": "05:30",
+      "lastDepartureFromHub": "22:00",
+      "firstDepartureFromSuburb": "06:00",
+      "lastDepartureFromSuburb": "22:30",
+      "peakFrequencyMinutes": 80,
       "zone": "urbaine",
       "price": 0.5
     },
@@ -561,22 +643,7 @@
       "direction": "reverse",
       "originStationId": "transtu_dest_ibn_sina",
       "destinationStationId": "transtu_hub_barcelone",
-      "trips": [
-        {
-          "tripNumber": "60_rev_1",
-          "departureTime": "05:00",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_hub_barcelone"
-        }
-      ],
+      "trips": [{"tripNumber": "60_rev_1", "departureTime": "05:00", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_hub_barcelone"}],
       "firstDepartureFromHub": "05:00",
       "lastDepartureFromHub": "22:30",
       "firstDepartureFromSuburb": "05:30",
@@ -588,263 +655,99 @@
     {
       "id": "route_transtu_barcelone_ligne75_rev",
       "lineNumber": "75",
-      "name": "Boumhal → Barcelone",
+      "name": "Boumhel → Barcelone",
       "direction": "reverse",
       "originStationId": "transtu_dest_boumhal",
       "destinationStationId": "transtu_hub_barcelone",
-      "trips": [
-        {
-          "tripNumber": "75_rev_1",
-          "departureTime": "05:30",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_hub_barcelone"
-        }
-      ],
+      "trips": [{"tripNumber": "75_rev_1", "departureTime": "05:30", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_hub_barcelone"}],
       "firstDepartureFromHub": "05:30",
-      "lastDepartureFromHub": "18:30",
+      "lastDepartureFromHub": "17:30",
       "firstDepartureFromSuburb": "06:30",
-      "lastDepartureFromSuburb": "17:30",
+      "lastDepartureFromSuburb": "18:30",
+      "peakFrequencyMinutes": 120,
+      "zone": "urbaine",
+      "price": 0.5
+    },
+    {
+      "id": "route_transtu_barcelone_ligne82_rev",
+      "lineNumber": "82",
+      "name": "Boumhel (via GP1) → Barcelone",
+      "direction": "reverse",
+      "originStationId": "transtu_dest_boumhal_gp1",
+      "destinationStationId": "transtu_hub_barcelone",
+      "trips": [{"tripNumber": "82_rev_1", "departureTime": "05:10", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_hub_barcelone"}],
+      "firstDepartureFromHub": "05:10",
+      "lastDepartureFromHub": "18:00",
+      "firstDepartureFromSuburb": "06:00",
+      "lastDepartureFromSuburb": "19:00",
       "peakFrequencyMinutes": 60,
+      "zone": "urbaine",
+      "price": 0.5
+    },
+    {
+      "id": "route_transtu_barcelone_ligne714_rev",
+      "lineNumber": "714",
+      "name": "Jâama El Houda → Barcelone",
+      "direction": "reverse",
+      "originStationId": "transtu_dest_jaama_el_houda",
+      "destinationStationId": "transtu_hub_barcelone",
+      "trips": [{"tripNumber": "714_rev_1", "departureTime": "05:50", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_hub_barcelone"}],
+      "firstDepartureFromHub": "05:50",
+      "lastDepartureFromHub": "18:00",
+      "firstDepartureFromSuburb": "06:30",
+      "lastDepartureFromSuburb": "18:30",
+      "peakFrequencyMinutes": 90,
       "zone": "urbaine",
       "price": 0.5
     }
   ],
   "routeStops": [
-    {
-      "routeId": "route_transtu_barcelone_ligne9b",
-      "stationId": "transtu_hub_barcelone",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne9b",
-      "stationId": "transtu_dest_hay_thameur",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 20
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne17",
-      "stationId": "transtu_hub_barcelone",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne17",
-      "stationId": "transtu_dest_port_rades",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 20
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne19_coteau",
-      "stationId": "transtu_hub_barcelone",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne19_coteau",
-      "stationId": "transtu_dest_megrine_coteau",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 35
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne26",
-      "stationId": "transtu_hub_barcelone",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne26",
-      "stationId": "transtu_hub_morneg",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 40
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne60",
-      "stationId": "transtu_hub_barcelone",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne60",
-      "stationId": "transtu_dest_ibn_sina",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 25
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne75",
-      "stationId": "transtu_hub_barcelone",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne75",
-      "stationId": "transtu_dest_boumhal",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 35
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne26a",
-      "stationId": "transtu_hub_barcelone",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne26a",
-      "stationId": "transtu_hub_morneg",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 45
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne222q",
-      "stationId": "transtu_hub_barcelone",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne222q",
-      "stationId": "transtu_dest_ben_arous",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 30
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne9b_rev",
-      "stationId": "transtu_dest_hay_thameur",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne9b_rev",
-      "stationId": "transtu_hub_barcelone",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 20
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne17_rev",
-      "stationId": "transtu_dest_port_rades",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne17_rev",
-      "stationId": "transtu_hub_barcelone",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 20
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne19_coteau_rev",
-      "stationId": "transtu_dest_megrine_coteau",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne19_coteau_rev",
-      "stationId": "transtu_hub_barcelone",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 35
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne222q_rev",
-      "stationId": "transtu_dest_ben_arous",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne222q_rev",
-      "stationId": "transtu_hub_barcelone",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 30
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne26_rev",
-      "stationId": "transtu_hub_morneg",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne26_rev",
-      "stationId": "transtu_hub_barcelone",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 40
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne26a_rev",
-      "stationId": "transtu_hub_morneg",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne26a_rev",
-      "stationId": "transtu_hub_barcelone",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 40
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne60_rev",
-      "stationId": "transtu_dest_ibn_sina",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne60_rev",
-      "stationId": "transtu_hub_barcelone",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 25
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne75_rev",
-      "stationId": "transtu_dest_boumhal",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_barcelone_ligne75_rev",
-      "stationId": "transtu_hub_barcelone",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 35
-    }
+    {"routeId": "route_transtu_barcelone_ligne9b", "stationId": "transtu_hub_barcelone", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0},
+    {"routeId": "route_transtu_barcelone_ligne9b", "stationId": "transtu_dest_hay_thameur", "stopOrder": 2, "estimatedArrivalTimeMinutes": 20},
+    {"routeId": "route_transtu_barcelone_ligne17", "stationId": "transtu_hub_barcelone", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0},
+    {"routeId": "route_transtu_barcelone_ligne17", "stationId": "transtu_dest_port_rades", "stopOrder": 2, "estimatedArrivalTimeMinutes": 25},
+    {"routeId": "route_transtu_barcelone_ligne19", "stationId": "transtu_hub_barcelone", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0},
+    {"routeId": "route_transtu_barcelone_ligne19", "stationId": "transtu_dest_megrine_coteau", "stopOrder": 2, "estimatedArrivalTimeMinutes": 35},
+    {"routeId": "route_transtu_barcelone_ligne19t", "stationId": "transtu_hub_barcelone", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0},
+    {"routeId": "route_transtu_barcelone_ligne19t", "stationId": "transtu_dest_nouvelle_medina_1", "stopOrder": 2, "estimatedArrivalTimeMinutes": 35},
+    {"routeId": "route_transtu_barcelone_ligne19k", "stationId": "transtu_hub_barcelone", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0},
+    {"routeId": "route_transtu_barcelone_ligne19k", "stationId": "transtu_dest_nouvelle_medina_123", "stopOrder": 2, "estimatedArrivalTimeMinutes": 35},
+    {"routeId": "route_transtu_barcelone_ligne19th", "stationId": "transtu_hub_barcelone", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0},
+    {"routeId": "route_transtu_barcelone_ligne19th", "stationId": "transtu_dest_rades_foret", "stopOrder": 2, "estimatedArrivalTimeMinutes": 25},
+    {"routeId": "route_transtu_barcelone_ligne19j", "stationId": "transtu_hub_barcelone", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0},
+    {"routeId": "route_transtu_barcelone_ligne19j", "stationId": "transtu_dest_megrine_chaker", "stopOrder": 2, "estimatedArrivalTimeMinutes": 35},
+    {"routeId": "route_transtu_barcelone_ligne22", "stationId": "transtu_hub_barcelone", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0},
+    {"routeId": "route_transtu_barcelone_ligne22", "stationId": "transtu_dest_ben_arous", "stopOrder": 2, "estimatedArrivalTimeMinutes": 30},
+    {"routeId": "route_transtu_barcelone_ligne22y", "stationId": "transtu_hub_barcelone", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0},
+    {"routeId": "route_transtu_barcelone_ligne22y", "stationId": "transtu_dest_yasminettes", "stopOrder": 2, "estimatedArrivalTimeMinutes": 30},
+    {"routeId": "route_transtu_barcelone_ligne26", "stationId": "transtu_hub_barcelone", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0},
+    {"routeId": "route_transtu_barcelone_ligne26", "stationId": "transtu_hub_morneg", "stopOrder": 2, "estimatedArrivalTimeMinutes": 40},
+    {"routeId": "route_transtu_barcelone_ligne26b", "stationId": "transtu_hub_barcelone", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0},
+    {"routeId": "route_transtu_barcelone_ligne26b", "stationId": "transtu_dest_mornag_challa", "stopOrder": 2, "estimatedArrivalTimeMinutes": 45},
+    {"routeId": "route_transtu_barcelone_ligne59a", "stationId": "transtu_hub_barcelone", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0},
+    {"routeId": "route_transtu_barcelone_ligne59a", "stationId": "transtu_dest_el_mourouj_1", "stopOrder": 2, "estimatedArrivalTimeMinutes": 40},
+    {"routeId": "route_transtu_barcelone_ligne60", "stationId": "transtu_hub_barcelone", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0},
+    {"routeId": "route_transtu_barcelone_ligne60", "stationId": "transtu_dest_ibn_sina", "stopOrder": 2, "estimatedArrivalTimeMinutes": 25},
+    {"routeId": "route_transtu_barcelone_ligne75", "stationId": "transtu_hub_barcelone", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0},
+    {"routeId": "route_transtu_barcelone_ligne75", "stationId": "transtu_dest_boumhal", "stopOrder": 2, "estimatedArrivalTimeMinutes": 35},
+    {"routeId": "route_transtu_barcelone_ligne82", "stationId": "transtu_hub_barcelone", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0},
+    {"routeId": "route_transtu_barcelone_ligne82", "stationId": "transtu_dest_boumhal_gp1", "stopOrder": 2, "estimatedArrivalTimeMinutes": 40},
+    {"routeId": "route_transtu_barcelone_ligne714", "stationId": "transtu_hub_barcelone", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0},
+    {"routeId": "route_transtu_barcelone_ligne714", "stationId": "transtu_dest_jaama_el_houda", "stopOrder": 2, "estimatedArrivalTimeMinutes": 45}
   ],
   "pricing": {
     "currency": "TND",
     "notes": "TRANSTU urban fare: 0.500 DT for all routes from Barcelone hub.",
     "estimatedFares": [
-      {
-        "from": "transtu_hub_barcelone",
-        "to": "transtu_dest_hay_thameur",
-        "price": 0.5
-      },
-      {
-        "from": "transtu_hub_barcelone",
-        "to": "transtu_dest_el_battah",
-        "price": 0.5
-      },
-      {
-        "from": "transtu_hub_barcelone",
-        "to": "transtu_dest_megrine_coteau",
-        "price": 0.5
-      },
-      {
-        "from": "transtu_hub_barcelone",
-        "to": "transtu_dest_ben_arous",
-        "price": 0.5
-      },
-      {
-        "from": "transtu_hub_barcelone",
-        "to": "transtu_dest_mornag",
-        "price": 0.5
-      },
-      {
-        "from": "transtu_hub_barcelone",
-        "to": "transtu_dest_ibn_sina",
-        "price": 0.5
-      }
+      {"from": "transtu_hub_barcelone", "to": "transtu_dest_hay_thameur", "price": 0.5},
+      {"from": "transtu_hub_barcelone", "to": "transtu_dest_port_rades", "price": 0.5},
+      {"from": "transtu_hub_barcelone", "to": "transtu_dest_megrine_coteau", "price": 0.5},
+      {"from": "transtu_hub_barcelone", "to": "transtu_dest_ben_arous", "price": 0.5},
+      {"from": "transtu_hub_barcelone", "to": "transtu_hub_morneg", "price": 0.5},
+      {"from": "transtu_hub_barcelone", "to": "transtu_dest_ibn_sina", "price": 0.5},
+      {"from": "transtu_hub_barcelone", "to": "transtu_dest_boumhal", "price": 0.5},
+      {"from": "transtu_hub_barcelone", "to": "transtu_dest_el_mourouj_1", "price": 0.5},
+      {"from": "transtu_hub_barcelone", "to": "transtu_dest_jaama_el_houda", "price": 0.5}
     ]
   }
 }

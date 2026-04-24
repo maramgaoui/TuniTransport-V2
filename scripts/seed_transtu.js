@@ -83,6 +83,36 @@ async function seedFile(d, bw, stats) {
     await bw.flushIfFull();
     stats.routes++;
 
+    // Also write to bus_services collection (read by BusServiceRepository in the app).
+    // Only forward-direction routes become bus_services entries (one per line per hub).
+    if ((r.direction ?? 'forward') === 'forward' && r.originStationId) {
+      // Derive Arabic direction name from destination station name in the stations list
+      const destStation = (d.stations ?? []).find(s => s.id === r.destinationStationId);
+      const directionAr = destStation?.nameAr ?? r.name ?? '';
+      const destinationNameFr = destStation?.name ?? null;
+
+      const serviceDocId = `bus_svc_${r.id}`;
+      bw.set(db.collection('bus_services').doc(serviceDocId), {
+        routeId:                  r.id,
+        hubStationId:             r.originStationId,
+        lineNumber:               r.lineNumber               ?? null,
+        directionAr:              directionAr,
+        destinationNameFr:        destinationNameFr,
+        firstDepartureFromHub:    r.firstDepartureFromHub    ?? null,
+        lastDepartureFromHub:     r.lastDepartureFromHub     ?? null,
+        firstDepartureFromSuburb: r.firstDepartureFromSuburb ?? null,
+        lastDepartureFromSuburb:  r.lastDepartureFromSuburb  ?? null,
+        peakFrequencyMinutes:     r.peakFrequencyMinutes     ?? null,
+        operatingDays:            r.operatingDays            ?? [0,1,2,3,4,5,6],
+        season:                   'winter_2025_2026',
+        zone:                     r.zone                     ?? 'urbaine',
+        price:                    r.price                    ?? 0.5,
+        isActive:                 true,
+      });
+      await bw.flushIfFull();
+      stats.busServices = (stats.busServices ?? 0) + 1;
+    }
+
     // 3. Inline trips (may be empty array — skip gracefully)
     for (const t of r.trips ?? []) {
       if (!t.tripNumber) continue;
