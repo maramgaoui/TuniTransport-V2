@@ -239,7 +239,7 @@ const arabicNames = {
 
   // TRANSTU Destinations - Charguia
   transtu_dest_marsa_gammarth: 'مرسى قمرت',
-  transtu_dest_raoued_echat: 'رواد الشاطئ',
+  transtu_dest_raoued_plage: 'رواد الشاطئ',
   transtu_dest_jama_oued_ellil: 'جامع واد الليل',
   transtu_dest_sidi_thabet: 'سيدي ثابت',
   transtu_dest_cite_tadamoun: 'حي التضامن',
