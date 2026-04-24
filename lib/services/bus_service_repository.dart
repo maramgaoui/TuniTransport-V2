@@ -33,10 +33,10 @@ class BusServiceRepository {
   /// Get all bus services departing from a given hub station.
   Future<List<BusService>> getServicesForHub(String hubStationId) async {
     final snap = await _firestore
-        .collection('bus_services')
-        .where('hubStationId', isEqualTo: hubStationId)
-        .where('operatingDays', arrayContains: DateTime.now().weekday % 7)
-        .get();
+      .collection('bus_services')
+      .where('hubStationId', isEqualTo: hubStationId)
+      .where('operatingDays', arrayContains: DateTime.now().weekday % 7)
+      .get(const GetOptions(source: Source.server));
     return snap.docs.map(BusService.fromFirestore).toList()
       ..sort((a, b) => (a.firstDepartureFromHub ?? '99:99')
           .compareTo(b.firstDepartureFromHub ?? '99:99'));

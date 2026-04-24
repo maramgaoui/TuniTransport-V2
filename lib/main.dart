@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' as dartFirebaseFirestore;
 import 'firebase_runtime_options.dart';
 import 'firebase_options.dart';
 import 'controllers/auth_controller.dart';
@@ -43,6 +44,10 @@ void main() async {
   if (Firebase.apps.isEmpty) {
     try {
       await Firebase.initializeApp(options: activeOptions);
+      // Disable Firestore persistence to avoid old data issues
+      dartFirebaseFirestore.FirebaseFirestore.instance.settings = const dartFirebaseFirestore.Settings(
+        persistenceEnabled: false,
+      );
     } on FirebaseException catch (e) {
       if (e.code != 'duplicate-app' && e.code != 'core/duplicate-app') {
         rethrow;

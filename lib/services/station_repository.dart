@@ -115,7 +115,9 @@ class StationRepository {
     'transtu_dest_ben_arous':      ['ben arous', 'بن عروس'],
     'transtu_dest_ibn_sina':       ['ibn sina', 'ابن سينا'],
     'transtu_dest_boumhal':        ['boumhal', 'bou mhal', 'بومهل'],
-    
+    'transtu_dest_port_rades':     ['port de rades', 'port rades', 'ميناء رادس', 'mina rades'],
+    'transtu_dest_megrine_coteau': ['megrine coteau', 'megrine coteaux', 'مقرين كوطو', 'مقرين'],
+    'transtu_dest_belvedere':      ['belvedere', 'belvédère', 'بلفي'],    
     // 10 Décembre hub destinations
     'transtu_dest_sidi_sofiane':   ['sidi sofiane', 'سيدي سفيان'],
     'transtu_dest_cité_mellaha':   ['cite mellaha', 'cité mellaha', 'mellaha', 'حي الملاحة'],
