@@ -95,6 +95,7 @@ async function seedFile(d, bw, stats) {
       bw.set(db.collection('bus_services').doc(serviceDocId), {
         routeId:                  r.id,
         hubStationId:             r.originStationId,
+        destinationStationId:     r.destinationStationId     ?? null,
         lineNumber:               r.lineNumber               ?? null,
         directionAr:              directionAr,
         destinationNameFr:        destinationNameFr,

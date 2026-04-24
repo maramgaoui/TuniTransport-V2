@@ -4,6 +4,7 @@ class BusService {
   final String id;
   final String routeId;
   final String? hubStationId;
+  final String? destinationStationId;
   final String lineNumber;
   final String directionAr;
   final String? firstDepartureFromHub;
@@ -21,6 +22,7 @@ class BusService {
     required this.id,
     required this.routeId,
     this.hubStationId,
+    this.destinationStationId,
     required this.lineNumber,
     required this.directionAr,
     this.firstDepartureFromHub,
@@ -43,6 +45,7 @@ class BusService {
       id: doc.id,
       routeId: d['routeId'] ?? '',
       hubStationId: d['hubStationId'],
+      destinationStationId: d['destinationStationId'],
       lineNumber: d['lineNumber'] ?? '',
       directionAr: d['directionAr'] ?? '',
       firstDepartureFromHub: d['firstDepartureFromHub'],
@@ -116,6 +119,7 @@ class BusService {
     // If we have no schedule data, just return the raw first departure string.
     if (first == null || freq == null) return firstDepartureFromHub;
 
+    // Truncate to the minute to avoid sub-minute boundary edge cases.
     final nowMinutes = t.hour * 60 + t.minute;
 
     // Service has already ended for today.
@@ -143,6 +147,7 @@ class BusService {
 
     if (first == null || freq == null) return firstDepartureFromSuburb;
 
+    // Truncate to the minute to avoid sub-minute boundary edge cases.
     final nowMinutes = t.hour * 60 + t.minute;
 
     if (last != null && nowMinutes > last) return null;

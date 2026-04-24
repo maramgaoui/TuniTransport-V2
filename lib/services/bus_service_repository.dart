@@ -138,9 +138,21 @@ class BusServiceRepository {
       'transtu_dest_medina_jdida': 'transtu_hub_barcelone',
       'transtu_dest_hay_thameur': 'transtu_hub_barcelone',
       'transtu_dest_mornag': 'transtu_hub_barcelone',
+      'transtu_dest_mornag_challa': 'transtu_hub_barcelone',
       'transtu_dest_ben_arous': 'transtu_hub_barcelone',
+      'transtu_dest_yasminettes': 'transtu_hub_barcelone',
       'transtu_dest_ibn_sina': 'transtu_hub_barcelone',
       'transtu_dest_boumhal': 'transtu_hub_barcelone',
+      'transtu_dest_boumhal_gp1': 'transtu_hub_barcelone',
+      'transtu_dest_port_rades': 'transtu_hub_barcelone',
+      'transtu_dest_megrine_coteau': 'transtu_hub_barcelone',
+      'transtu_dest_nouvelle_medina_1': 'transtu_hub_barcelone',
+      'transtu_dest_nouvelle_medina_123': 'transtu_hub_barcelone',
+      'transtu_dest_rades_foret': 'transtu_hub_barcelone',
+      'transtu_dest_megrine_chaker': 'transtu_hub_barcelone',
+      'transtu_dest_el_mourouj_1': 'transtu_hub_barcelone',
+      'transtu_dest_jaama_el_houda': 'transtu_hub_barcelone',
+      'transtu_hub_morneg': 'transtu_hub_barcelone',
       
       // Ariana hub destinations
       'transtu_dest_manji_salim': 'transtu_hub_ariana',
@@ -208,34 +220,45 @@ class BusServiceRepository {
 
     // First, get all services from this hub
     final allServices = await getServicesForHub(hubId);
-    
-    // Filter by destination - match using directionAr or destinationNameFr
+
+    // 1. Try exact destination station ID match (reliable, no string fragility).
+    final byId = allServices
+        .where((s) => s.destinationStationId == destinationId)
+        .toList();
+    if (byId.isNotEmpty) {
+      if (kDebugMode) {
+        debugPrint('[BusServiceRepo] Matched ${byId.length} services by destinationStationId');
+      }
+      return byId;
+    }
+
+    // 2. Fallback: name-based fuzzy match for legacy records without the ID field.
     final destinationName = _getDestinationName(destinationId);
-    
+
     if (destinationName.isEmpty) {
       if (kDebugMode) {
         debugPrint('[BusServiceRepo] Unknown destination ID: $destinationId');
       }
       return [];
     }
-    
+
     final matchedServices = allServices.where((service) {
       final directionMatches = service.directionAr.contains(destinationName) ||
           service.directionAr.contains(destinationName.replaceAll('_', ' '));
       final nameMatches = service.destinationNameFr?.toLowerCase().contains(
             destinationName.toLowerCase(),
           ) ?? false;
-      
+
       return directionMatches || nameMatches;
     }).toList();
-    
+
     if (kDebugMode) {
-      debugPrint('[BusServiceRepo] Found ${matchedServices.length} services from hub to destination');
+      debugPrint('[BusServiceRepo] Found ${matchedServices.length} services from hub to destination (name fallback)');
       for (final service in matchedServices) {
         debugPrint('  - Line ${service.lineNumber}: ${service.destinationNameFr}');
       }
     }
-    
+
     return matchedServices;
   }
 
@@ -248,29 +271,41 @@ class BusServiceRepository {
     if (kDebugMode) {
       debugPrint('[BusServiceRepo] Looking for destination→hub: $destinationId → $hubId');
     }
-    
+
     // For reverse direction, we need the hub that serves this destination
     final actualHubId = getHubForDestination(destinationId) ?? hubId;
-    
+
     // Get all services from that hub
     final allServices = await getServicesForHub(actualHubId);
-    
+
+    // 1. Try exact destination station ID match first.
+    final byId = allServices
+        .where((s) => s.destinationStationId == destinationId)
+        .toList();
+    if (byId.isNotEmpty) {
+      if (kDebugMode) {
+        debugPrint('[BusServiceRepo] Matched ${byId.length} reverse services by destinationStationId');
+      }
+      return byId;
+    }
+
+    // 2. Fallback: name-based match.
     final destinationName = _getDestinationName(destinationId);
-    
+
     final matchedServices = allServices.where((service) {
       final directionMatches = service.directionAr.contains(destinationName) ||
           service.directionAr.contains(destinationName.replaceAll('_', ' '));
       final nameMatches = service.destinationNameFr?.toLowerCase().contains(
             destinationName.toLowerCase(),
           ) ?? false;
-      
+
       return directionMatches || nameMatches;
     }).toList();
-    
+
     if (kDebugMode) {
-      debugPrint('[BusServiceRepo] Found ${matchedServices.length} services from destination to hub');
+      debugPrint('[BusServiceRepo] Found ${matchedServices.length} services from destination to hub (name fallback)');
     }
-    
+
     return matchedServices;
   }
 
