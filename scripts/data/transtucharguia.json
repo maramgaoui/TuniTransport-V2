@@ -3,7 +3,7 @@
     "line_name": "TRANSTU - Charguia Hub",
     "validFrom": "2025-09-01",
     "validTo": "2026-06-30",
-    "notes": "TRANSTU bus services from Charguia hub. Winter 2025-2026 schedule. Data extracted from official TRANSTU image."
+    "notes": "TRANSTU bus services from Charguia hub. Winter 2025-2026 schedule. All times are departure times. 'vers charguia' = from suburb toward hub. 'de charguia' = from hub toward suburb."
   },
   "operator": {
     "id": "transtu",
@@ -12,224 +12,668 @@
     "typeId": "bus"
   },
   "stations": [
-    { "id": "transtu_hub_charguia", "name": "Charguia", "nameAr": "الشرقية", "cityId": "tunis", "order": 1, "lat": 36.8300, "lng": 10.2000, "isMainHub": true },
-    { "id": "transtu_dest_marsa_gammarth", "name": "Marsa Gammarth", "nameAr": "مرسى قمرت", "cityId": "marsa", "order": 2, "lat": 36.8800, "lng": 10.3300, "isMainHub": false },
-    { "id": "transtu_dest_raoued_echat", "name": "Raoued Echat", "nameAr": "رواد الشاطئ", "cityId": "ariana", "order": 3, "lat": 36.8900, "lng": 10.2100, "isMainHub": false },
-    { "id": "transtu_dest_jama_oued_ellil", "name": "Jama Oued Ellil", "nameAr": "جامع واد الليل", "cityId": "manouba", "order": 4, "lat": 36.8200, "lng": 10.0500, "isMainHub": false },
-    { "id": "transtu_dest_sidi_thabet", "name": "Sidi Thabet", "nameAr": "سيدي ثابت", "cityId": "tunis", "order": 5, "lat": 36.8800, "lng": 10.1400, "isMainHub": false },
-    { "id": "transtu_dest_cite_tadamoun", "name": "Cité Tadamoun", "nameAr": "حي التضامن", "cityId": "tunis", "order": 6, "lat": 36.8100, "lng": 10.2100, "isMainHub": false },
-    { "id": "transtu_dest_moustawdaa_zahrouni", "name": "Moustawdaa Zahrouni", "nameAr": "مستودع الزهروني", "cityId": "tunis", "order": 7, "lat": 36.8200, "lng": 10.1900, "isMainHub": false },
-    { "id": "transtu_dest_cite_zouhour", "name": "Cité Zouhour", "nameAr": "حي الزهور", "cityId": "tunis", "order": 8, "lat": 36.8000, "lng": 10.2000, "isMainHub": false },
-    { "id": "transtu_dest_20_mars", "name": "20 Mars", "nameAr": "20 مارس", "cityId": "tunis", "order": 9, "lat": 36.8050, "lng": 10.2050, "isMainHub": false }
+    {
+      "id": "transtu_hub_charguia",
+      "name": "Charguia",
+      "nameAr": "الشرقية",
+      "cityId": "tunis",
+      "order": 1,
+      "lat": 36.83,
+      "lng": 10.2,
+      "isMainHub": true
+    },
+    {
+      "id": "transtu_dest_marsa_gammarth",
+      "name": "Marsa Gammarth",
+      "nameAr": "مرسى قمرت",
+      "cityId": "marsa",
+      "order": 2,
+      "lat": 36.88,
+      "lng": 10.33,
+      "isMainHub": false,
+      "searchAliases": [
+        "marsa gammarth",
+        "gammarth",
+        "مرسى قمرت",
+        "قمرت"
+      ]
+    },
+    {
+      "id": "transtu_dest_raoued_plage",
+      "name": "Raoued Plage",
+      "nameAr": "رواد الشاطئ",
+      "cityId": "ariana",
+      "order": 3,
+      "lat": 36.89,
+      "lng": 10.21,
+      "isMainHub": false,
+      "searchAliases": [
+        "raoued plage",
+        "raoued echat",
+        "رواد الشاطئ",
+        "رواد"
+      ]
+    },
+    {
+      "id": "transtu_dest_jama_oued_ellil",
+      "name": "Jâama Oued Ellil",
+      "nameAr": "جامع واد الليل",
+      "cityId": "manouba",
+      "order": 4,
+      "lat": 36.82,
+      "lng": 10.05,
+      "isMainHub": false,
+      "searchAliases": [
+        "jama oued ellil",
+        "jaama oued ellil",
+        "واد الليل",
+        "جامع واد الليل"
+      ]
+    },
+    {
+      "id": "transtu_dest_sidi_thabet",
+      "name": "Sidi Thabet",
+      "nameAr": "سيدي ثابت",
+      "cityId": "tunis",
+      "order": 5,
+      "lat": 36.88,
+      "lng": 10.14,
+      "isMainHub": false,
+      "searchAliases": [
+        "sidi thabet",
+        "سيدي ثابت"
+      ]
+    },
+    {
+      "id": "transtu_dest_cite_ettadhamen",
+      "name": "Cité Ettadhamen",
+      "nameAr": "حي التضامن",
+      "cityId": "tunis",
+      "order": 6,
+      "lat": 36.81,
+      "lng": 10.21,
+      "isMainHub": false,
+      "searchAliases": [
+        "cite ettadhamen",
+        "ettadhamen",
+        "hay ettadhamen",
+        "حي التضامن",
+        "التضامن"
+      ]
+    },
+    {
+      "id": "transtu_dest_depot_zahrouni",
+      "name": "Dépôt Zahrouni",
+      "nameAr": "مستودع الزهروني",
+      "cityId": "tunis",
+      "order": 7,
+      "lat": 36.82,
+      "lng": 10.19,
+      "isMainHub": false,
+      "searchAliases": [
+        "depot zahrouni",
+        "zahrouni",
+        "مستودع الزهروني",
+        "الزهروني"
+      ]
+    },
+    {
+      "id": "transtu_dest_cite_ezzouhour5_charguia",
+      "name": "Cité Ezzouhour 5",
+      "nameAr": "حي الزهور 5",
+      "cityId": "tunis",
+      "order": 8,
+      "lat": 36.78,
+      "lng": 10.19,
+      "isMainHub": false,
+      "searchAliases": [
+        "cite ezzouhour 5",
+        "zouhour 5",
+        "الزهور 5",
+        "حي الزهور 5"
+      ]
+    },
+    {
+      "id": "transtu_dest_cite_20mars",
+      "name": "Cité 20 Mars",
+      "nameAr": "حي 20 مارس",
+      "cityId": "tunis",
+      "order": 9,
+      "lat": 36.805,
+      "lng": 10.205,
+      "isMainHub": false,
+      "searchAliases": [
+        "cite 20 mars",
+        "20 mars",
+        "حي 20 مارس",
+        "20 مارس"
+      ]
+    }
   ],
   "routes": [
     {
-      "id": "route_transtu_charguia_ligne20_sh",
-      "lineNumber": "20/ش",
+      "id": "route_transtu_charguia_ligne20th",
+      "lineNumber": "20/ث",
       "name": "Charguia → Marsa Gammarth",
       "direction": "forward",
       "originStationId": "transtu_hub_charguia",
       "destinationStationId": "transtu_dest_marsa_gammarth",
-      "trips": [{ "tripNumber": "20sh_1", "departureTime": "06:30", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_marsa_gammarth" }],
-      "firstDepartureFromHub": "06:30",
+      "trips": [
+        {
+          "tripNumber": "20th_1",
+          "departureTime": "07:20",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_dest_marsa_gammarth"
+        }
+      ],
+      "firstDepartureFromHub": "07:20",
       "lastDepartureFromHub": "16:40",
-      "firstDepartureFromSuburb": "07:20",
+      "firstDepartureFromSuburb": "06:30",
       "lastDepartureFromSuburb": "17:40",
-      "peakFrequencyMinutes": null,
-      "zone": "urbaine",
-      "price": 0.5,
-      "notes": "Variant with * indicates irregular service"
+      "peakFrequencyMinutes": 115,
+      "zone": "banlieue",
+      "price": 1.0,
+      "notes": "Ligne 20/ث. 115ق+ variant operates with irregular starred departures."
     },
     {
-      "id": "route_transtu_charguia_ligne20_sh_variant",
-      "lineNumber": "20/ش",
-      "name": "Charguia → Marsa Gammarth (Variant)",
+      "id": "route_transtu_charguia_ligne20th_variant",
+      "lineNumber": "20/ث",
+      "name": "Charguia → Marsa Gammarth (Variant 115ق+)",
       "direction": "forward",
       "originStationId": "transtu_hub_charguia",
       "destinationStationId": "transtu_dest_marsa_gammarth",
-      "trips": [{ "tripNumber": "20sh_2", "departureTime": null, "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_marsa_gammarth" }],
+      "trips": [
+        {
+          "tripNumber": "20th_v1",
+          "departureTime": null,
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_dest_marsa_gammarth"
+        }
+      ],
       "firstDepartureFromHub": null,
       "lastDepartureFromHub": "14:40",
-      "firstDepartureFromSuburb": null,
+      "firstDepartureFromSuburb": "07:20",
       "lastDepartureFromSuburb": "13:40",
-      "peakFrequencyMinutes": null,
-      "zone": "urbaine",
-      "price": 0.5,
-      "notes": "Variant with * for first departure (irregular)"
+      "peakFrequencyMinutes": 115,
+      "zone": "banlieue",
+      "price": 1.0,
+      "notes": "Variant 115ق+: departure from hub marked with * (irregular). Reverse only shown."
     },
     {
-      "id": "route_transtu_charguia_ligne27",
-      "lineNumber": "27",
-      "name": "Charguia → Raoued Echat",
+      "id": "route_transtu_charguia_ligne27b",
+      "lineNumber": "27 ب",
+      "name": "Charguia → Raoued Plage",
       "direction": "forward",
       "originStationId": "transtu_hub_charguia",
-      "destinationStationId": "transtu_dest_raoued_echat",
-      "trips": [{ "tripNumber": "27_1", "departureTime": "08:30", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_raoued_echat" }],
+      "destinationStationId": "transtu_dest_raoued_plage",
+      "trips": [
+        {
+          "tripNumber": "27b_1",
+          "departureTime": "08:30",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_dest_raoued_plage"
+        }
+      ],
       "firstDepartureFromHub": "08:30",
       "lastDepartureFromHub": "18:15",
       "firstDepartureFromSuburb": "07:10",
-      "lastDepartureFromSuburb": "17:40",
-      "peakFrequencyMinutes": null,
-      "zone": "urbaine",
-      "price": 0.5
+      "lastDepartureFromSuburb": "17:10",
+      "peakFrequencyMinutes": 120,
+      "zone": "banlieue",
+      "price": 1.0
     },
     {
-      "id": "route_transtu_charguia_ligne44",
-      "lineNumber": "44",
-      "name": "Charguia → Jama Oued Ellil",
+      "id": "route_transtu_charguia_ligne44th",
+      "lineNumber": "44 ث",
+      "name": "Charguia → Jâama Oued Ellil",
       "direction": "forward",
       "originStationId": "transtu_hub_charguia",
       "destinationStationId": "transtu_dest_jama_oued_ellil",
-      "trips": [{ "tripNumber": "44_1", "departureTime": "07:15", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_jama_oued_ellil" }],
+      "trips": [
+        {
+          "tripNumber": "44th_1",
+          "departureTime": "07:15",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_dest_jama_oued_ellil"
+        }
+      ],
       "firstDepartureFromHub": "07:15",
       "lastDepartureFromHub": "19:30",
       "firstDepartureFromSuburb": "06:00",
       "lastDepartureFromSuburb": "18:00",
-      "peakFrequencyMinutes": null,
-      "zone": "urbaine",
-      "price": 0.5
+      "peakFrequencyMinutes": 90,
+      "zone": "banlieue",
+      "price": 1.0
     },
     {
-      "id": "route_transtu_charguia_ligne44_sh",
-      "lineNumber": "44/ش",
+      "id": "route_transtu_charguia_ligne44ths",
+      "lineNumber": "44 ث/س",
       "name": "Charguia → Sidi Thabet",
       "direction": "forward",
       "originStationId": "transtu_hub_charguia",
       "destinationStationId": "transtu_dest_sidi_thabet",
-      "trips": [{ "tripNumber": "44sh_1", "departureTime": "07:15", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_sidi_thabet" }],
+      "trips": [
+        {
+          "tripNumber": "44ths_1",
+          "departureTime": "07:15",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_dest_sidi_thabet"
+        }
+      ],
       "firstDepartureFromHub": "07:15",
       "lastDepartureFromHub": "17:30",
       "firstDepartureFromSuburb": "06:30",
       "lastDepartureFromSuburb": "16:25",
-      "peakFrequencyMinutes": null,
-      "zone": "urbaine",
-      "price": 0.5
+      "peakFrequencyMinutes": 90,
+      "zone": "banlieue",
+      "price": 1.0
     },
     {
       "id": "route_transtu_charguia_ligne514",
       "lineNumber": "514",
-      "name": "Charguia → Cité Tadamoun",
+      "name": "Charguia → Cité Ettadhamen",
       "direction": "forward",
       "originStationId": "transtu_hub_charguia",
-      "destinationStationId": "transtu_dest_cite_tadamoun",
-      "trips": [{ "tripNumber": "514_1", "departureTime": "05:50", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_cite_tadamoun" }],
+      "destinationStationId": "transtu_dest_cite_ettadhamen",
+      "trips": [
+        {
+          "tripNumber": "514_1",
+          "departureTime": "05:50",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_dest_cite_ettadhamen"
+        }
+      ],
       "firstDepartureFromHub": "05:50",
       "lastDepartureFromHub": "20:35",
-      "firstDepartureFromSuburb": "05:35",
+      "firstDepartureFromSuburb": "05:05",
       "lastDepartureFromSuburb": "19:25",
-      "peakFrequencyMinutes": null,
+      "peakFrequencyMinutes": 25,
       "zone": "urbaine",
       "price": 0.5
     },
     {
-      "id": "route_transtu_charguia_ligne514_variant",
-      "lineNumber": "514",
-      "name": "Charguia → Cité Tadamoun (Variant)",
+      "id": "route_transtu_charguia_ligne514b",
+      "lineNumber": "514 ب",
+      "name": "Charguia → Cité Ettadhamen (Variant B)",
       "direction": "forward",
       "originStationId": "transtu_hub_charguia",
-      "destinationStationId": "transtu_dest_cite_tadamoun",
-      "trips": [{ "tripNumber": "514_2", "departureTime": "06:30", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_cite_tadamoun" }],
+      "destinationStationId": "transtu_dest_cite_ettadhamen",
+      "trips": [
+        {
+          "tripNumber": "514b_1",
+          "departureTime": "06:30",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_dest_cite_ettadhamen"
+        }
+      ],
       "firstDepartureFromHub": "06:30",
       "lastDepartureFromHub": "18:30",
       "firstDepartureFromSuburb": "05:55",
       "lastDepartureFromSuburb": "18:55",
-      "peakFrequencyMinutes": null,
+      "peakFrequencyMinutes": 10,
       "zone": "urbaine",
       "price": 0.5
     },
     {
-      "id": "route_transtu_charguia_ligne515_zahrouni",
+      "id": "route_transtu_charguia_ligne515",
       "lineNumber": "515",
-      "name": "Charguia → Moustawdaa Zahrouni",
+      "name": "Charguia → Dépôt Zahrouni",
       "direction": "forward",
       "originStationId": "transtu_hub_charguia",
-      "destinationStationId": "transtu_dest_moustawdaa_zahrouni",
-      "trips": [{ "tripNumber": "515_1", "departureTime": "05:00", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_moustawdaa_zahrouni" }],
+      "destinationStationId": "transtu_dest_depot_zahrouni",
+      "trips": [
+        {
+          "tripNumber": "515_1",
+          "departureTime": "05:00",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_dest_depot_zahrouni"
+        }
+      ],
       "firstDepartureFromHub": "05:00",
       "lastDepartureFromHub": "20:40",
       "firstDepartureFromSuburb": "05:30",
       "lastDepartureFromSuburb": "21:45",
-      "peakFrequencyMinutes": null,
+      "peakFrequencyMinutes": 25,
       "zone": "urbaine",
       "price": 0.5
     },
     {
-      "id": "route_transtu_charguia_ligne515_zouhour",
-      "lineNumber": "515",
-      "name": "Charguia → Cité Zouhour",
+      "id": "route_transtu_charguia_ligne515a",
+      "lineNumber": "515 أ",
+      "name": "Charguia → Cité Ezzouhour 5 (Variant A)",
       "direction": "forward",
       "originStationId": "transtu_hub_charguia",
-      "destinationStationId": "transtu_dest_cite_zouhour",
-      "trips": [{ "tripNumber": "515_2", "departureTime": "06:50", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_cite_zouhour" }],
+      "destinationStationId": "transtu_dest_cite_ezzouhour5_charguia",
+      "trips": [
+        {
+          "tripNumber": "515a_1",
+          "departureTime": "06:50",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_dest_cite_ezzouhour5_charguia"
+        }
+      ],
       "firstDepartureFromHub": "06:50",
       "lastDepartureFromHub": "18:40",
       "firstDepartureFromSuburb": "06:00",
-      "lastDepartureFromSuburb": null,
-      "peakFrequencyMinutes": null,
+      "lastDepartureFromSuburb": "18:00",
+      "peakFrequencyMinutes": 25,
       "zone": "urbaine",
       "price": 0.5,
-      "notes": "Last departure from suburb not specified"
+      "notes": "Last departure from suburb not specified in timetable."
     },
     {
-      "id": "route_transtu_charguia_ligne515_zouhour_variant",
-      "lineNumber": "515",
-      "name": "Charguia → Cité Zouhour (Early Variant)",
+      "id": "route_transtu_charguia_ligne515b",
+      "lineNumber": "515 ب",
+      "name": "Charguia → Cité Ezzouhour 5 (Variant B)",
       "direction": "forward",
       "originStationId": "transtu_hub_charguia",
-      "destinationStationId": "transtu_dest_cite_zouhour",
-      "trips": [{ "tripNumber": "515_3", "departureTime": "04:50", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_cite_zouhour" }],
+      "destinationStationId": "transtu_dest_cite_ezzouhour5_charguia",
+      "trips": [
+        {
+          "tripNumber": "515b_1",
+          "departureTime": "04:50",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_dest_cite_ezzouhour5_charguia"
+        }
+      ],
       "firstDepartureFromHub": "04:50",
       "lastDepartureFromHub": "19:45",
       "firstDepartureFromSuburb": "05:45",
       "lastDepartureFromSuburb": "20:35",
-      "peakFrequencyMinutes": null,
+      "peakFrequencyMinutes": 30,
       "zone": "urbaine",
       "price": 0.5
     },
     {
       "id": "route_transtu_charguia_ligne533",
       "lineNumber": "533",
-      "name": "Charguia → 20 Mars",
+      "name": "Charguia → Cité 20 Mars",
       "direction": "forward",
       "originStationId": "transtu_hub_charguia",
-      "destinationStationId": "transtu_dest_20_mars",
-      "trips": [{ "tripNumber": "533_1", "departureTime": "07:15", "operatingDays": [0,1,2,3,4,5,6], "terminatesAtStationId": "transtu_dest_20_mars" }],
+      "destinationStationId": "transtu_dest_cite_20mars",
+      "trips": [
+        {
+          "tripNumber": "533_1",
+          "departureTime": "07:15",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_dest_cite_20mars"
+        }
+      ],
       "firstDepartureFromHub": "07:15",
       "lastDepartureFromHub": "19:00",
       "firstDepartureFromSuburb": "05:50",
       "lastDepartureFromSuburb": "17:45",
-      "peakFrequencyMinutes": null,
+      "peakFrequencyMinutes": 35,
       "zone": "urbaine",
       "price": 0.5
     }
   ],
   "routeStops": [
-    { "routeId": "route_transtu_charguia_ligne20_sh", "stationId": "transtu_hub_charguia", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0 },
-    { "routeId": "route_transtu_charguia_ligne20_sh", "stationId": "transtu_dest_marsa_gammarth", "stopOrder": 2, "estimatedArrivalTimeMinutes": 35 },
-    { "routeId": "route_transtu_charguia_ligne27", "stationId": "transtu_hub_charguia", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0 },
-    { "routeId": "route_transtu_charguia_ligne27", "stationId": "transtu_dest_raoued_echat", "stopOrder": 2, "estimatedArrivalTimeMinutes": 30 },
-    { "routeId": "route_transtu_charguia_ligne44", "stationId": "transtu_hub_charguia", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0 },
-    { "routeId": "route_transtu_charguia_ligne44", "stationId": "transtu_dest_jama_oued_ellil", "stopOrder": 2, "estimatedArrivalTimeMinutes": 40 },
-    { "routeId": "route_transtu_charguia_ligne44_sh", "stationId": "transtu_hub_charguia", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0 },
-    { "routeId": "route_transtu_charguia_ligne44_sh", "stationId": "transtu_dest_sidi_thabet", "stopOrder": 2, "estimatedArrivalTimeMinutes": 35 },
-    { "routeId": "route_transtu_charguia_ligne514", "stationId": "transtu_hub_charguia", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0 },
-    { "routeId": "route_transtu_charguia_ligne514", "stationId": "transtu_dest_cite_tadamoun", "stopOrder": 2, "estimatedArrivalTimeMinutes": 25 },
-    { "routeId": "route_transtu_charguia_ligne515_zahrouni", "stationId": "transtu_hub_charguia", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0 },
-    { "routeId": "route_transtu_charguia_ligne515_zahrouni", "stationId": "transtu_dest_moustawdaa_zahrouni", "stopOrder": 2, "estimatedArrivalTimeMinutes": 30 },
-    { "routeId": "route_transtu_charguia_ligne515_zouhour", "stationId": "transtu_hub_charguia", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0 },
-    { "routeId": "route_transtu_charguia_ligne515_zouhour", "stationId": "transtu_dest_cite_zouhour", "stopOrder": 2, "estimatedArrivalTimeMinutes": 20 },
-    { "routeId": "route_transtu_charguia_ligne533", "stationId": "transtu_hub_charguia", "stopOrder": 1, "estimatedArrivalTimeMinutes": 0 },
-    { "routeId": "route_transtu_charguia_ligne533", "stationId": "transtu_dest_20_mars", "stopOrder": 2, "estimatedArrivalTimeMinutes": 25 }
+    {
+      "routeId": "route_transtu_charguia_ligne20th",
+      "stationId": "transtu_hub_charguia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne20th",
+      "stationId": "transtu_dest_marsa_gammarth",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 40
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne20th_variant",
+      "stationId": "transtu_hub_charguia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne20th_variant",
+      "stationId": "transtu_dest_marsa_gammarth",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 40
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne27b",
+      "stationId": "transtu_hub_charguia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne27b",
+      "stationId": "transtu_dest_raoued_plage",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 35
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne44th",
+      "stationId": "transtu_hub_charguia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne44th",
+      "stationId": "transtu_dest_jama_oued_ellil",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 45
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne44ths",
+      "stationId": "transtu_hub_charguia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne44ths",
+      "stationId": "transtu_dest_sidi_thabet",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 40
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne514",
+      "stationId": "transtu_hub_charguia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne514",
+      "stationId": "transtu_dest_cite_ettadhamen",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 25
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne514b",
+      "stationId": "transtu_hub_charguia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne514b",
+      "stationId": "transtu_dest_cite_ettadhamen",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 25
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne515",
+      "stationId": "transtu_hub_charguia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne515",
+      "stationId": "transtu_dest_depot_zahrouni",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 30
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne515a",
+      "stationId": "transtu_hub_charguia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne515a",
+      "stationId": "transtu_dest_cite_ezzouhour5_charguia",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 25
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne515b",
+      "stationId": "transtu_hub_charguia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne515b",
+      "stationId": "transtu_dest_cite_ezzouhour5_charguia",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 25
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne533",
+      "stationId": "transtu_hub_charguia",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_charguia_ligne533",
+      "stationId": "transtu_dest_cite_20mars",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 25
+    }
   ],
   "pricing": {
     "currency": "TND",
-    "notes": "TRANSTU urban fare: 0.500 DT for all routes from Charguia hub.",
+    "notes": "TRANSTU urban fare 0.500 DT. Banlieue routes (20/ث, 27ب, 44ث, 44ث/س) : 1.000 DT.",
     "estimatedFares": [
-      { "from": "transtu_hub_charguia", "to": "transtu_dest_marsa_gammarth", "price": 0.5 },
-      { "from": "transtu_hub_charguia", "to": "transtu_dest_raoued_echat", "price": 0.5 },
-      { "from": "transtu_hub_charguia", "to": "transtu_dest_jama_oued_ellil", "price": 0.5 },
-      { "from": "transtu_hub_charguia", "to": "transtu_dest_cite_tadamoun", "price": 0.5 },
-      { "from": "transtu_hub_charguia", "to": "transtu_dest_20_mars", "price": 0.5 }
+      {
+        "from": "transtu_hub_charguia",
+        "to": "transtu_dest_marsa_gammarth",
+        "price": 1.0
+      },
+      {
+        "from": "transtu_hub_charguia",
+        "to": "transtu_dest_raoued_plage",
+        "price": 1.0
+      },
+      {
+        "from": "transtu_hub_charguia",
+        "to": "transtu_dest_jama_oued_ellil",
+        "price": 1.0
+      },
+      {
+        "from": "transtu_hub_charguia",
+        "to": "transtu_dest_sidi_thabet",
+        "price": 1.0
+      },
+      {
+        "from": "transtu_hub_charguia",
+        "to": "transtu_dest_cite_ettadhamen",
+        "price": 0.5
+      },
+      {
+        "from": "transtu_hub_charguia",
+        "to": "transtu_dest_depot_zahrouni",
+        "price": 0.5
+      },
+      {
+        "from": "transtu_hub_charguia",
+        "to": "transtu_dest_cite_ezzouhour5_charguia",
+        "price": 0.5
+      },
+      {
+        "from": "transtu_hub_charguia",
+        "to": "transtu_dest_cite_20mars",
+        "price": 0.5
+      }
     ]
   }
 }

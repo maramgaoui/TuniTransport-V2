@@ -23,8 +23,8 @@
       "isMainHub": true
     },
     {
-      "id": "transtu_dest_sidi_hussain",
-      "name": "Sidi Hussain",
+      "id": "transtu_dest_sidi_hassine",
+      "name": "Sidi Hassine",
       "nameAr": "سيدي حسين",
       "cityId": "tunis",
       "order": 2,
@@ -32,8 +32,8 @@
       "lng": 10.165,
       "isMainHub": false,
       "searchAliases": [
+        "sidi hassine",
         "sidi hussain",
-        "sidi hussine",
         "sidi hssine",
         "سيدي حسين"
       ]
@@ -46,11 +46,16 @@
       "order": 3,
       "lat": 36.83,
       "lng": 10.2,
-      "isMainHub": false
+      "isMainHub": false,
+      "searchAliases": [
+        "charguia",
+        "charquia",
+        "الشرقية"
+      ]
     },
     {
-      "id": "transtu_dest_cite_zouhour5",
-      "name": "Cité Zouhour 5",
+      "id": "transtu_dest_cite_ezzouhour5",
+      "name": "Cité Ezzouhour 5",
       "nameAr": "حي الزهور 5",
       "cityId": "tunis",
       "order": 4,
@@ -58,6 +63,7 @@
       "lng": 10.19,
       "isMainHub": false,
       "searchAliases": [
+        "cite ezzouhour 5",
         "cite zhour 5",
         "zouhour 5",
         "zhour5",
@@ -66,66 +72,68 @@
       ]
     },
     {
-      "id": "transtu_dest_cite_machtoul",
-      "name": "Cité Machtoul",
-      "nameAr": "حي المشتل",
+      "id": "transtu_dest_cite_khaled_ibn_walid",
+      "name": "Cité Khaled Ibn Walid",
+      "nameAr": "حي خالد بن الوليد",
       "cityId": "tunis",
       "order": 5,
-      "lat": 36.79,
-      "lng": 10.175,
-      "isMainHub": false,
-      "searchAliases": [
-        "hay machtoul",
-        "machtoul",
-        "المشتل",
-        "حي المشتل"
-      ]
-    },
-    {
-      "id": "transtu_dest_tabria",
-      "name": "Tabria",
-      "nameAr": "طبرية",
-      "cityId": "tunis",
-      "order": 6,
-      "lat": 36.8,
-      "lng": 10.16,
-      "isMainHub": false,
-      "searchAliases": [
-        "tabria",
-        "tbourba",
-        "طبرية"
-      ]
-    },
-    {
-      "id": "transtu_dest_khaled_ben_walid",
-      "name": "Cité Khaled Ben Walid",
-      "nameAr": "حي خالد ابن الوليد",
-      "cityId": "tunis",
-      "order": 7,
       "lat": 36.795,
       "lng": 10.17,
       "isMainHub": false,
       "searchAliases": [
+        "khaled ibn walid",
         "khaled ben walid",
-        "khaeld ben walid",
-        "خالد ابن الوليد",
+        "خالد بن الوليد",
         "حي خالد"
       ]
     },
     {
       "id": "transtu_dest_omrane_superieur",
-      "name": "Omrane Supérieur",
+      "name": "El Omrane Supérieur",
       "nameAr": "العمران الأعلى",
       "cityId": "tunis",
-      "order": 8,
+      "order": 6,
       "lat": 36.82,
       "lng": 10.155,
       "isMainHub": false,
       "searchAliases": [
         "omrane sup",
         "omrane superieur",
+        "el omrane",
         "العمران الأعلى",
         "عمران"
+      ]
+    },
+    {
+      "id": "transtu_dest_cite_el_machtel",
+      "name": "Cité El Machtel",
+      "nameAr": "حي المشتل",
+      "cityId": "tunis",
+      "order": 7,
+      "lat": 36.79,
+      "lng": 10.175,
+      "isMainHub": false,
+      "searchAliases": [
+        "cite el machtel",
+        "hay machtel",
+        "machtel",
+        "المشتل",
+        "حي المشتل"
+      ]
+    },
+    {
+      "id": "transtu_dest_tebourba",
+      "name": "Tebourba",
+      "nameAr": "طبربة",
+      "cityId": "tunis",
+      "order": 8,
+      "lat": 36.8328,
+      "lng": 9.8443,
+      "isMainHub": false,
+      "searchAliases": [
+        "tebourba",
+        "tbourba",
+        "طبربة"
       ]
     }
   ],
@@ -133,30 +141,22 @@
     {
       "id": "route_transtu_babalioua_ligne32",
       "lineNumber": "32",
-      "name": "Bab Alioua → Sidi Hussain",
+      "name": "Bab Alioua → Sidi Hassine",
       "direction": "forward",
       "originStationId": "transtu_hub_bab_alioua",
-      "destinationStationId": "transtu_dest_sidi_hussain",
+      "destinationStationId": "transtu_dest_sidi_hassine",
       "trips": [
         {
           "tripNumber": "32_1",
           "departureTime": "08:40",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_dest_sidi_hussain"
+          "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+          "terminatesAtStationId": "transtu_dest_sidi_hassine"
         }
       ],
       "firstDepartureFromHub": "08:40",
-      "lastDepartureFromHub": "20:00",
+      "lastDepartureFromHub": null,
       "firstDepartureFromSuburb": "05:30",
-      "lastDepartureFromSuburb": "19:15",
+      "lastDepartureFromSuburb": null,
       "peakFrequencyMinutes": 50,
       "zone": "urbaine",
       "price": 0.5
@@ -172,15 +172,7 @@
         {
           "tripNumber": "50_1",
           "departureTime": "06:00",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
+          "operatingDays": [0, 1, 2, 3, 4, 5, 6],
           "terminatesAtStationId": "transtu_dest_charguia"
         }
       ],
@@ -195,117 +187,39 @@
     {
       "id": "route_transtu_babalioua_ligne65",
       "lineNumber": "65",
-      "name": "Bab Alioua → Cité Zouhour 5",
+      "name": "Bab Alioua → Cité Ezzouhour 5",
       "direction": "forward",
       "originStationId": "transtu_hub_bab_alioua",
-      "destinationStationId": "transtu_dest_cite_zouhour5",
+      "destinationStationId": "transtu_dest_cite_ezzouhour5",
       "trips": [
         {
           "tripNumber": "65_1",
           "departureTime": "05:40",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_dest_cite_zouhour5"
+          "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+          "terminatesAtStationId": "transtu_dest_cite_ezzouhour5"
         }
       ],
       "firstDepartureFromHub": "05:40",
-      "lastDepartureFromHub": "19:00",
-      "firstDepartureFromSuburb": "05:30",
-      "lastDepartureFromSuburb": "20:00",
-      "peakFrequencyMinutes": 78,
-      "zone": "urbaine",
-      "price": 0.5
-    },
-    {
-      "id": "route_transtu_babalioua_ligne79",
-      "lineNumber": "79",
-      "name": "Bab Alioua → Cité Machtoul",
-      "direction": "forward",
-      "originStationId": "transtu_hub_bab_alioua",
-      "destinationStationId": "transtu_dest_cite_machtoul",
-      "trips": [
-        {
-          "tripNumber": "79_1",
-          "departureTime": "06:20",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_dest_cite_machtoul"
-        }
-      ],
-      "firstDepartureFromHub": "06:20",
-      "lastDepartureFromHub": "19:20",
-      "firstDepartureFromSuburb": "05:30",
-      "lastDepartureFromSuburb": "18:20",
-      "peakFrequencyMinutes": 79,
-      "zone": "urbaine",
-      "price": 0.5
-    },
-    {
-      "id": "route_transtu_babalioua_ligne116",
-      "lineNumber": "116",
-      "name": "Bab Alioua → Tabria",
-      "direction": "forward",
-      "originStationId": "transtu_hub_bab_alioua",
-      "destinationStationId": "transtu_dest_tabria",
-      "trips": [
-        {
-          "tripNumber": "116_1",
-          "departureTime": "05:15",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_dest_tabria"
-        }
-      ],
-      "firstDepartureFromHub": "05:15",
-      "lastDepartureFromHub": "20:30",
+      "lastDepartureFromHub": "19:40",
       "firstDepartureFromSuburb": "05:00",
       "lastDepartureFromSuburb": "19:10",
-      "peakFrequencyMinutes": 116,
+      "peakFrequencyMinutes": 20,
       "zone": "urbaine",
       "price": 0.5
     },
     {
       "id": "route_transtu_babalioua_ligne72",
       "lineNumber": "72",
-      "name": "Bab Alioua → Cité Khaled Ben Walid",
+      "name": "Bab Alioua → Cité Khaled Ibn Walid",
       "direction": "forward",
       "originStationId": "transtu_hub_bab_alioua",
-      "destinationStationId": "transtu_dest_khaled_ben_walid",
+      "destinationStationId": "transtu_dest_cite_khaled_ibn_walid",
       "trips": [
         {
           "tripNumber": "72_1",
           "departureTime": "06:20",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
-          "terminatesAtStationId": "transtu_dest_khaled_ben_walid"
+          "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+          "terminatesAtStationId": "transtu_dest_cite_khaled_ibn_walid"
         }
       ],
       "firstDepartureFromHub": "06:20",
@@ -319,7 +233,7 @@
     {
       "id": "route_transtu_babalioua_ligne78",
       "lineNumber": "78",
-      "name": "Bab Alioua → Omrane Supérieur",
+      "name": "Bab Alioua → El Omrane Supérieur",
       "direction": "forward",
       "originStationId": "transtu_hub_bab_alioua",
       "destinationStationId": "transtu_dest_omrane_superieur",
@@ -327,15 +241,7 @@
         {
           "tripNumber": "78_1",
           "departureTime": "06:30",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
+          "operatingDays": [0, 1, 2, 3, 4, 5, 6],
           "terminatesAtStationId": "transtu_dest_omrane_superieur"
         }
       ],
@@ -348,32 +254,70 @@
       "price": 0.5
     },
     {
+      "id": "route_transtu_babalioua_ligne79",
+      "lineNumber": "79",
+      "name": "Bab Alioua → Cité El Machtel",
+      "direction": "forward",
+      "originStationId": "transtu_hub_bab_alioua",
+      "destinationStationId": "transtu_dest_cite_el_machtel",
+      "trips": [
+        {
+          "tripNumber": "79_1",
+          "departureTime": "06:20",
+          "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+          "terminatesAtStationId": "transtu_dest_cite_el_machtel"
+        }
+      ],
+      "firstDepartureFromHub": "06:20",
+      "lastDepartureFromHub": "19:20",
+      "firstDepartureFromSuburb": "05:30",
+      "lastDepartureFromSuburb": "18:20",
+      "peakFrequencyMinutes": 60,
+      "zone": "urbaine",
+      "price": 0.5
+    },
+    {
+      "id": "route_transtu_babalioua_ligne116",
+      "lineNumber": "116",
+      "name": "Bab Alioua → Tebourba",
+      "direction": "forward",
+      "originStationId": "transtu_hub_bab_alioua",
+      "destinationStationId": "transtu_dest_tebourba",
+      "trips": [
+        {
+          "tripNumber": "116_1",
+          "departureTime": "05:15",
+          "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+          "terminatesAtStationId": "transtu_dest_tebourba"
+        }
+      ],
+      "firstDepartureFromHub": "05:15",
+      "lastDepartureFromHub": "20:30",
+      "firstDepartureFromSuburb": "05:00",
+      "lastDepartureFromSuburb": "19:10",
+      "peakFrequencyMinutes": 60,
+      "zone": "banlieue",
+      "price": 1.0
+    },
+    {
       "id": "route_transtu_babalioua_ligne32_rev",
       "lineNumber": "32",
-      "name": "Sidi Hussain → Bab Alioua",
+      "name": "Sidi Hassine → Bab Alioua",
       "direction": "reverse",
-      "originStationId": "transtu_dest_sidi_hussain",
+      "originStationId": "transtu_dest_sidi_hassine",
       "destinationStationId": "transtu_hub_bab_alioua",
       "trips": [
         {
           "tripNumber": "32_rev_1",
           "departureTime": "05:30",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
+          "operatingDays": [0, 1, 2, 3, 4, 5, 6],
           "terminatesAtStationId": "transtu_hub_bab_alioua"
         }
       ],
       "firstDepartureFromHub": "05:30",
-      "lastDepartureFromHub": "19:15",
+      "lastDepartureFromHub": null,
       "firstDepartureFromSuburb": "08:40",
-      "lastDepartureFromSuburb": "20:00",
+      "lastDepartureFromSuburb": null,
       "peakFrequencyMinutes": 50,
       "zone": "urbaine",
       "price": 0.5
@@ -389,15 +333,7 @@
         {
           "tripNumber": "50_rev_1",
           "departureTime": "06:50",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
+          "operatingDays": [0, 1, 2, 3, 4, 5, 6],
           "terminatesAtStationId": "transtu_hub_bab_alioua"
         }
       ],
@@ -412,54 +348,38 @@
     {
       "id": "route_transtu_babalioua_ligne65_rev",
       "lineNumber": "65",
-      "name": "Cité Zouhour 5 → Bab Alioua",
+      "name": "Cité Ezzouhour 5 → Bab Alioua",
       "direction": "reverse",
-      "originStationId": "transtu_dest_cite_zouhour5",
+      "originStationId": "transtu_dest_cite_ezzouhour5",
       "destinationStationId": "transtu_hub_bab_alioua",
       "trips": [
         {
           "tripNumber": "65_rev_1",
           "departureTime": "05:00",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
+          "operatingDays": [0, 1, 2, 3, 4, 5, 6],
           "terminatesAtStationId": "transtu_hub_bab_alioua"
         }
       ],
       "firstDepartureFromHub": "05:00",
       "lastDepartureFromHub": "19:10",
       "firstDepartureFromSuburb": "05:40",
-      "lastDepartureFromSuburb": "19:00",
-      "peakFrequencyMinutes": 78,
+      "lastDepartureFromSuburb": "19:40",
+      "peakFrequencyMinutes": 20,
       "zone": "urbaine",
       "price": 0.5
     },
     {
       "id": "route_transtu_babalioua_ligne72_rev",
       "lineNumber": "72",
-      "name": "Cité Khaled Ben Walid → Bab Alioua",
+      "name": "Cité Khaled Ibn Walid → Bab Alioua",
       "direction": "reverse",
-      "originStationId": "transtu_dest_khaled_ben_walid",
+      "originStationId": "transtu_dest_cite_khaled_ibn_walid",
       "destinationStationId": "transtu_hub_bab_alioua",
       "trips": [
         {
           "tripNumber": "72_rev_1",
           "departureTime": "05:30",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
+          "operatingDays": [0, 1, 2, 3, 4, 5, 6],
           "terminatesAtStationId": "transtu_hub_bab_alioua"
         }
       ],
@@ -474,7 +394,7 @@
     {
       "id": "route_transtu_babalioua_ligne78_rev",
       "lineNumber": "78",
-      "name": "Omrane Supérieur → Bab Alioua",
+      "name": "El Omrane Supérieur → Bab Alioua",
       "direction": "reverse",
       "originStationId": "transtu_dest_omrane_superieur",
       "destinationStationId": "transtu_hub_bab_alioua",
@@ -482,15 +402,7 @@
         {
           "tripNumber": "78_rev_1",
           "departureTime": "05:30",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
+          "operatingDays": [0, 1, 2, 3, 4, 5, 6],
           "terminatesAtStationId": "transtu_hub_bab_alioua"
         }
       ],
@@ -505,23 +417,15 @@
     {
       "id": "route_transtu_babalioua_ligne79_rev",
       "lineNumber": "79",
-      "name": "Cité Machtoul → Bab Alioua",
+      "name": "Cité El Machtel → Bab Alioua",
       "direction": "reverse",
-      "originStationId": "transtu_dest_cite_machtoul",
+      "originStationId": "transtu_dest_cite_el_machtel",
       "destinationStationId": "transtu_hub_bab_alioua",
       "trips": [
         {
           "tripNumber": "79_rev_1",
           "departureTime": "05:30",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
+          "operatingDays": [0, 1, 2, 3, 4, 5, 6],
           "terminatesAtStationId": "transtu_hub_bab_alioua"
         }
       ],
@@ -529,30 +433,22 @@
       "lastDepartureFromHub": "18:20",
       "firstDepartureFromSuburb": "06:20",
       "lastDepartureFromSuburb": "19:20",
-      "peakFrequencyMinutes": 79,
+      "peakFrequencyMinutes": 60,
       "zone": "urbaine",
       "price": 0.5
     },
     {
       "id": "route_transtu_babalioua_ligne116_rev",
       "lineNumber": "116",
-      "name": "Tabria → Bab Alioua",
+      "name": "Tebourba → Bab Alioua",
       "direction": "reverse",
-      "originStationId": "transtu_dest_tabria",
+      "originStationId": "transtu_dest_tebourba",
       "destinationStationId": "transtu_hub_bab_alioua",
       "trips": [
         {
           "tripNumber": "116_rev_1",
           "departureTime": "05:00",
-          "operatingDays": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6
-          ],
+          "operatingDays": [0, 1, 2, 3, 4, 5, 6],
           "terminatesAtStationId": "transtu_hub_bab_alioua"
         }
       ],
@@ -560,9 +456,9 @@
       "lastDepartureFromHub": "19:10",
       "firstDepartureFromSuburb": "05:15",
       "lastDepartureFromSuburb": "20:30",
-      "peakFrequencyMinutes": 116,
-      "zone": "urbaine",
-      "price": 0.5
+      "peakFrequencyMinutes": 60,
+      "zone": "banlieue",
+      "price": 1.0
     }
   ],
   "routeStops": [
@@ -574,7 +470,7 @@
     },
     {
       "routeId": "route_transtu_babalioua_ligne32",
-      "stationId": "transtu_dest_sidi_hussain",
+      "stationId": "transtu_dest_sidi_hassine",
       "stopOrder": 2,
       "estimatedArrivalTimeMinutes": 25
     },
@@ -598,35 +494,11 @@
     },
     {
       "routeId": "route_transtu_babalioua_ligne65",
-      "stationId": "transtu_dest_cite_zouhour5",
+      "stationId": "transtu_dest_cite_ezzouhour5",
       "stopOrder": 2,
       "estimatedArrivalTimeMinutes": 25
     },
     {
-      "routeId": "route_transtu_babalioua_ligne79",
-      "stationId": "transtu_hub_bab_alioua",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_babalioua_ligne79",
-      "stationId": "transtu_dest_cite_machtoul",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 20
-    },
-    {
-      "routeId": "route_transtu_babalioua_ligne116",
-      "stationId": "transtu_hub_bab_alioua",
-      "stopOrder": 1,
-      "estimatedArrivalTimeMinutes": 0
-    },
-    {
-      "routeId": "route_transtu_babalioua_ligne116",
-      "stationId": "transtu_dest_tabria",
-      "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 30
-    },
-    {
       "routeId": "route_transtu_babalioua_ligne72",
       "stationId": "transtu_hub_bab_alioua",
       "stopOrder": 1,
@@ -634,7 +506,7 @@
     },
     {
       "routeId": "route_transtu_babalioua_ligne72",
-      "stationId": "transtu_dest_khaled_ben_walid",
+      "stationId": "transtu_dest_cite_khaled_ibn_walid",
       "stopOrder": 2,
       "estimatedArrivalTimeMinutes": 25
     },
@@ -651,8 +523,32 @@
       "estimatedArrivalTimeMinutes": 20
     },
     {
+      "routeId": "route_transtu_babalioua_ligne79",
+      "stationId": "transtu_hub_bab_alioua",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_babalioua_ligne79",
+      "stationId": "transtu_dest_cite_el_machtel",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 20
+    },
+    {
+      "routeId": "route_transtu_babalioua_ligne116",
+      "stationId": "transtu_hub_bab_alioua",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_babalioua_ligne116",
+      "stationId": "transtu_dest_tebourba",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 60
+    },
+    {
       "routeId": "route_transtu_babalioua_ligne32_rev",
-      "stationId": "transtu_dest_sidi_hussain",
+      "stationId": "transtu_dest_sidi_hassine",
       "stopOrder": 1,
       "estimatedArrivalTimeMinutes": 0
     },
@@ -676,7 +572,7 @@
     },
     {
       "routeId": "route_transtu_babalioua_ligne65_rev",
-      "stationId": "transtu_dest_cite_zouhour5",
+      "stationId": "transtu_dest_cite_ezzouhour5",
       "stopOrder": 1,
       "estimatedArrivalTimeMinutes": 0
     },
@@ -684,11 +580,11 @@
       "routeId": "route_transtu_babalioua_ligne65_rev",
       "stationId": "transtu_hub_bab_alioua",
       "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 20
+      "estimatedArrivalTimeMinutes": 25
     },
     {
       "routeId": "route_transtu_babalioua_ligne72_rev",
-      "stationId": "transtu_dest_khaled_ben_walid",
+      "stationId": "transtu_dest_cite_khaled_ibn_walid",
       "stopOrder": 1,
       "estimatedArrivalTimeMinutes": 0
     },
@@ -712,7 +608,7 @@
     },
     {
       "routeId": "route_transtu_babalioua_ligne79_rev",
-      "stationId": "transtu_dest_cite_machtoul",
+      "stationId": "transtu_dest_cite_el_machtel",
       "stopOrder": 1,
       "estimatedArrivalTimeMinutes": 0
     },
@@ -724,7 +620,7 @@
     },
     {
       "routeId": "route_transtu_babalioua_ligne116_rev",
-      "stationId": "transtu_dest_tabria",
+      "stationId": "transtu_dest_tebourba",
       "stopOrder": 1,
       "estimatedArrivalTimeMinutes": 0
     },
@@ -732,16 +628,16 @@
       "routeId": "route_transtu_babalioua_ligne116_rev",
       "stationId": "transtu_hub_bab_alioua",
       "stopOrder": 2,
-      "estimatedArrivalTimeMinutes": 30
+      "estimatedArrivalTimeMinutes": 60
     }
   ],
   "pricing": {
     "currency": "TND",
-    "notes": "TRANSTU urban fare: 0.500 DT for all routes from Bab Alioua hub.",
+    "notes": "TRANSTU urban fare: 0.500 DT for urban routes. Ligne 116 (Tebourba) is banlieue: 1.000 DT.",
     "estimatedFares": [
       {
         "from": "transtu_hub_bab_alioua",
-        "to": "transtu_dest_sidi_hussain",
+        "to": "transtu_dest_sidi_hassine",
         "price": 0.5
       },
       {
@@ -751,18 +647,28 @@
       },
       {
         "from": "transtu_hub_bab_alioua",
-        "to": "transtu_dest_cite_zouhour5",
+        "to": "transtu_dest_cite_ezzouhour5",
         "price": 0.5
       },
       {
         "from": "transtu_hub_bab_alioua",
-        "to": "transtu_dest_cite_machtoul",
+        "to": "transtu_dest_cite_khaled_ibn_walid",
         "price": 0.5
       },
       {
         "from": "transtu_hub_bab_alioua",
-        "to": "transtu_dest_tabria",
+        "to": "transtu_dest_omrane_superieur",
         "price": 0.5
+      },
+      {
+        "from": "transtu_hub_bab_alioua",
+        "to": "transtu_dest_cite_el_machtel",
+        "price": 0.5
+      },
+      {
+        "from": "transtu_hub_bab_alioua",
+        "to": "transtu_dest_tebourba",
+        "price": 1.0
       }
     ]
   }

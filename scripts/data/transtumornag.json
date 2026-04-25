@@ -31,23 +31,31 @@
       "cityName": "Ben Arous",
       "isMainHub": true,
       "order": 1,
-      "lat": 36.7500,
-      "lng": 10.2300,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.75,
+      "lng": 10.23,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_bir_ferech_annabi",
-      "name": "Bir Ferch Annabi",
+      "name": "Bir Rech Annabi",
       "nameAr": "بئر فرش عنابي",
       "cityId": "mornag",
       "cityName": "Mornag",
       "isMainHub": false,
       "order": 2,
-      "lat": 36.7400,
-      "lng": 10.2400,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.74,
+      "lng": 10.24,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_jebel_ressas",
@@ -57,23 +65,31 @@
       "cityName": "Mornag",
       "isMainHub": false,
       "order": 3,
-      "lat": 36.7200,
-      "lng": 10.2500,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.72,
+      "lng": 10.25,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_tarhouna_qdima",
-      "name": "Tarhouna El Kdima",
-      "nameAr": "طرهونة القديمة",
+      "name": "Tarhouna Kdima",
+      "nameAr": "ترهونة القديمة",
       "cityId": "mornag",
       "cityName": "Mornag",
       "isMainHub": false,
       "order": 4,
-      "lat": 36.7300,
-      "lng": 10.2200,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.73,
+      "lng": 10.22,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     }
   ],
   "routes": [
@@ -84,12 +100,20 @@
       "direction": "forward",
       "originStationId": "transtu_hub_morneg",
       "destinationStationId": "transtu_dest_bir_ferech_annabi",
-      "firstDepartureFromHub": "06:00",
-      "lastDepartureFromHub": "18:00",
-      "firstDepartureFromSuburb": "06:30",
-      "lastDepartureFromSuburb": "17:10",
+      "firstDepartureFromHub": "06:30",
+      "lastDepartureFromHub": "17:10",
+      "firstDepartureFromSuburb": "06:00",
+      "lastDepartureFromSuburb": "18:00",
       "peakFrequencyMinutes": 40,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -101,12 +125,20 @@
       "direction": "forward",
       "originStationId": "transtu_hub_morneg",
       "destinationStationId": "transtu_dest_jebel_ressas",
-      "firstDepartureFromHub": "06:30",
-      "lastDepartureFromHub": "18:45",
-      "firstDepartureFromSuburb": "07:00",
-      "lastDepartureFromSuburb": "18:15",
+      "firstDepartureFromHub": "07:00",
+      "lastDepartureFromHub": "18:15",
+      "firstDepartureFromSuburb": "06:30",
+      "lastDepartureFromSuburb": "18:45",
       "peakFrequencyMinutes": 70,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -118,12 +150,20 @@
       "direction": "forward",
       "originStationId": "transtu_hub_morneg",
       "destinationStationId": "transtu_dest_tarhouna_qdima",
-      "firstDepartureFromHub": "04:50",
-      "lastDepartureFromHub": "18:15",
-      "firstDepartureFromSuburb": "06:00",
-      "lastDepartureFromSuburb": "18:45",
+      "firstDepartureFromHub": "06:00",
+      "lastDepartureFromHub": "18:45",
+      "firstDepartureFromSuburb": "04:50",
+      "lastDepartureFromSuburb": "18:15",
       "peakFrequencyMinutes": 60,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []

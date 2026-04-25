@@ -31,36 +31,48 @@
       "cityName": "Fouchana",
       "isMainHub": true,
       "order": 1,
-      "lat": 36.7000,
-      "lng": 10.2000,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.7,
+      "lng": 10.2,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_cite_saada",
-      "name": "Cité Saada",
+      "name": "Cité Essâada",
       "nameAr": "حي السعادة",
       "cityId": "fouchana",
       "cityName": "Fouchana",
       "isMainHub": false,
       "order": 2,
-      "lat": 36.7100,
-      "lng": 10.2050,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.71,
+      "lng": 10.205,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_cite_elmi",
-      "name": "Cité Elmi",
+      "name": "Cité El Almi",
       "nameAr": "حي العلمي",
       "cityId": "fouchana",
       "cityName": "Fouchana",
       "isMainHub": false,
       "order": 3,
-      "lat": 36.7050,
-      "lng": 10.2100,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.705,
+      "lng": 10.21,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_oudna",
@@ -70,10 +82,14 @@
       "cityName": "Mornag",
       "isMainHub": false,
       "order": 4,
-      "lat": 36.5600,
-      "lng": 9.9300,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.56,
+      "lng": 9.93,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_chebda",
@@ -83,23 +99,31 @@
       "cityName": "Naassen",
       "isMainHub": false,
       "order": 5,
-      "lat": 36.6500,
-      "lng": 10.0400,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.65,
+      "lng": 10.04,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_sidi_ferej",
-      "name": "Sidi Ferej",
+      "name": "Sidi Frej",
       "nameAr": "سيدي فرج",
       "cityId": "fouchana",
       "cityName": "Fouchana",
       "isMainHub": false,
       "order": 6,
-      "lat": 36.6950,
-      "lng": 10.2150,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.695,
+      "lng": 10.215,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_hached",
@@ -109,10 +133,14 @@
       "cityName": "Fouchana",
       "isMainHub": false,
       "order": 7,
-      "lat": 36.6900,
-      "lng": 10.2200,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.69,
+      "lng": 10.22,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_cite_amel",
@@ -122,10 +150,14 @@
       "cityName": "Fouchana",
       "isMainHub": false,
       "order": 8,
-      "lat": 36.7150,
-      "lng": 10.2000,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.715,
+      "lng": 10.2,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     }
   ],
   "routes": [
@@ -136,12 +168,20 @@
       "direction": "forward",
       "originStationId": "transtu_hub_montazah",
       "destinationStationId": "transtu_dest_cite_saada",
-      "firstDepartureFromHub": "04:20",
-      "lastDepartureFromHub": "23:10",
-      "firstDepartureFromSuburb": "05:00",
-      "lastDepartureFromSuburb": "23:30",
+      "firstDepartureFromHub": "05:00",
+      "lastDepartureFromHub": "23:30",
+      "firstDepartureFromSuburb": "04:20",
+      "lastDepartureFromSuburb": "23:10",
       "peakFrequencyMinutes": 20,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -153,12 +193,20 @@
       "direction": "forward",
       "originStationId": "transtu_hub_montazah",
       "destinationStationId": "transtu_dest_cite_elmi",
-      "firstDepartureFromHub": "06:00",
-      "lastDepartureFromHub": "15:00",
-      "firstDepartureFromSuburb": "06:40",
-      "lastDepartureFromSuburb": "16:00",
+      "firstDepartureFromHub": "06:40",
+      "lastDepartureFromHub": "16:00",
+      "firstDepartureFromSuburb": "06:00",
+      "lastDepartureFromSuburb": "15:00",
       "peakFrequencyMinutes": 90,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -170,12 +218,20 @@
       "direction": "forward",
       "originStationId": "transtu_hub_montazah",
       "destinationStationId": "transtu_dest_oudna",
-      "firstDepartureFromHub": "05:20",
-      "lastDepartureFromHub": "18:20",
-      "firstDepartureFromSuburb": "06:00",
-      "lastDepartureFromSuburb": "17:30",
+      "firstDepartureFromHub": "06:00",
+      "lastDepartureFromHub": "17:30",
+      "firstDepartureFromSuburb": "05:20",
+      "lastDepartureFromSuburb": "18:20",
       "peakFrequencyMinutes": 50,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -187,12 +243,20 @@
       "direction": "forward",
       "originStationId": "transtu_hub_montazah",
       "destinationStationId": "transtu_dest_chebda",
-      "firstDepartureFromHub": "05:00",
-      "lastDepartureFromHub": "19:10",
-      "firstDepartureFromSuburb": "05:30",
-      "lastDepartureFromSuburb": "18:40",
+      "firstDepartureFromHub": "05:30",
+      "lastDepartureFromHub": "18:40",
+      "firstDepartureFromSuburb": "05:00",
+      "lastDepartureFromSuburb": "19:10",
       "peakFrequencyMinutes": 60,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -204,12 +268,20 @@
       "direction": "forward",
       "originStationId": "transtu_hub_montazah",
       "destinationStationId": "transtu_dest_sidi_ferej",
-      "firstDepartureFromHub": "07:10",
-      "lastDepartureFromHub": "18:30",
-      "firstDepartureFromSuburb": "06:30",
-      "lastDepartureFromSuburb": "17:50",
+      "firstDepartureFromHub": "06:30",
+      "lastDepartureFromHub": "17:50",
+      "firstDepartureFromSuburb": "07:10",
+      "lastDepartureFromSuburb": "18:30",
       "peakFrequencyMinutes": 80,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -221,12 +293,20 @@
       "direction": "forward",
       "originStationId": "transtu_hub_montazah",
       "destinationStationId": "transtu_dest_hached",
-      "firstDepartureFromHub": "07:00",
-      "lastDepartureFromHub": "16:30",
-      "firstDepartureFromSuburb": "06:10",
-      "lastDepartureFromSuburb": "17:10",
+      "firstDepartureFromHub": "06:10",
+      "lastDepartureFromHub": "17:10",
+      "firstDepartureFromSuburb": "07:00",
+      "lastDepartureFromSuburb": "16:30",
       "peakFrequencyMinutes": 80,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -238,12 +318,20 @@
       "direction": "forward",
       "originStationId": "transtu_hub_montazah",
       "destinationStationId": "transtu_dest_cite_amel",
-      "firstDepartureFromHub": "05:30",
-      "lastDepartureFromHub": "19:30",
-      "firstDepartureFromSuburb": "06:00",
-      "lastDepartureFromSuburb": "20:00",
+      "firstDepartureFromHub": "06:00",
+      "lastDepartureFromHub": "20:00",
+      "firstDepartureFromSuburb": "05:30",
+      "lastDepartureFromSuburb": "19:30",
       "peakFrequencyMinutes": 60,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
