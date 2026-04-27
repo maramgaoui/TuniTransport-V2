@@ -23,7 +23,7 @@
     "typeId": "train"
   },
   "stations": [
-    { "id": "bs_tunis_ville", "name": "Tunis Ville", "nameAr": "تونس", "cityId": "tunis", "order": 1, "shared": true, "lat": 36.7991, "lng": 10.1801 },
+    // bs_tunis_ville now referenced from shared_stations.json
     { "id": "bs_borj_cedria", "name": "Borj Cedria", "nameAr": "برج السدرية", "cityId": "ben_arous", "order": 2, "shared": true, "lat": 36.6742, "lng": 10.4044 },
     { "id": "bn_foundouk_jedid", "name": "Foundouk Jedid", "nameAr": "فندق الجديد", "cityId": "nabeul", "order": 3, "shared": false, "lat": 36.6850, "lng": 10.3600 },
     { "id": "bn_khanguet", "name": "Khanguet", "nameAr": "خنقة", "cityId": "nabeul", "order": 4, "shared": false, "lat": 36.6900, "lng": 10.3550 },

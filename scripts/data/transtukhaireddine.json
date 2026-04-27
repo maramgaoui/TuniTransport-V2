@@ -33,8 +33,12 @@
       "order": 1,
       "lat": 36.8083,
       "lng": 10.0978,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_cite_el_warda",
@@ -44,10 +48,14 @@
       "cityName": "Manouba",
       "isMainHub": false,
       "order": 2,
-      "lat": 36.8150,
-      "lng": 10.1000,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.815,
+      "lng": 10.1,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_sanhaja",
@@ -57,10 +65,14 @@
       "cityName": "Manouba",
       "isMainHub": false,
       "order": 3,
-      "lat": 36.8200,
-      "lng": 10.1050,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.82,
+      "lng": 10.105,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_el_kabaa",
@@ -70,10 +82,14 @@
       "cityName": "Manouba",
       "isMainHub": false,
       "order": 4,
-      "lat": 36.7700,
-      "lng": 10.1400,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.77,
+      "lng": 10.14,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_cite_en_nassim",
@@ -83,10 +99,14 @@
       "cityName": "Manouba",
       "isMainHub": false,
       "order": 5,
-      "lat": 36.8100,
-      "lng": 10.0900,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.81,
+      "lng": 10.09,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_jellou",
@@ -96,10 +116,14 @@
       "cityName": "Manouba",
       "isMainHub": false,
       "order": 6,
-      "lat": 36.8050,
-      "lng": 10.0950,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.805,
+      "lng": 10.095,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     }
   ],
   "routes": [
@@ -110,15 +134,24 @@
       "direction": "forward",
       "originStationId": "transtu_hub_khaireddine",
       "destinationStationId": "transtu_dest_cite_el_warda",
-      "firstDepartureFromHub": "05:15",
+      "firstDepartureFromHub": "05:30",
       "lastDepartureFromHub": "20:00",
-      "firstDepartureFromSuburb": "05:30",
-      "lastDepartureFromSuburb": null,
-      "peakFrequencyMinutes": 20,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "firstDepartureFromSuburb": "05:15",
+      "lastDepartureFromSuburb": "19:30",
+      "peakFrequencyMinutes": 30,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 15
     },
     {
       "id": "route_transtu_khaireddine_ligne93",
@@ -127,16 +160,25 @@
       "direction": "forward",
       "originStationId": "transtu_hub_khaireddine",
       "destinationStationId": "transtu_dest_sanhaja",
-      "firstDepartureFromHub": "04:35",
+      "firstDepartureFromHub": "04:50",
       "lastDepartureFromHub": "19:40",
-      "firstDepartureFromSuburb": "04:50",
-      "lastDepartureFromSuburb": null,
-      "peakFrequencyMinutes": null,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "firstDepartureFromSuburb": "04:35",
+      "lastDepartureFromSuburb": "19:20",
+      "peakFrequencyMinutes": 20,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
       "notes": "Frequency not specified in source",
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_khaireddine_ligne96",
@@ -145,16 +187,25 @@
       "direction": "forward",
       "originStationId": "transtu_hub_khaireddine",
       "destinationStationId": "transtu_dest_el_kabaa",
-      "firstDepartureFromHub": "04:35",
+      "firstDepartureFromHub": "04:50",
       "lastDepartureFromHub": "10:50",
-      "firstDepartureFromSuburb": "04:50",
-      "lastDepartureFromSuburb": null,
-      "peakFrequencyMinutes": null,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "firstDepartureFromSuburb": "04:35",
+      "lastDepartureFromSuburb": "11:05",
+      "peakFrequencyMinutes": 20,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
       "notes": "Limited service - last departure at 10:50 only. Frequency not specified.",
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_khaireddine_ligne97",
@@ -163,16 +214,25 @@
       "direction": "forward",
       "originStationId": "transtu_hub_khaireddine",
       "destinationStationId": "transtu_dest_cite_en_nassim",
-      "firstDepartureFromHub": "05:30",
+      "firstDepartureFromHub": "06:00",
       "lastDepartureFromHub": "18:00",
-      "firstDepartureFromSuburb": "06:00",
-      "lastDepartureFromSuburb": null,
-      "peakFrequencyMinutes": null,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "firstDepartureFromSuburb": "05:30",
+      "lastDepartureFromSuburb": "18:30",
+      "peakFrequencyMinutes": 60,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
       "notes": "Frequency not specified in source",
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_khaireddine_ligne98",
@@ -181,16 +241,25 @@
       "direction": "forward",
       "originStationId": "transtu_hub_khaireddine",
       "destinationStationId": "transtu_dest_jellou",
-      "firstDepartureFromHub": "05:20",
+      "firstDepartureFromHub": "06:10",
       "lastDepartureFromHub": "18:00",
-      "firstDepartureFromSuburb": "06:10",
-      "lastDepartureFromSuburb": null,
-      "peakFrequencyMinutes": null,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "firstDepartureFromSuburb": "05:20",
+      "lastDepartureFromSuburb": "17:10",
+      "peakFrequencyMinutes": 100,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
       "notes": "Frequency not specified in source",
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 20
     }
   ],
   "routeStops": [

@@ -31,10 +31,14 @@
       "cityName": "Tunis",
       "isMainHub": true,
       "order": 1,
-      "lat": 36.8000,
-      "lng": 10.1850,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.8,
+      "lng": 10.185,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_charguia",
@@ -44,10 +48,14 @@
       "cityName": "Tunis",
       "isMainHub": false,
       "order": 2,
-      "lat": 36.8300,
-      "lng": 10.2000,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.83,
+      "lng": 10.2,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_menzah6",
@@ -57,10 +65,14 @@
       "cityName": "Tunis",
       "isMainHub": false,
       "order": 3,
-      "lat": 36.8350,
-      "lng": 10.1900,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.835,
+      "lng": 10.19,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_cite_nasr",
@@ -70,10 +82,14 @@
       "cityName": "Ariana",
       "isMainHub": false,
       "order": 4,
-      "lat": 36.8800,
-      "lng": 10.2100,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.88,
+      "lng": 10.21,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_lacs_kram",
@@ -83,10 +99,14 @@
       "cityName": "Tunis",
       "isMainHub": false,
       "order": 5,
-      "lat": 36.8400,
-      "lng": 10.2800,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.84,
+      "lng": 10.28,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_marsa",
@@ -96,10 +116,14 @@
       "cityName": "La Marsa",
       "isMainHub": false,
       "order": 6,
-      "lat": 36.8780,
-      "lng": 10.3240,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.878,
+      "lng": 10.324,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_aeroport",
@@ -109,10 +133,14 @@
       "cityName": "Tunis",
       "isMainHub": false,
       "order": 7,
-      "lat": 36.8510,
+      "lat": 36.851,
       "lng": 10.2272,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_jebel_ahmar",
@@ -122,10 +150,14 @@
       "cityName": "Tunis",
       "isMainHub": false,
       "order": 8,
-      "lat": 36.8200,
-      "lng": 10.1600,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.82,
+      "lng": 10.16,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_10_decembre",
@@ -135,10 +167,14 @@
       "cityName": "Tunis",
       "isMainHub": false,
       "order": 9,
-      "lat": 36.8130,
-      "lng": 10.1690,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.813,
+      "lng": 10.169,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_ministere_affaires_etrangeres",
@@ -148,10 +184,14 @@
       "cityName": "Tunis",
       "isMainHub": false,
       "order": 10,
-      "lat": 36.8200,
-      "lng": 10.1850,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.82,
+      "lng": 10.185,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_omrane_superieur",
@@ -161,10 +201,14 @@
       "cityName": "Tunis",
       "isMainHub": false,
       "order": 11,
-      "lat": 36.8100,
-      "lng": 10.1750,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.81,
+      "lng": 10.175,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_jardins_menzah",
@@ -174,10 +218,14 @@
       "cityName": "Tunis",
       "isMainHub": false,
       "order": 12,
-      "lat": 36.8400,
-      "lng": 10.1950,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.84,
+      "lng": 10.195,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_ministere_sante",
@@ -187,10 +235,14 @@
       "cityName": "Tunis",
       "isMainHub": false,
       "order": 13,
-      "lat": 36.8150,
-      "lng": 10.1800,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.815,
+      "lng": 10.18,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_rabta",
@@ -200,10 +252,14 @@
       "cityName": "Tunis",
       "isMainHub": false,
       "order": 14,
-      "lat": 36.8000,
-      "lng": 10.1700,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.8,
+      "lng": 10.17,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_hub_intilaka",
@@ -213,10 +269,14 @@
       "cityName": "Tunis",
       "isMainHub": true,
       "order": 15,
-      "lat": 36.8200,
-      "lng": 10.1700,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.82,
+      "lng": 10.17,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_kalaat_alandalous",
@@ -226,10 +286,14 @@
       "cityName": "Ariana",
       "isMainHub": false,
       "order": 16,
-      "lat": 36.9200,
-      "lng": 10.1200,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.92,
+      "lng": 10.12,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_kalaa_jafar",
@@ -239,10 +303,14 @@
       "cityName": "Manouba",
       "isMainHub": false,
       "order": 17,
-      "lat": 36.8000,
-      "lng": 10.0800,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.8,
+      "lng": 10.08,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_univ_manouba",
@@ -254,8 +322,12 @@
       "order": 18,
       "lat": 36.8083,
       "lng": 10.0978,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     },
     {
       "id": "transtu_dest_sidi_bou_said",
@@ -265,10 +337,31 @@
       "cityName": "Carthage",
       "isMainHub": false,
       "order": 19,
-      "lat": 36.8710,
-      "lng": 10.3520,
-      "transportTypes": ["bus"],
-      "operatorsHere": ["transtu"]
+      "lat": 36.871,
+      "lng": 10.352,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
+    },
+    {
+      "id": "transtu_dest_sidi_salah_ettabaa",
+      "name": "Sidi Salah (Saheb Ettabaâ)",
+      "nameAr": "ساحة سلا",
+      "cityId": "tunis",
+      "cityName": "Tunis",
+      "isMainHub": false,
+      "order": 20,
+      "lat": 36.842,
+      "lng": 10.31,
+      "transportTypes": [
+        "bus"
+      ],
+      "operatorsHere": [
+        "transtu"
+      ]
     }
   ],
   "routes": [
@@ -284,10 +377,19 @@
       "firstDepartureFromSuburb": "04:15",
       "lastDepartureFromSuburb": "23:15",
       "peakFrequencyMinutes": 45,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_tunis_marine_ligne5t",
@@ -301,10 +403,19 @@
       "firstDepartureFromSuburb": "05:50",
       "lastDepartureFromSuburb": "20:45",
       "peakFrequencyMinutes": 45,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_tunis_marine_ligne50",
@@ -318,10 +429,19 @@
       "firstDepartureFromSuburb": "06:30",
       "lastDepartureFromSuburb": "20:00",
       "peakFrequencyMinutes": 30,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 35
     },
     {
       "id": "route_transtu_tunis_marine_ligne11",
@@ -334,11 +454,20 @@
       "lastDepartureFromHub": "19:30",
       "firstDepartureFromSuburb": "05:50",
       "lastDepartureFromSuburb": "18:40",
-      "peakFrequencyMinutes": 50,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "peakFrequencyMinutes": 30,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_tunis_marine_ligne28j",
@@ -351,11 +480,20 @@
       "lastDepartureFromHub": "17:10",
       "firstDepartureFromSuburb": "06:00",
       "lastDepartureFromSuburb": "17:40",
-      "peakFrequencyMinutes": 60,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "peakFrequencyMinutes": 50,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_tunis_marine_ligne35b",
@@ -369,27 +507,45 @@
       "firstDepartureFromSuburb": "05:00",
       "lastDepartureFromSuburb": "19:00",
       "peakFrequencyMinutes": 60,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_tunis_marine_ligne36",
-      "lineNumber": "36",
+      "lineNumber": "36ب",
       "name": "Tunis Marine → Ministère des Affaires Étrangères",
       "direction": "forward",
       "originStationId": "transtu_hub_tunis_marine",
-      "destinationStationId": "transtu_dest_ministere_affaires_etrangeres",
+      "destinationStationId": "transtu_dest_10_decembre",
       "firstDepartureFromHub": "07:30",
       "lastDepartureFromHub": "18:20",
       "firstDepartureFromSuburb": "08:00",
       "lastDepartureFromSuburb": "17:40",
-      "peakFrequencyMinutes": 100,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "peakFrequencyMinutes": 10,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_tunis_marine_ligne38b",
@@ -403,10 +559,19 @@
       "firstDepartureFromSuburb": "05:30",
       "lastDepartureFromSuburb": "19:10",
       "peakFrequencyMinutes": 30,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_tunis_marine_ligne38t",
@@ -420,10 +585,19 @@
       "firstDepartureFromSuburb": "05:30",
       "lastDepartureFromSuburb": "18:50",
       "peakFrequencyMinutes": 40,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_tunis_marine_ligne43",
@@ -436,12 +610,21 @@
       "lastDepartureFromHub": null,
       "firstDepartureFromSuburb": null,
       "lastDepartureFromSuburb": "14:20",
-      "peakFrequencyMinutes": 20,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "peakFrequencyMinutes": 40,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
       "notes": "Only hub to suburb times available",
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_tunis_marine_ligne43b",
@@ -454,11 +637,20 @@
       "lastDepartureFromHub": "14:15",
       "firstDepartureFromSuburb": "07:30",
       "lastDepartureFromSuburb": "13:30",
-      "peakFrequencyMinutes": 90,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "peakFrequencyMinutes": 20,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_tunis_marine_ligne150",
@@ -471,11 +663,20 @@
       "lastDepartureFromHub": "19:10",
       "firstDepartureFromSuburb": "05:15",
       "lastDepartureFromSuburb": "18:15",
-      "peakFrequencyMinutes": 60,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "peakFrequencyMinutes": 90,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 40
     },
     {
       "id": "route_transtu_tunis_marine_ligne151",
@@ -486,13 +687,22 @@
       "destinationStationId": "transtu_dest_aeroport",
       "firstDepartureFromHub": "05:30",
       "lastDepartureFromHub": "20:15",
-      "firstDepartureFromSuburb": "06:00",
+      "firstDepartureFromSuburb": "05:15",
       "lastDepartureFromSuburb": "19:45",
-      "peakFrequencyMinutes": 30,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "peakFrequencyMinutes": 60,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 35
     },
     {
       "id": "route_transtu_tunis_marine_ligne74",
@@ -506,10 +716,19 @@
       "firstDepartureFromSuburb": "05:45",
       "lastDepartureFromSuburb": "20:30",
       "peakFrequencyMinutes": 30,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_tunis_marine_ligne77",
@@ -522,12 +741,21 @@
       "lastDepartureFromHub": "18:30",
       "firstDepartureFromSuburb": "06:40",
       "lastDepartureFromSuburb": "19:10",
-      "peakFrequencyMinutes": 100,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "peakFrequencyMinutes": 30,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
       "notes": "Circular route",
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_tunis_marine_ligne527b",
@@ -541,10 +769,19 @@
       "firstDepartureFromSuburb": "05:45",
       "lastDepartureFromSuburb": "17:15",
       "peakFrequencyMinutes": 40,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 50
     },
     {
       "id": "route_transtu_tunis_marine_ligne104",
@@ -557,11 +794,20 @@
       "lastDepartureFromHub": "18:30",
       "firstDepartureFromSuburb": "05:30",
       "lastDepartureFromSuburb": "17:30",
-      "peakFrequencyMinutes": 120,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "peakFrequencyMinutes": 40,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 50
     },
     {
       "id": "route_transtu_tunis_marine_ligne347",
@@ -574,11 +820,20 @@
       "lastDepartureFromHub": "20:00",
       "firstDepartureFromSuburb": "05:40",
       "lastDepartureFromSuburb": "18:50",
-      "peakFrequencyMinutes": 40,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "peakFrequencyMinutes": 120,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 60
     },
     {
       "id": "route_transtu_tunis_marine_ligne635",
@@ -592,10 +847,19 @@
       "firstDepartureFromSuburb": "04:00",
       "lastDepartureFromSuburb": "22:50",
       "peakFrequencyMinutes": 10,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 35
     },
     {
       "id": "route_transtu_tunis_marine_ligne635a",
@@ -609,10 +873,19 @@
       "firstDepartureFromSuburb": "06:30",
       "lastDepartureFromSuburb": "18:45",
       "peakFrequencyMinutes": 30,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 40
     },
     {
       "id": "route_transtu_tunis_marine_ligne16th",
@@ -626,7 +899,68 @@
       "firstDepartureFromSuburb": "06:30",
       "lastDepartureFromSuburb": "18:00",
       "peakFrequencyMinutes": 20,
-      "operatingDays": [0, 1, 2, 3, 4, 5, 6],
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "zone": "urbaine",
+      "price": 0.5,
+      "trips": [],
+      "estimatedTripDurationMinutes": 25
+    },
+    {
+      "id": "route_transtu_tunis_marine_ligne36_10dec",
+      "lineNumber": "36",
+      "name": "Tunis Marine → 10 Décembre",
+      "direction": "forward",
+      "originStationId": "transtu_hub_tunis_marine",
+      "destinationStationId": "transtu_dest_10_decembre",
+      "firstDepartureFromHub": "05:30",
+      "lastDepartureFromHub": "19:30",
+      "firstDepartureFromSuburb": "05:00",
+      "lastDepartureFromSuburb": "19:00",
+      "peakFrequencyMinutes": 60,
+      "estimatedTripDurationMinutes": 15,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "zone": "urbaine",
+      "price": 0.5,
+      "trips": []
+    },
+    {
+      "id": "route_transtu_tunis_marine_ligne_sidi_salah",
+      "lineNumber": "635أ",
+      "name": "Tunis Marine → Sidi Salah (Saheb Ettabaâ)",
+      "direction": "forward",
+      "originStationId": "transtu_hub_tunis_marine",
+      "destinationStationId": "transtu_dest_sidi_salah_ettabaa",
+      "firstDepartureFromHub": "05:40",
+      "lastDepartureFromHub": "20:00",
+      "firstDepartureFromSuburb": "06:30",
+      "lastDepartureFromSuburb": "18:45",
+      "peakFrequencyMinutes": 30,
+      "estimatedTripDurationMinutes": 35,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "zone": "urbaine",
       "price": 0.5,
       "trips": []
@@ -704,11 +1038,35 @@
       "stationId": "transtu_dest_sidi_bou_said",
       "stopOrder": 2,
       "estimatedArrivalTimeMinutes": 30
+    },
+    {
+      "routeId": "route_transtu_tunis_marine_ligne36_10dec",
+      "stationId": "transtu_hub_tunis_marine",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_tunis_marine_ligne36_10dec",
+      "stationId": "transtu_dest_10_decembre",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 15
+    },
+    {
+      "routeId": "route_transtu_tunis_marine_ligne_sidi_salah",
+      "stationId": "transtu_hub_tunis_marine",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_tunis_marine_ligne_sidi_salah",
+      "stationId": "transtu_dest_sidi_salah_ettabaa",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 35
     }
   ],
   "summary": {
-    "total_routes": 21,
-    "total_stations": 19,
+    "total_routes": 23,
+    "total_stations": 20,
     "hub_location": "Tunis Marine, Tunis Centre",
     "sloganAr": "أينما كنتم، نقل تونس ترافقكم",
     "sloganFr": "Partout, TRANSTU vous accompagne"

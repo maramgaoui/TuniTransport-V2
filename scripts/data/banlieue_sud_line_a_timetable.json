@@ -24,7 +24,7 @@
     ]
   },
   "stations": [
-    { "id": "bs_tunis_ville", "name": "Tunis Ville", "nameAr": "تونس العاصمة", "cityId": "tunis", "section": 1, "lat": 36.7992, "lng": 10.1802, "offsetMin": 0, "isMainHub": true, "order": 1 },
+    // bs_tunis_ville now referenced from shared_stations.json
     { "id": "bs_jebel_jelloud", "name": "Jebel Jelloud", "nameAr": "جبل الجلود", "cityId": "tunis", "section": 1, "lat": 36.78, "lng": 10.187, "offsetMin": 9, "isMainHub": false, "order": 3 },
     { "id": "bs_megrine_riadh", "name": "Mégrine Riadh", "nameAr": "مقرين الرياض", "cityId": "tunis", "section": 2, "lat": 36.77, "lng": 10.204, "offsetMin": 11, "isMainHub": false, "order": 4 },
     { "id": "bs_megrine", "name": "Mégrine", "nameAr": "مقرين", "cityId": "tunis", "section": 2, "lat": 36.767, "lng": 10.214, "offsetMin": 13, "isMainHub": false, "order": 5 },

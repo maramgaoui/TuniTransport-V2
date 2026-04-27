@@ -19,7 +19,7 @@ class BusServiceRepository {
     'transtu_hub_morneg',
     'transtu_hub_tbourba',
     'transtu_hub_slimlen_kahia',
-    'transtu_hub_bellevie',
+    'transtu_hub_bellevue',
     'transtu_hub_carthage',
     'transtu_hub_jardin_thameur',
     'transtu_hub_montazah',
@@ -35,7 +35,6 @@ class BusServiceRepository {
     final snap = await _firestore
       .collection('bus_services')
       .where('hubStationId', isEqualTo: hubStationId)
-      .where('operatingDays', arrayContains: DateTime.now().weekday % 7)
       .get(const GetOptions(source: Source.server));
     return snap.docs.map(BusService.fromFirestore).toList()
       ..sort((a, b) => (a.firstDepartureFromHub ?? '99:99')
@@ -121,44 +120,118 @@ class BusServiceRepository {
   String? getHubForDestination(String destinationId) {
     // Map of destination station IDs to their hub
     const destinationToHub = {
-      // 10 December hub destinations
-      'transtu_dest_sidi_sofiane': 'transtu_hub_10_decembre',
-      'transtu_dest_cité_mellaha': 'transtu_hub_10_decembre',
-      'transtu_dest_ghazala': 'transtu_hub_10_decembre',
-      'transtu_dest_raoued': 'transtu_hub_10_decembre',
-      'transtu_dest_kalaat_andalous': 'transtu_hub_10_decembre',
-      'transtu_dest_sidi_omar': 'transtu_hub_10_decembre',
-      'transtu_dest_el_brarjia': 'transtu_hub_10_decembre',
-      'transtu_dest_ariana_brarjia': 'transtu_hub_10_decembre',
-      'transtu_dest_la_goulette': 'transtu_hub_10_decembre',
-      'transtu_dest_cité_bakri': 'transtu_hub_10_decembre',
-      'transtu_dest_nour_jafar': 'transtu_hub_10_decembre',
-      
-      // Barcelone hub destinations
-      'transtu_dest_medina_jdida': 'transtu_hub_barcelone',
-      'transtu_dest_hay_thameur': 'transtu_hub_barcelone',
-      'transtu_dest_mornag': 'transtu_hub_barcelone',
-      'transtu_dest_mornag_challa': 'transtu_hub_barcelone',
-      'transtu_dest_ben_arous': 'transtu_hub_barcelone',
-      'transtu_dest_yasminettes': 'transtu_hub_barcelone',
-      'transtu_dest_ibn_sina': 'transtu_hub_barcelone',
-      'transtu_dest_boumhal': 'transtu_hub_barcelone',
-      'transtu_dest_boumhal_gp1': 'transtu_hub_barcelone',
-      'transtu_dest_port_rades': 'transtu_hub_barcelone',
-      'transtu_dest_megrine_coteau': 'transtu_hub_barcelone',
-      'transtu_dest_nouvelle_medina_1': 'transtu_hub_barcelone',
+      // ── 10 Décembre hub ──────────────────────────────────────────────────
+      'transtu_dest_sidi_sofiane':        'transtu_hub_10_decembre',
+      'transtu_dest_cite_mellaha':        'transtu_hub_10_decembre',
+      'transtu_dest_raoued_plage':        'transtu_hub_10_decembre',
+      'transtu_dest_cite_ghazala':        'transtu_hub_10_decembre',
+      'transtu_dest_sidi_omar':           'transtu_hub_10_decembre',
+      'transtu_dest_el_brarjia':          'transtu_hub_10_decembre',
+      'transtu_dest_kalaat_alandalous':   'transtu_hub_10_decembre',
+      'transtu_dest_ariana_el_brarjia':   'transtu_hub_10_decembre',
+      'transtu_dest_la_goulette':         'transtu_hub_10_decembre',
+      'transtu_dest_cite_bakri':          'transtu_hub_10_decembre',
+      'transtu_dest_nour_jafar':          'transtu_hub_10_decembre',
+      // legacy / alternate IDs kept for backwards compat
+      'transtu_dest_cité_mellaha':        'transtu_hub_10_decembre',
+      'transtu_dest_ghazala':             'transtu_hub_10_decembre',
+      'transtu_dest_raoued':              'transtu_hub_10_decembre',
+      'transtu_dest_kalaat_andalous':     'transtu_hub_10_decembre',
+      'transtu_dest_ariana_brarjia':      'transtu_hub_10_decembre',
+      'transtu_dest_cité_bakri':          'transtu_hub_10_decembre',
+
+      // ── Barcelone hub ─────────────────────────────────────────────────────
+      'transtu_dest_medina_jdida':        'transtu_hub_barcelone',
+      'transtu_dest_hay_thameur':         'transtu_hub_barcelone',
+      'transtu_dest_mornag':              'transtu_hub_barcelone',
+      'transtu_dest_mornag_challa':       'transtu_hub_barcelone',
+      'transtu_dest_ben_arous':           'transtu_hub_barcelone',
+      'transtu_dest_yasminettes':         'transtu_hub_barcelone',
+      'transtu_dest_ibn_sina':            'transtu_hub_barcelone',
+      'transtu_dest_boumhal':             'transtu_hub_barcelone',
+      'transtu_dest_boumhal_gp1':         'transtu_hub_barcelone',
+      'transtu_dest_port_rades':          'transtu_hub_barcelone',
+      'transtu_dest_megrine_coteau':      'transtu_hub_barcelone',
+      'transtu_dest_nouvelle_medina_1':   'transtu_hub_barcelone',
       'transtu_dest_nouvelle_medina_123': 'transtu_hub_barcelone',
-      'transtu_dest_rades_foret': 'transtu_hub_barcelone',
-      'transtu_dest_megrine_chaker': 'transtu_hub_barcelone',
-      'transtu_dest_el_mourouj_1': 'transtu_hub_barcelone',
-      'transtu_dest_jaama_el_houda': 'transtu_hub_barcelone',
-      'transtu_hub_morneg': 'transtu_hub_barcelone',
-      
-      // Ariana hub destinations
-      'transtu_dest_manji_salim': 'transtu_hub_ariana',
-      'transtu_dest_sidi_salah': 'transtu_hub_ariana',
-      'transtu_dest_menzah9': 'transtu_hub_ariana',
-      'transtu_dest_manouba': 'transtu_hub_ariana',
+      'transtu_dest_rades_foret':         'transtu_hub_barcelone',
+      'transtu_dest_megrine_chaker':      'transtu_hub_barcelone',
+      'transtu_dest_el_mourouj_1':        'transtu_hub_barcelone',
+      'transtu_dest_jaama_el_houda':      'transtu_hub_barcelone',
+      'transtu_hub_morneg':               'transtu_hub_barcelone',
+
+      // ── Ariana hub ────────────────────────────────────────────────────────
+      'transtu_dest_manji_salim':         'transtu_hub_ariana',
+      'transtu_dest_sidi_salah':          'transtu_hub_ariana',
+      'transtu_dest_menzah9':             'transtu_hub_ariana',
+      'transtu_dest_manouba':             'transtu_hub_ariana',
+
+      // ── Bellevue hub ──────────────────────────────────────────────────────
+      'transtu_dest_centre_capitale_moh5':   'transtu_hub_bellevue',
+      'transtu_dest_centre_capitale_9avril': 'transtu_hub_bellevue',
+      'transtu_dest_salambo':                'transtu_hub_bellevue',
+
+      // ── Carthage hub ──────────────────────────────────────────────────────
+      'transtu_dest_souk_merkezi':        'transtu_hub_carthage',
+      'transtu_dest_farch_enneyebi':      'transtu_hub_carthage',
+      'transtu_dest_cite_riadh':          'transtu_hub_carthage',
+      'transtu_dest_bornaz_jedid2':       'transtu_hub_carthage',
+      'transtu_dest_naasan1':             'transtu_hub_carthage',
+      'transtu_dest_cite_salam':          'transtu_hub_carthage',
+      'transtu_dest_moustawdaa_zahrouni': 'transtu_hub_carthage',
+
+      // ── Khaireddine hub ───────────────────────────────────────────────────
+      'transtu_dest_cite_el_warda':       'transtu_hub_khaireddine',
+      'transtu_dest_sanhaja':             'transtu_hub_khaireddine',
+      'transtu_dest_el_kabaa':            'transtu_hub_khaireddine',
+      'transtu_dest_cite_en_nassim':      'transtu_hub_khaireddine',
+      'transtu_dest_jellou':              'transtu_hub_khaireddine',
+
+      // ── Tunis Marine hub ──────────────────────────────────────────────────
+      'transtu_dest_charguia':                      'transtu_hub_tunis_marine',
+      'transtu_dest_menzah6':                       'transtu_hub_tunis_marine',
+      'transtu_dest_cite_nasr':                     'transtu_hub_tunis_marine',
+      'transtu_dest_lacs_kram':                     'transtu_hub_tunis_marine',
+      'transtu_dest_marsa':                         'transtu_hub_tunis_marine',
+      'transtu_dest_aeroport':                      'transtu_hub_tunis_marine',
+      'transtu_dest_jebel_ahmar':                   'transtu_hub_tunis_marine',
+      'transtu_dest_10_decembre':                   'transtu_hub_tunis_marine',
+      'transtu_dest_ministere_affaires_etrangeres': 'transtu_hub_tunis_marine',
+      'transtu_dest_omrane_superieur':              'transtu_hub_tunis_marine',
+      'transtu_dest_jardins_menzah':                'transtu_hub_tunis_marine',
+      'transtu_dest_ministere_sante':               'transtu_hub_tunis_marine',
+      'transtu_dest_rabta':                         'transtu_hub_tunis_marine',
+      'transtu_dest_kalaa_jafar':                   'transtu_hub_tunis_marine',
+      'transtu_dest_univ_manouba':                  'transtu_hub_tunis_marine',
+      'transtu_dest_sidi_bou_said':                 'transtu_hub_tunis_marine',
+      'transtu_dest_sidi_salah_ettabaa':            'transtu_hub_tunis_marine',
+      'transtu_dest_intilaka':                      'transtu_hub_tunis_marine',
+
+      // ── Tbourba hub ───────────────────────────────────────────────────────
+      'transtu_dest_zone_industrielle': 'transtu_hub_tbourba',
+      'transtu_dest_borj_toumi':        'transtu_hub_tbourba',
+      'transtu_dest_edkhila':           'transtu_hub_tbourba',
+      // Note: charguia also appears under marine — tbourba takes precedence
+      // for routes originating from tbourba
+      'transtu_hub_khaireddine':        'transtu_hub_tbourba',
+
+      // ── Ali Belhouane (Bel Houan) hub ─────────────────────────────────────
+      'transtu_dest_ksar_said2':        'transtu_hub_bel_houan',
+      'transtu_dest_tadhamon':          'transtu_hub_bel_houan',
+      'transtu_dest_cite_bassatine':    'transtu_hub_bel_houan',
+      'transtu_dest_habibiya2':         'transtu_hub_bel_houan',
+      'transtu_dest_cite_wouroud2':     'transtu_hub_bel_houan',
+      'transtu_dest_jelou':             'transtu_hub_bel_houan',
+      'transtu_dest_cite_tahrir':       'transtu_hub_bel_houan',
+      'transtu_dest_qantarat_bizert':   'transtu_hub_bel_houan',
+      'transtu_dest_bach_hambia':       'transtu_hub_bel_houan',
+      'transtu_dest_chorfech':          'transtu_hub_bel_houan',
+      'transtu_dest_tabria':            'transtu_hub_bel_houan',
+      'transtu_dest_mansoura':          'transtu_hub_bel_houan',
+      'transtu_dest_zouitina':          'transtu_hub_bel_houan',
+      'transtu_dest_douar_hicher':      'transtu_hub_bel_houan',
+      'transtu_dest_khaled_ben_walid':  'transtu_hub_bel_houan',
+      'transtu_dest_cite_18janvier':    'transtu_hub_bel_houan',
     };
     
     return destinationToHub[destinationId];

@@ -167,7 +167,8 @@
       ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_tebourba_ligne42t",
@@ -192,7 +193,8 @@
       ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_tebourba_ligne46",
@@ -217,7 +219,8 @@
       ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 35
     },
     {
       "id": "route_transtu_tebourba_ligne66",
@@ -242,11 +245,12 @@
       ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_tebourba_ligne_116",
-      "lineNumber": "/116",
+      "lineNumber": "116",
       "name": "Tebourba → Kabaa",
       "direction": "forward",
       "originStationId": "transtu_hub_tbourba",
@@ -267,11 +271,12 @@
       ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 40
     },
     {
       "id": "route_transtu_tebourba_ligne42",
-      "lineNumber": "42",
+      "lineNumber": "42أ",
       "name": "Tebourba → Kabaa (via 42)",
       "direction": "forward",
       "originStationId": "transtu_hub_tbourba",
@@ -292,7 +297,8 @@
       ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 45
     },
     {
       "id": "route_transtu_tebourba_ligne542",
@@ -317,7 +323,8 @@
       ],
       "zone": "urbaine",
       "price": 0.5,
-      "trips": []
+      "trips": [],
+      "estimatedTripDurationMinutes": 45
     }
   ],
   "routeStops": [
@@ -369,14 +376,14 @@
       "stopOrder": 2,
       "estimatedArrivalTimeMinutes": 30
     },
-    {
-      "routeId": "route_transtu_tebourba_ligne116",
+      {
+        "routeId": "route_transtu_tebourba_ligne_116",
       "stationId": "transtu_hub_tbourba",
       "stopOrder": 1,
       "estimatedArrivalTimeMinutes": 0
     },
-    {
-      "routeId": "route_transtu_tebourba_ligne116",
+      {
+        "routeId": "route_transtu_tebourba_ligne_116",
       "stationId": "transtu_hub_kabaa",
       "stopOrder": 2,
       "estimatedArrivalTimeMinutes": 40

@@ -88,7 +88,7 @@ class StationRepository {
     'transtu_hub_carthage':      ['carthage', 'carthage bus'],
     'transtu_hub_charguia':      ['charguia', 'charguia bus', 'sharqiya', 'el charguia', 'la charguia'],
     'transtu_hub_intilaka':      ['intilaka', 'intileka', 'intilaqa', 'انطلاقة'],
-    'transtu_hub_bellevie':      ['bellevue', 'bellevie', 'belle vue'],
+    'transtu_hub_bellevue':      ['bellevue', 'bellevie', 'belle vue', 'belvédère', 'belvedere'],
     'transtu_hub_bel_houan':     ['ali belhouan', 'bel houan', 'belhouan', 'belhouane', 'علي بلهوان'],
     'transtu_hub_kabaa':         ['kabaa', 'قباعة'],
     'transtu_hub_khaireddine':   ['kheireddine', 'khaireddine', 'khaireddin', 'kheredine'],
@@ -132,13 +132,77 @@ class StationRepository {
     'transtu_dest_nour_jafar':     ['nour jafar', 'jafar', 'نور جعفر'],
     
     // Ariana hub destinations  
-    'transtu_dest_manji_salim':    ['manji salim', 'cité manji salim', 'cite manji', 'حي منجي سليم'],
+    'transtu_dest_manji_salim':    ['manji salim', 'cité manji salim', 'cite manji', 'حي منجي سليم', 'mongi slim', 'cite mongi slim', 'cité mongi slim'],
     'transtu_dest_sidi_salah':     ['sidi salah', 'سيدي صالح'],
-    'transtu_dest_menzah9':        ['menzah 9', 'menzah9', 'منزه 9', 'المنتزه 9'],
-    'transtu_dest_manouba':        ['manouba', 'mannouba', 'منوبة'],
+    'transtu_dest_menzah9':        ['menzah 9', 'menzah9', 'منزه 9', 'المنتزه 9', 'el menzah 9'],
+    'transtu_dest_manouba':        ['manouba', 'mannouba', 'منوبة', 'la manouba'],
+
+    // Bellevue hub destinations
+    'transtu_dest_centre_capitale_moh5':   ['centre capitale via mohamed 5', 'centre ville mohamed 5', 'mohamed 5', 'mohammed v', 'cercle centre capitale', 'cercle centre ville via mohamed 5'],
+    'transtu_dest_centre_capitale_9avril': ['centre capitale via 9 avril', 'centre ville 9 avril', '9 avril', 'cercle centre capitale 9 avril', 'cercle centre ville via 9 avril'],
+    'transtu_dest_salambo':                ['salambo', 'salammbo', 'salammbô', 'صلامبو'],
+
+    // Carthage hub destinations
+    'transtu_dest_souk_merkezi':        ['marche central', 'marché central', 'souk central', 'souk merkezi', 'السوق المركزي'],
+    'transtu_dest_farch_enneyebi':      ['fouchana', 'frech ennabi', 'farch enneyebi', 'فرش العنابي'],
+    'transtu_dest_cite_riadh':          ['cite riadh', 'cité riadh', 'حي الرياض'],
+    'transtu_dest_bornaz_jedid2':       ['bir jdid 2', 'bir jedid 2', 'bornaz jedid 2', 'بئر الجديد 2'],
+    'transtu_dest_naasan1':             ['naassen 1', 'naasan 1', 'نعسان 1'],
+    'transtu_dest_cite_salam':          ['cite essalem', 'cité essalem', 'حي السلام'],
+    'transtu_dest_moustawdaa_zahrouni': ['depot zahrouni', 'dépôt zahrouni', 'zahrouni', 'مستودع الزهروني'],
+
+    // Khaireddine hub destinations
+    'transtu_dest_cite_el_warda':    ['cite el warda', 'cité wouroud 2', 'cite wouroud', 'حي الوردة 2'],
+    'transtu_dest_sanhaja':          ['sanhaja', 'صنهاجة'],
+    'transtu_dest_el_kabaa':         ['kabaa', 'kebaâ', 'el kabaa', 'قباعة', 'la kabaa'],
+    'transtu_dest_cite_en_nassim':   ['cite nassim', 'cité nassim', 'hay nassim', 'حي النسيم'],
+    'transtu_dest_jellou':           ['jellou', 'jelou', 'jallou', 'جلو'],
+
+    // Tunis Marine hub destinations
+    'transtu_dest_charguia':                      ['charguia', 'el charguia', 'la charguia', 'الشرقية'],
+    'transtu_dest_menzah6':                       ['menzah 6', 'menzah6', 'el menzah 6', 'المنزه 6'],
+    'transtu_dest_cite_nasr':                     ['hay ennasr', 'cite ennasr', 'cité ennasr', 'حي النصر'],
+    'transtu_dest_lacs_kram':                     ['berges du lac', 'kram', 'le kram', 'lacs kram', 'el bahira el karam', 'البحيرة', 'المرسى'],
+    'transtu_dest_marsa':                         ['el marsa', 'la marsa', 'marsa', 'المرسى'],
+    'transtu_dest_aeroport':                      ['aeroport', 'airport', 'aéroport', 'المطار'],
+    'transtu_dest_jebel_ahmar':                   ['jebel ahmar', 'djebel el ahmar', 'جبل الأحمر'],
+    'transtu_dest_10_decembre':                   ['10 decembre', '10 décembre', 'dix decembre', '10 ديسمبر'],
+    'transtu_dest_ministere_affaires_etrangeres': ['ministere affaires etrangeres', 'ministère affaires étrangères', 'mae', 'وزارة الخارجية'],
+    'transtu_dest_omrane_superieur':              ['omrane superieur', 'el omrane superieur', 'العمران الأعلى'],
+    'transtu_dest_jardins_menzah':                ['jardins menzah', 'jardins menzeh', 'hadayek menzah', 'حدائق المنزه'],
+    'transtu_dest_ministere_sante':               ['ministere sante', 'ministère santé', 'وزارة الصحة'],
+    'transtu_dest_rabta':                         ['ennahla rabta', 'rabta', 'الرابطة', 'ennahla'],
+    'transtu_dest_intilaka':                      ['intilaka', 'intileka', 'انطلاقة', 'el intilaka'],
+    'transtu_dest_kalaa_jafar':                   ['karyet jaafer', 'karyet jaafar', 'karya jafar', 'قرية جعفر'],
+    'transtu_dest_univ_manouba':                  ['universite manouba', 'université manouba', 'univ manouba', 'جامعة منوبة'],
+    'transtu_dest_sidi_bou_said':                 ['sidi bou said', 'sidi bousaid', 'سيدي بوسعيد'],
+    'transtu_dest_sidi_salah_ettabaa':            ['sidi salah saheb ettabaa', 'sidi salah ettabaa', 'ساحة سلا', 'saheb ettabaa'],
+
+    // Tbourba hub destinations
+    'transtu_dest_zone_industrielle': ['zone industrielle manouba', 'zi manouba', 'المنطقة الصناعية منوبة'],
+    'transtu_dest_borj_toumi':        ['borj toumi', 'برج التومي'],
+    'transtu_dest_edkhila':           ['eddekhila', 'edkhila', 'dakhla', 'الدخيلة'],
+
+    // Ali Belhouane hub destinations
+    'transtu_dest_ksar_said2':       ['ksar said 2', 'ksar saïd 2', 'قصر سعيد 2'],
+    'transtu_dest_tadhamon':         ['tadhamon', 'ettadhamen', 'lycee ettadhamen', 'حي التضامن', 'معهد حي التضامن'],
+    'transtu_dest_cite_bassatine':   ['cite bassatine', 'cité bassatine', 'حي البساتين'],
+    'transtu_dest_habibiya2':        ['habibia 2', 'habibiya 2', 'الحبيبية 2'],
+    'transtu_dest_cite_wouroud2':    ['cite el ouarda 2', 'cité wouroud 2', 'حي الوردة 2'],
+    'transtu_dest_jelou':            ['jelou', 'jallou', 'جلو'],
+    'transtu_dest_cite_tahrir':      ['cite ettahrir', 'cité ettahrir', 'حي التحرير'],
+    'transtu_dest_qantarat_bizert':  ['pont de bizerte', 'qantarat bizert', 'قنطرة بنزرت'],
+    'transtu_dest_bach_hambia':      ['tebourba', 'tbourba', 'طبربة'],
+    'transtu_dest_chorfech':         ['chorfech', 'chorfeche', 'شرفش'],
+    'transtu_dest_tabria':           ['tabria', 'طابرية'],
+    'transtu_dest_mansoura':         ['mansoura', 'منصورة'],
+    'transtu_dest_zouitina':         ['zouitina', 'الزويتينة'],
+    'transtu_dest_douar_hicher':     ['douar hicher', 'دوار هيشر'],
+    'transtu_dest_khaled_ben_walid': ['cite khaled walid', 'cité khaled ibn walid', 'حي خالد ابن الوليد'],
+    'transtu_dest_cite_18janvier':   ['cite 18 janvier', 'cité 18 janvier', 'حي 18 جانفي'],
   };
 
-  StationRepository(this._firestore);
+    StationRepository(this._firestore);
 
   bool isMetroSahelStation(Station station) {
     return station.operatorsHere.contains('sncft_sahel');
@@ -476,4 +540,5 @@ class StationRepository {
 
     return dp[s.length][t.length];
   }
+
 }

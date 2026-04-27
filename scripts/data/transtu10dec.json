@@ -186,7 +186,8 @@
       "lastDepartureFromSuburb": "19:25",
       "peakFrequencyMinutes": 40,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_10dec_ligne6b",
@@ -217,7 +218,8 @@
       "lastDepartureFromSuburb": "20:25",
       "peakFrequencyMinutes": 30,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 15
     },
     {
       "id": "route_transtu_10dec_ligne18t",
@@ -248,7 +250,8 @@
       "lastDepartureFromSuburb": "20:50",
       "peakFrequencyMinutes": 35,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 35
     },
     {
       "id": "route_transtu_10dec_ligne27",
@@ -279,7 +282,8 @@
       "lastDepartureFromSuburb": "21:20",
       "peakFrequencyMinutes": 25,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_10dec_ligne27a",
@@ -310,7 +314,8 @@
       "lastDepartureFromSuburb": "21:00",
       "peakFrequencyMinutes": 20,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_10dec_ligne27t",
@@ -341,7 +346,8 @@
       "lastDepartureFromSuburb": "21:00",
       "peakFrequencyMinutes": 90,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_10dec_ligne27E",
@@ -372,7 +378,8 @@
       "lastDepartureFromSuburb": "20:05",
       "peakFrequencyMinutes": 45,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_10dec_ligne44j",
@@ -403,7 +410,8 @@
       "lastDepartureFromSuburb": "17:30",
       "peakFrequencyMinutes": 120,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 45
     },
     {
       "id": "route_transtu_10dec_ligne27j",
@@ -434,7 +442,8 @@
       "lastDepartureFromSuburb": "20:05",
       "peakFrequencyMinutes": 45,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_10dec_ligne47",
@@ -465,7 +474,8 @@
       "lastDepartureFromSuburb": "20:55",
       "peakFrequencyMinutes": 35,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_10dec_ligne62",
@@ -496,7 +506,8 @@
       "lastDepartureFromSuburb": "20:20",
       "peakFrequencyMinutes": 40,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_10dec_ligne62a",
@@ -527,7 +538,8 @@
       "lastDepartureFromSuburb": "17:55",
       "peakFrequencyMinutes": 60,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_10dec_ligne35t",
@@ -558,7 +570,8 @@
       "lastDepartureFromSuburb": "19:15",
       "peakFrequencyMinutes": 90,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_10dec_ligne6_rev",
@@ -589,7 +602,8 @@
           ],
           "terminatesAtStationId": "transtu_hub_10_decembre"
         }
-      ]
+      ],
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_10dec_ligne6b_rev",
@@ -620,7 +634,8 @@
           ],
           "terminatesAtStationId": "transtu_hub_10_decembre"
         }
-      ]
+      ],
+      "estimatedTripDurationMinutes": 15
     },
     {
       "id": "route_transtu_10dec_ligne18t_rev",
@@ -651,7 +666,8 @@
           ],
           "terminatesAtStationId": "transtu_hub_10_decembre"
         }
-      ]
+      ],
+      "estimatedTripDurationMinutes": 35
     },
     {
       "id": "route_transtu_10dec_ligne27_rev",
@@ -682,7 +698,8 @@
           ],
           "terminatesAtStationId": "transtu_hub_10_decembre"
         }
-      ]
+      ],
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_10dec_ligne27a_rev",
@@ -713,7 +730,8 @@
           ],
           "terminatesAtStationId": "transtu_hub_10_decembre"
         }
-      ]
+      ],
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_10dec_ligne27t_rev",
@@ -744,7 +762,8 @@
           ],
           "terminatesAtStationId": "transtu_hub_10_decembre"
         }
-      ]
+      ],
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_10dec_ligne27E_rev",
@@ -775,7 +794,8 @@
           ],
           "terminatesAtStationId": "transtu_hub_10_decembre"
         }
-      ]
+      ],
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_10dec_ligne44j_rev",
@@ -806,7 +826,8 @@
           ],
           "terminatesAtStationId": "transtu_hub_10_decembre"
         }
-      ]
+      ],
+      "estimatedTripDurationMinutes": 45
     },
     {
       "id": "route_transtu_10dec_ligne27j_rev",
@@ -837,7 +858,8 @@
           ],
           "terminatesAtStationId": "transtu_hub_10_decembre"
         }
-      ]
+      ],
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_10dec_ligne47_rev",
@@ -868,7 +890,8 @@
           ],
           "terminatesAtStationId": "transtu_hub_10_decembre"
         }
-      ]
+      ],
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_10dec_ligne62_rev",
@@ -899,7 +922,8 @@
           ],
           "terminatesAtStationId": "transtu_hub_10_decembre"
         }
-      ]
+      ],
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_10dec_ligne62a_rev",
@@ -930,7 +954,8 @@
           ],
           "terminatesAtStationId": "transtu_hub_10_decembre"
         }
-      ]
+      ],
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_10dec_ligne35t_rev",
@@ -950,6 +975,89 @@
         {
           "tripNumber": "35t_1_rev",
           "departureTime": "05:45",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_hub_10_decembre"
+        }
+      ],
+      "estimatedTripDurationMinutes": 25
+    },
+    {
+      "id": "route_transtu_10dec_ligne162",
+      "lineNumber": "162",
+      "name": "10 Décembre → Sidi Omar (162)",
+      "direction": "forward",
+      "originStationId": "transtu_hub_10_decembre",
+      "destinationStationId": "transtu_dest_sidi_omar",
+      "firstDepartureFromHub": "05:55",
+      "lastDepartureFromHub": "21:00",
+      "firstDepartureFromSuburb": "04:55",
+      "lastDepartureFromSuburb": "17:55",
+      "peakFrequencyMinutes": 60,
+      "estimatedTripDurationMinutes": 25,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "zone": "urbaine",
+      "price": 0.5,
+      "trips": [
+        {
+          "tripNumber": "162_1",
+          "departureTime": "05:55",
+          "operatingDays": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "terminatesAtStationId": "transtu_dest_sidi_omar"
+        }
+      ]
+    },
+    {
+      "id": "route_transtu_10dec_ligne162_rev",
+      "lineNumber": "162",
+      "name": "Sidi Omar → 10 Décembre (162)",
+      "direction": "reverse",
+      "originStationId": "transtu_dest_sidi_omar",
+      "destinationStationId": "transtu_hub_10_decembre",
+      "firstDepartureFromHub": "04:55",
+      "lastDepartureFromHub": "17:55",
+      "firstDepartureFromSuburb": "05:55",
+      "lastDepartureFromSuburb": "21:00",
+      "peakFrequencyMinutes": 60,
+      "estimatedTripDurationMinutes": 25,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "zone": "urbaine",
+      "price": 0.5,
+      "trips": [
+        {
+          "tripNumber": "162_1_rev",
+          "departureTime": "04:55",
           "operatingDays": [
             0,
             1,
@@ -1276,10 +1384,34 @@
       "stationId": "transtu_hub_10_decembre",
       "stopOrder": 2,
       "estimatedArrivalTimeMinutes": 30
+    },
+    {
+      "routeId": "route_transtu_10dec_ligne162",
+      "stationId": "transtu_hub_10_decembre",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_10dec_ligne162",
+      "stationId": "transtu_dest_sidi_omar",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 25
+    },
+    {
+      "routeId": "route_transtu_10dec_ligne162_rev",
+      "stationId": "transtu_dest_sidi_omar",
+      "stopOrder": 1,
+      "estimatedArrivalTimeMinutes": 0
+    },
+    {
+      "routeId": "route_transtu_10dec_ligne162_rev",
+      "stationId": "transtu_hub_10_decembre",
+      "stopOrder": 2,
+      "estimatedArrivalTimeMinutes": 25
     }
   ],
   "pricing": {
-    "currency": "0.500TND",
+    "currency": "TND",
     "notes": "TRANSTU urban fare: 0.500 DT for all routes from 10 Décembre hub.",
     "estimatedFares": [
       {
@@ -1307,6 +1439,7 @@
         "to": "transtu_dest_cite_ghazala",
         "price": 0.5
       }
-    ]
+    ],
+    "baseFare": 0.5
   }
 }

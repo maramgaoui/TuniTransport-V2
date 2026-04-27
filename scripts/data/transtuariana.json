@@ -25,7 +25,8 @@
         "ariana",
         "أريانة",
         "hub ariana"
-      ]
+      ],
+      "cityName": "Ariana"
     },
     {
       "id": "transtu_dest_manji_salim",
@@ -41,7 +42,8 @@
         "monji slim",
         "منجي سليم",
         "hay monji"
-      ]
+      ],
+      "cityName": "Ariana"
     },
     {
       "id": "transtu_dest_sidi_salah",
@@ -51,7 +53,8 @@
       "order": 3,
       "lat": 36.855,
       "lng": 10.185,
-      "isMainHub": false
+      "isMainHub": false,
+      "cityName": "Ariana"
     },
     {
       "id": "transtu_dest_kalaat_alandalous",
@@ -66,7 +69,8 @@
         "kalaat andalous",
         "klaat andalous",
         "قلعة الأندلس"
-      ]
+      ],
+      "cityName": "Ariana"
     },
     {
       "id": "transtu_dest_menzah9",
@@ -82,7 +86,8 @@
         "menzah 9",
         "المنزه 9",
         "منزه 9"
-      ]
+      ],
+      "cityName": "Tunis"
     },
     {
       "id": "transtu_dest_manouba",
@@ -96,7 +101,8 @@
       "searchAliases": [
         "manouba",
         "منوبة"
-      ]
+      ],
+      "cityName": "Manouba"
     }
   ],
   "routes": [
@@ -129,7 +135,17 @@
       "lastDepartureFromSuburb": "18:30",
       "peakFrequencyMinutes": 100,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 20,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
     },
     {
       "id": "route_transtu_ariana_ligne18b",
@@ -160,7 +176,17 @@
       "lastDepartureFromSuburb": "21:10",
       "peakFrequencyMinutes": 15,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 15,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
     },
     {
       "id": "route_transtu_ariana_ligne44a",
@@ -191,7 +217,17 @@
       "lastDepartureFromSuburb": "18:40",
       "peakFrequencyMinutes": 55,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 45,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
     },
     {
       "id": "route_transtu_ariana_ligne47a",
@@ -222,7 +258,17 @@
       "lastDepartureFromSuburb": "19:30",
       "peakFrequencyMinutes": 40,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 25,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
     },
     {
       "id": "route_transtu_ariana_ligne460",
@@ -253,7 +299,17 @@
       "lastDepartureFromSuburb": "21:20",
       "peakFrequencyMinutes": 30,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 35,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
     },
     {
       "id": "route_transtu_ariana_ligne18_rev",
@@ -284,6 +340,16 @@
           ],
           "terminatesAtStationId": "transtu_hub_ariana"
         }
+      ],
+      "estimatedTripDurationMinutes": 20,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
       ]
     },
     {
@@ -315,6 +381,16 @@
           ],
           "terminatesAtStationId": "transtu_hub_ariana"
         }
+      ],
+      "estimatedTripDurationMinutes": 45,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
       ]
     },
     {
@@ -346,6 +422,16 @@
           ],
           "terminatesAtStationId": "transtu_hub_ariana"
         }
+      ],
+      "estimatedTripDurationMinutes": 25,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
       ]
     },
     {
@@ -377,6 +463,16 @@
           ],
           "terminatesAtStationId": "transtu_hub_ariana"
         }
+      ],
+      "estimatedTripDurationMinutes": 35,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
       ]
     },
     {
@@ -408,6 +504,16 @@
           ],
           "terminatesAtStationId": "transtu_hub_ariana"
         }
+      ],
+      "estimatedTripDurationMinutes": 15,
+      "operatingDays": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
       ]
     }
   ],
@@ -562,6 +668,8 @@
         "to": "transtu_dest_manouba",
         "price": 0.5
       }
-    ]
+    ],
+    "baseFare": 0.5,
+    "zone": "urbaine"
   }
 }

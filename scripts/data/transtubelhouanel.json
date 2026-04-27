@@ -335,7 +335,8 @@
       "lastDepartureFromSuburb": "17:50",
       "peakFrequencyMinutes": 60,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_belhouan_ligne13a_rev",
@@ -366,7 +367,8 @@
       "lastDepartureFromSuburb": "18:30",
       "peakFrequencyMinutes": 60,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_belhouan_ligne3th",
@@ -397,7 +399,8 @@
       "lastDepartureFromSuburb": "00:00",
       "peakFrequencyMinutes": 25,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_belhouan_ligne3th_rev",
@@ -428,11 +431,12 @@
       "lastDepartureFromSuburb": "00:30",
       "peakFrequencyMinutes": 25,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_belhouan_ligne14a",
-      "lineNumber": "14أ",
+      "lineNumber": "114",
       "name": "Ali Belhouane → Omrane Supérieur",
       "direction": "forward",
       "originStationId": "transtu_hub_bel_houan",
@@ -459,11 +463,12 @@
       "lastDepartureFromSuburb": "23:15",
       "peakFrequencyMinutes": 25,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_belhouan_ligne14a_rev",
-      "lineNumber": "14أ",
+      "lineNumber": "114",
       "name": "Omrane Supérieur → Ali Belhouane",
       "direction": "reverse",
       "originStationId": "transtu_dest_omrane_superieur",
@@ -490,7 +495,8 @@
       "lastDepartureFromSuburb": "00:00",
       "peakFrequencyMinutes": 25,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_belhouan_ligne14t",
@@ -521,7 +527,8 @@
       "lastDepartureFromSuburb": "19:45",
       "peakFrequencyMinutes": 30,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_belhouan_ligne14t_rev",
@@ -552,7 +559,8 @@
       "lastDepartureFromSuburb": "20:30",
       "peakFrequencyMinutes": 30,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_belhouan_ligne16",
@@ -583,7 +591,8 @@
       "lastDepartureFromSuburb": "18:05",
       "peakFrequencyMinutes": 60,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_belhouan_ligne16_rev",
@@ -614,7 +623,8 @@
       "lastDepartureFromSuburb": "19:10",
       "peakFrequencyMinutes": 60,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_belhouan_ligne16t",
@@ -645,7 +655,8 @@
       "lastDepartureFromSuburb": "19:50",
       "peakFrequencyMinutes": 35,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_belhouan_ligne16t_rev",
@@ -676,7 +687,8 @@
       "lastDepartureFromSuburb": "20:50",
       "peakFrequencyMinutes": 35,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_belhouan_ligne16th",
@@ -707,7 +719,8 @@
       "lastDepartureFromSuburb": "19:00",
       "peakFrequencyMinutes": 50,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_belhouan_ligne16th_rev",
@@ -738,7 +751,8 @@
       "lastDepartureFromSuburb": "20:20",
       "peakFrequencyMinutes": 50,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_belhouan_ligne30",
@@ -769,7 +783,8 @@
       "lastDepartureFromSuburb": "19:00",
       "peakFrequencyMinutes": 40,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_belhouan_ligne30_rev",
@@ -800,7 +815,8 @@
       "lastDepartureFromSuburb": "20:00",
       "peakFrequencyMinutes": 40,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_belhouan_ligne31",
@@ -811,12 +827,13 @@
       "destinationStationId": "transtu_dest_qantarat_bizert",
       "trips": [],
       "firstDepartureFromHub": "06:00",
-      "lastDepartureFromHub": "20:00",
-      "firstDepartureFromSuburb": "05:30",
-      "lastDepartureFromSuburb": "19:00",
-      "peakFrequencyMinutes": null,
+      "lastDepartureFromHub": "00:00",
+      "firstDepartureFromSuburb": "03:00",
+      "lastDepartureFromSuburb": "23:00",
+      "peakFrequencyMinutes": 120,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 40
     },
     {
       "id": "route_transtu_belhouan_ligne31_rev",
@@ -826,13 +843,14 @@
       "originStationId": "transtu_dest_qantarat_bizert",
       "destinationStationId": "transtu_hub_bel_houan",
       "trips": [],
-      "firstDepartureFromHub": "05:30",
-      "lastDepartureFromHub": "19:00",
+      "firstDepartureFromHub": "03:00",
+      "lastDepartureFromHub": "23:00",
       "firstDepartureFromSuburb": "06:00",
-      "lastDepartureFromSuburb": "20:00",
-      "peakFrequencyMinutes": null,
+      "lastDepartureFromSuburb": "00:00",
+      "peakFrequencyMinutes": 120,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 40
     },
     {
       "id": "route_transtu_belhouan_ligne31a",
@@ -846,9 +864,10 @@
       "lastDepartureFromHub": "20:00",
       "firstDepartureFromSuburb": "05:30",
       "lastDepartureFromSuburb": "19:00",
-      "peakFrequencyMinutes": null,
+      "peakFrequencyMinutes": 120,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 45
     },
     {
       "id": "route_transtu_belhouan_ligne31a_rev",
@@ -862,9 +881,10 @@
       "lastDepartureFromHub": "19:00",
       "firstDepartureFromSuburb": "06:00",
       "lastDepartureFromSuburb": "20:00",
-      "peakFrequencyMinutes": null,
+      "peakFrequencyMinutes": 120,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 45
     },
     {
       "id": "route_transtu_belhouan_ligne31b",
@@ -895,7 +915,8 @@
       "lastDepartureFromSuburb": "23:00",
       "peakFrequencyMinutes": 120,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 45
     },
     {
       "id": "route_transtu_belhouan_ligne31b_rev",
@@ -926,7 +947,8 @@
       "lastDepartureFromSuburb": "00:00",
       "peakFrequencyMinutes": 120,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 45
     },
     {
       "id": "route_transtu_belhouan_ligne31t",
@@ -940,9 +962,10 @@
       "lastDepartureFromHub": "20:00",
       "firstDepartureFromSuburb": "05:30",
       "lastDepartureFromSuburb": "19:00",
-      "peakFrequencyMinutes": null,
+      "peakFrequencyMinutes": 60,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 40
     },
     {
       "id": "route_transtu_belhouan_ligne31t_rev",
@@ -956,9 +979,10 @@
       "lastDepartureFromHub": "19:00",
       "firstDepartureFromSuburb": "06:00",
       "lastDepartureFromSuburb": "20:00",
-      "peakFrequencyMinutes": null,
+      "peakFrequencyMinutes": 60,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 40
     },
     {
       "id": "route_transtu_belhouan_ligne31tf",
@@ -972,9 +996,10 @@
       "lastDepartureFromHub": "20:00",
       "firstDepartureFromSuburb": "05:30",
       "lastDepartureFromSuburb": "19:00",
-      "peakFrequencyMinutes": null,
+      "peakFrequencyMinutes": 60,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 40
     },
     {
       "id": "route_transtu_belhouan_ligne31tf_rev",
@@ -988,9 +1013,10 @@
       "lastDepartureFromHub": "19:00",
       "firstDepartureFromSuburb": "06:00",
       "lastDepartureFromSuburb": "20:00",
-      "peakFrequencyMinutes": null,
+      "peakFrequencyMinutes": 60,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 40
     },
     {
       "id": "route_transtu_belhouan_ligne42",
@@ -1021,7 +1047,8 @@
       "lastDepartureFromSuburb": "23:30",
       "peakFrequencyMinutes": 30,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_belhouan_ligne42_rev",
@@ -1052,11 +1079,12 @@
       "lastDepartureFromSuburb": "00:30",
       "peakFrequencyMinutes": 30,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_belhouan_ligne42a",
-      "lineNumber": "42أ",
+      "lineNumber": "142",
       "name": "Ali Belhouane → Mansoura",
       "direction": "forward",
       "originStationId": "transtu_hub_bel_houan",
@@ -1083,11 +1111,12 @@
       "lastDepartureFromSuburb": "20:30",
       "peakFrequencyMinutes": 70,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 35
     },
     {
       "id": "route_transtu_belhouan_ligne42a_rev",
-      "lineNumber": "42أ",
+      "lineNumber": "142",
       "name": "Mansoura → Ali Belhouane",
       "direction": "reverse",
       "originStationId": "transtu_dest_mansoura",
@@ -1114,7 +1143,8 @@
       "lastDepartureFromSuburb": "22:00",
       "peakFrequencyMinutes": 70,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 35
     },
     {
       "id": "route_transtu_belhouan_ligne42b",
@@ -1145,7 +1175,8 @@
       "lastDepartureFromSuburb": "18:15",
       "peakFrequencyMinutes": 60,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_belhouan_ligne42b_rev",
@@ -1176,7 +1207,8 @@
       "lastDepartureFromSuburb": "19:15",
       "peakFrequencyMinutes": 60,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 30
     },
     {
       "id": "route_transtu_belhouan_ligne55",
@@ -1207,7 +1239,8 @@
       "lastDepartureFromSuburb": "20:40",
       "peakFrequencyMinutes": 40,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 35
     },
     {
       "id": "route_transtu_belhouan_ligne55_rev",
@@ -1238,7 +1271,8 @@
       "lastDepartureFromSuburb": "20:30",
       "peakFrequencyMinutes": 40,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 35
     },
     {
       "id": "route_transtu_belhouan_ligne56",
@@ -1269,7 +1303,8 @@
       "lastDepartureFromSuburb": "19:30",
       "peakFrequencyMinutes": 25,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_belhouan_ligne56_rev",
@@ -1300,7 +1335,8 @@
       "lastDepartureFromSuburb": "20:20",
       "peakFrequencyMinutes": 25,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 25
     },
     {
       "id": "route_transtu_belhouan_ligne64",
@@ -1331,7 +1367,8 @@
       "lastDepartureFromSuburb": "23:55",
       "peakFrequencyMinutes": 30,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_belhouan_ligne64_rev",
@@ -1362,7 +1399,8 @@
       "lastDepartureFromSuburb": "00:30",
       "peakFrequencyMinutes": 30,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_belhouan_ligne68",
@@ -1393,7 +1431,8 @@
       "lastDepartureFromSuburb": "20:10",
       "peakFrequencyMinutes": 45,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 20
     },
     {
       "id": "route_transtu_belhouan_ligne68_rev",
@@ -1424,7 +1463,8 @@
       "lastDepartureFromSuburb": "21:00",
       "peakFrequencyMinutes": 45,
       "zone": "urbaine",
-      "price": 0.5
+      "price": 0.5,
+      "estimatedTripDurationMinutes": 20
     }
   ],
   "routeStops": [

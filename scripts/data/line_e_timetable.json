@@ -23,7 +23,7 @@
     "typeId": "train"
   },
   "stations": [
-    { "id": "bs_tunis_ville", "name": "Tunis Ville", "nameAr": "تونس العاصمة", "city": "Tunis", "order": 1 },
+    // bs_tunis_ville now referenced from shared_stations.json
     { "id": "rd_saida_manoubia", "name": "Saida Manoubia", "nameAr": "السيدة المنوبية", "city": "Tunis", "order": 2 },
     { "id": "be_ennajah", "name": "Ennajah", "nameAr": "النجاح", "city": "Tunis", "order": 3 },
     { "id": "be_etayarane", "name": "Etayarane", "nameAr": "الطيران", "city": "Tunis", "order": 4 },
