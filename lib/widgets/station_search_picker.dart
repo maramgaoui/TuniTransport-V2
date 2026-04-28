@@ -67,7 +67,7 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
     'transtu_hub_carthage': ['carthage', 'carthage bus'],
     'transtu_hub_charguia': ['charguia', 'charguia bus', 'el charguia', 'la charguia'],
     'transtu_hub_intilaka': ['intilaka', 'intileka', 'intilaqa'],
-    'transtu_hub_bellevie': ['bellevue', 'bellevie', 'belle vue'],
+    'transtu_hub_bellevue': ['bellevue', 'bellevie', 'belle vue'],
     'transtu_hub_khaireddine': [
       'kheireddine',
       'khaireddine',

@@ -138,9 +138,9 @@ class StationRepository {
     'transtu_dest_manouba':        ['manouba', 'mannouba', 'منوبة', 'la manouba'],
 
     // Bellevue hub destinations
-    'transtu_dest_centre_capitale_moh5':   ['centre capitale via mohamed 5', 'centre ville mohamed 5', 'mohamed 5', 'mohammed v', 'cercle centre capitale', 'cercle centre ville via mohamed 5'],
-    'transtu_dest_centre_capitale_9avril': ['centre capitale via 9 avril', 'centre ville 9 avril', '9 avril', 'cercle centre capitale 9 avril', 'cercle centre ville via 9 avril'],
-    'transtu_dest_salambo':                ['salambo', 'salammbo', 'salammbô', 'صلامبو'],
+    'transtu_dest_centre_capitale_moh5':   ['centre capitale via mohamed 5', 'centre ville mohamed 5', 'mohamed 5', 'mohammed v', 'cercle centre capitale', 'cercle centre ville via mohamed 5', 'daiiri mohamed 5', 'دائري محمد 5', 'دائري وسط العاصمة عبر محمد 5'],
+    'transtu_dest_centre_capitale_9avril': ['centre capitale via 9 avril', 'centre ville 9 avril', '9 avril', 'cercle centre capitale 9 avril', 'cercle centre ville via 9 avril', 'دائري 9 أفريل', 'دائري وسط العاصمة عبر 9 أفريل'],
+    'transtu_dest_salambo':                ['salambo', 'salammbo', 'salammbô', 'صلامبو', 'salmbo'],
 
     // Carthage hub destinations
     'transtu_dest_souk_merkezi':        ['marche central', 'marché central', 'souk central', 'souk merkezi', 'السوق المركزي'],
