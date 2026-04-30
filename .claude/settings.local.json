@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter --version)",
+      "Bash(where flutter *)",
+      "Bash(dart --version)",
+      "Bash(npm --version)",
+      "Bash(node -e \"const fs=require\\('fs'\\); const files=fs.readdirSync\\('data'\\).filter\\(f=>f.startsWith\\('transtu'\\)&&f.endsWith\\('.json'\\)\\); let totalStations=0,totalRoutes=0,dups=[]; const seenStationIds={}; const seenRouteIds={}; for\\(const f of files\\){ const d=JSON.parse\\(fs.readFileSync\\('data/'+f,'utf8'\\)\\); for\\(const s of d.stations||[]\\){ if\\(seenStationIds[s.id]\\) dups.push\\('STATION DUP in '+f+': '+s.id\\); seenStationIds[s.id]=f; totalStations++; } for\\(const r of d.routes||[]\\){ if\\(seenRouteIds[r.id]\\) dups.push\\('ROUTE DUP in '+f+': '+r.id\\); seenRouteIds[r.id]=f; totalRoutes++; } } console.log\\('Total stations across all files:',totalStations\\); console.log\\('Total routes across all files:',totalRoutes\\); console.log\\('Duplicates found:',dups.length\\); dups.forEach\\(d=>console.log\\(' ',d\\)\\);\")",
+      "Bash(node *)"
+    ]
+  }
+}
