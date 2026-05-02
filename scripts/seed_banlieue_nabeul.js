@@ -1,326 +1,203 @@
-const admin = require('firebase-admin');
-const fs = require('fs');
-const path = require('path');
+#!/usr/bin/env node
+/**
+ * Seed Banlieue de Nabeul (SNCFT) data from scripts/data/banlieue_nabeul/.
+ * Format: { operator, stations[], routes[{ trips[] }], routeStops[] }
+ * routeStops use 'routeId' field directly.
+ *
+ * Run:
+ *   GOOGLE_APPLICATION_CREDENTIALS="../serviceAccount.json" \
+ *   FIREBASE_PROJECT_ID="tuni-transport-20eaf" \
+ *   node seed_banlieue_nabeul.js
+ */
 
-const serviceAccount = require('./firebase-key.json');
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+const path = require('path');
+const fs   = require('fs');
+const { admin, initializeFirebaseAdmin } = require('./firebase_admin_init');
+
+initializeFirebaseAdmin();
 const db = admin.firestore();
 
-const dataPath = path.join(__dirname, 'data', 'banlieue_nabeul_timetable.json');
-const timetable = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+// ─── BatchWriter ─────────────────────────────────────────────────────────────
 
-function ts(y, m, d, h = 0, mn = 0) {
-  return admin.firestore.Timestamp.fromDate(new Date(y, m - 1, d, h, mn, 0));
+const BATCH_LIMIT = 200;
+
+class BatchWriter {
+  constructor() { this._reset(); }
+  _reset() { this._batch = db.batch(); this._count = 0; }
+
+  set(ref, data) {
+    this._batch.set(ref, data, { merge: true });
+    this._count++;
+  }
+
+  async flushIfFull() {
+    if (this._count >= BATCH_LIMIT) await this.flush();
+  }
+
+  async flush() {
+    if (this._count === 0) return;
+    await this._batch.commit();
+    this._reset();
+  }
 }
 
-function timeToMin(t) {
-  const [h, m] = t.split(':').map(Number);
-  return h * 60 + m;
-}
+// ─── Seed one file ────────────────────────────────────────────────────────────
 
-function minToTs(totalMinutes, baseDate) {
-  const minutes = ((totalMinutes % 1440) + 1440) % 1440;
-  const date = new Date(baseDate);
-  date.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
-  return admin.firestore.Timestamp.fromDate(date);
-}
+async function seedTrainFile(d, bw, stats) {
+  const { stations = [], routes = [], routeStops = [] } = d;
+  const operatorId = d.operator?.id ?? 'sncft_banlieue_nabeul';
 
-function parseDateISO(dateStr, fallback) {
-  if (typeof dateStr !== 'string' || !dateStr.trim()) return fallback;
-  const dt = new Date(dateStr);
-  return Number.isNaN(dt.getTime()) ? fallback : dt;
-}
-
-async function deleteDocsByRouteId(collectionName, routeId) {
-  const snap = await db.collection(collectionName).where('routeId', '==', routeId).get();
-  if (snap.empty) return 0;
-
-  let removed = 0;
-  let batch = db.batch();
-  let ops = 0;
-  for (const doc of snap.docs) {
-    batch.delete(doc.ref);
-    ops++;
-    removed++;
-    if (ops >= 490) {
-      await batch.commit();
-      batch = db.batch();
-      ops = 0;
+  // Build direction→routeId map and firstForwardRouteId fallback
+  const directionToRouteId = {};
+  let firstForwardRouteId = null;
+  for (const r of routes) {
+    if (r.direction) directionToRouteId[r.direction] = r.id;
+    if (!firstForwardRouteId && (r.direction === 'forward' || r.direction === 'south')) {
+      firstForwardRouteId = r.id;
     }
   }
-  if (ops > 0) await batch.commit();
-  return removed;
-}
 
-async function deleteTariffsForStationId(stationId) {
-  const snap = await db.collection('tariffs').get();
-  const docs = snap.docs.filter((doc) => {
-    const data = doc.data();
-    return data.fromStationId === stationId || data.toStationId === stationId;
-  });
-  if (docs.length === 0) return 0;
-
-  let removed = 0;
-  let batch = db.batch();
-  let ops = 0;
-  for (const doc of docs) {
-    batch.delete(doc.ref);
-    ops++;
-    removed++;
-    if (ops >= 490) {
-      await batch.commit();
-      batch = db.batch();
-      ops = 0;
-    }
-  }
-  if (ops > 0) await batch.commit();
-  return removed;
-}
-
-async function deleteDocumentIfExists(collectionName, documentId) {
-  const ref = db.collection(collectionName).doc(documentId);
-  const snap = await ref.get();
-  if (!snap.exists) return false;
-  await ref.delete();
-  return true;
-}
-
-async function seedBanlieueNabeul() {
-  try {
-    console.log('Starting Banlieue de Nabeul seeding...');
-
-    const stations = [...timetable.stations].sort((a, b) => a.order - b.order);
-    const stationIdsForward = stations.map((s) => s.id);
-    const stationIdsReverse = [...stationIdsForward].reverse();
-
-    const routesById = new Map(timetable.routes.map((r) => [r.id, r]));
-    const routeStopsByDirection = {
-      forward: timetable.routeStops
-        .filter((s) => s.direction === 'forward')
-        .sort((a, b) => a.stopOrder - b.stopOrder),
-      reverse: timetable.routeStops
-        .filter((s) => s.direction === 'reverse')
-        .sort((a, b) => a.stopOrder - b.stopOrder),
+  // 1. Stations
+  for (const s of stations) {
+    const data = {
+      name:           s.name,
+      nameAr:         s.nameAr ?? s.name,
+      cityId:         s.cityId ?? s.city ?? 'tunis',
+      latitude:       s.lat   ?? s.latitude  ?? null,
+      longitude:      s.lng   ?? s.longitude ?? null,
+      isMainHub:      s.isMainHub ?? false,
+      transportTypes: s.transportTypes ?? ['train'],
     };
+    // arrayUnion preserves operators already set by other seeders on shared stations
+    const ops = s.operatorsHere ?? (s.shared ? null : [operatorId]);
+    if (ops) data.operatorsHere = admin.firestore.FieldValue.arrayUnion(...ops);
 
-    const batches = [db.batch()];
-    let opCount = 0;
+    bw.set(db.collection('stations').doc(s.id), data);
+    await bw.flushIfFull();
+    stats.stations++;
+  }
 
-    function batch() {
-      if (opCount >= 490) {
-        batches.push(db.batch());
-        opCount = 0;
-      }
-      opCount += 1;
-      return batches[batches.length - 1];
+  // 2. Routes + Trips
+  for (const r of routes) {
+    bw.set(db.collection('routes').doc(r.id), {
+      lineNumber:          r.lineNumber          ?? null,
+      name:                r.name                ?? null,
+      direction:           r.direction           ?? 'forward',
+      operatorId:          operatorId,
+      transportType:       'train',
+      originStationId:     r.originStationId     ?? null,
+      destinationStationId: r.destinationStationId ?? null,
+      operatingDays:       r.operatingDays       ?? [0, 1, 2, 3, 4, 5, 6],
+      isActive:            true,
+    });
+    await bw.flushIfFull();
+    stats.routes++;
+
+    for (const t of r.trips ?? []) {
+      if (!t.tripNumber) continue;
+      const tripSlug = String(t.tripNumber).replace(/[^a-z0-9]/gi, '_');
+      const routeSlug = r.id.replace(/^route_/, '');
+      const tripId = `trip_${operatorId}_${routeSlug}_${tripSlug}`;
+      const tripData = {
+        routeId:       r.id,
+        operatorId:    operatorId,
+        tripNumber:    String(t.tripNumber),
+        departureTime: t.departureTime ?? null,
+        operatingDays: t.operatingDays ?? r.operatingDays ?? [0, 1, 2, 3, 4, 5, 6],
+        terminatesAt:  t.terminatesAtStationId ?? null,
+        isActive:      true,
+      };
+      if (t.stationTimeOverrides) tripData.stationTimeOverrides = t.stationTimeOverrides;
+      bw.set(db.collection('trips').doc(tripId), tripData);
+      await bw.flushIfFull();
+      stats.trips++;
     }
+  }
 
-    const pricing = timetable.pricing || {};
-    const validFromDate = parseDateISO(timetable.metadata?.valid_from, new Date(2025, 8, 1));
-    const validToDate = parseDateISO(timetable.metadata?.valid_to, new Date(2026, 5, 30));
-    const validFrom = admin.firestore.Timestamp.fromDate(validFromDate);
-    const validTo = admin.firestore.Timestamp.fromDate(validToDate);
-    const baseDate = validFromDate;
+  // 3. Route stops
+  for (const rs of routeStops) {
+    const routeId = rs.routeId ?? directionToRouteId[rs.direction] ?? firstForwardRouteId;
+    if (!routeId || !rs.stationId) continue;
+    const docId = `${routeId}_stop_${rs.stopOrder}_${rs.stationId}`;
+    bw.set(db.collection('route_stops').doc(docId), {
+      routeId:                     routeId,
+      stationId:                   rs.stationId,
+      stopOrder:                   rs.stopOrder,
+      estimatedArrivalTimeMinutes: rs.estimatedArrivalTimeMinutes ?? 0,
+    });
+    await bw.flushIfFull();
+    stats.routeStops++;
+  }
+}
 
-    // Clean up old data for our routes
-    let removedRouteStops = 0;
-    let removedTrips = 0;
-    for (const route of timetable.routes) {
-      removedRouteStops += await deleteDocsByRouteId('route_stops', route.id);
-      removedTrips += await deleteDocsByRouteId('trips', route.id);
-    }
+// ─── main ─────────────────────────────────────────────────────────────────────
 
-    // Remove legacy BN-only stations from previous wrong dataset.
-    const legacyStationIds = ['bn_bou_arkoub', 'bn_hammamet', 'bn_mraga'];
-    let removedLegacyTariffs = 0;
-    let removedLegacyStations = 0;
-    for (const legacyId of legacyStationIds) {
-      removedLegacyTariffs += await deleteTariffsForStationId(legacyId);
-      const deleted = await deleteDocumentIfExists('stations', legacyId);
-      if (deleted) removedLegacyStations += 1;
-    }
+async function main() {
+  const dataDir = path.join(__dirname, 'data', 'banlieue_nabeul');
 
-    // 1) Operator
-    batch().set(db.collection('operators').doc(timetable.operator.id), {
-      name: timetable.operator.name,
-      typeId: timetable.operator.typeId,
-      phone: timetable.operator.phone,
-      website: 'https://www.sncft.com.tn',
-      color: '#1565C0',
-      createdAt: ts(2025, 1, 1),
-    }, { merge: true });
-
-    // 2) Stations
-    for (const s of stations) {
-      if (s.shared) {
-        // Shared station: add BN operator and refresh display names.
-        batch().set(db.collection('stations').doc(s.id), {
-          name: s.name,
-          nameAr: s.nameAr || null,
-          cityId: s.city.toLowerCase().replace(/\s+/g, '_'),
-          operatorsHere: admin.firestore.FieldValue.arrayUnion('sncft', 'sncft_banlieue_nabeul'),
-        }, { merge: true });
-      } else {
-        // New station: full document
-        batch().set(db.collection('stations').doc(s.id), {
-          name: s.name,
-          nameAr: s.nameAr || null,
-          cityId: s.city.toLowerCase().replace(/\s+/g, '_'),
-          latitude: s.lat,
-          longitude: s.lng,
-          address: null,
-          transportTypes: ['train'],
-          operatorsHere: ['sncft', 'sncft_banlieue_nabeul'],
-          services: {
-            wifi: false,
-            toilet: true,
-            cafe: false,
-            parking: false,
-          },
-          isMainHub: s.id === 'bn_nabeul',
-          createdAt: ts(2025, 1, 1),
-        }, { merge: true });
-      }
-    }
-
-    // 3) Routes
-    for (const route of timetable.routes) {
-      const stopIds = route.direction === 'forward'
-        ? stationIdsForward
-        : stationIdsReverse;
-
-      batch().set(db.collection('routes').doc(route.id), {
-        operatorId: timetable.operator.id,
-        typeId: timetable.operator.typeId,
-        lineNumber: route.lineNumber,
-        name: route.name,
-        description: `Banlieue de Nabeul: ${route.name}`,
-        originStationId: route.originStationId,
-        destinationStationId: route.destinationStationId,
-        isCircular: false,
-        isActive: true,
-        stopIds,
-        createdAt: ts(2025, 1, 1),
-      }, { merge: true });
-    }
-
-    // 4) Route stops
-    for (const route of timetable.routes) {
-      const routeStops = routeStopsByDirection[route.direction] || [];
-      for (const rs of routeStops) {
-        const routeStopDocId = `rs_${route.id}_${rs.stopOrder}`;
-        batch().set(db.collection('route_stops').doc(routeStopDocId), {
-          routeId: route.id,
-          stationId: rs.stationId,
-          stopOrder: rs.stopOrder,
-          estimatedArrivalTimeMinutes: rs.estimatedArrivalTimeMinutes,
-          arrivalNote: null,
-          createdAt: ts(2025, 1, 1),
-        }, { merge: true });
-      }
-    }
-
-    // 5) Trips
-    for (const route of timetable.routes) {
-      const duration = Math.max(
-        ...routeStopsByDirection[route.direction].map((s) => s.estimatedArrivalTimeMinutes),
-      );
-
-      for (const trip of route.trips) {
-        const tripNumber = Number.parseInt(String(trip.tripNumber), 10);
-        const depMin = timeToMin(trip.departureTime);
-        const arrMin = depMin + duration;
-        // Include departure time to preserve duplicate train numbers in the schedule.
-        const tripDocId = `trip_${route.id}_${tripNumber}_${trip.departureTime.replace(':', '')}`;
-
-        batch().set(db.collection('trips').doc(tripDocId), {
-          routeId: route.id,
-          tripNumber,
-          departureTime: minToTs(depMin, baseDate),
-          arrivalTime: minToTs(arrMin, baseDate),
-          capacity: 300,
-          availableSeats: 300,
-          daysOfWeek: trip.days || [0, 1, 2, 3, 4, 5, 6],
-          validFrom,
-          validTo,
-          isActive: true,
-          vehicleId: null,
-          driverName: null,
-          createdAt: ts(2025, 1, 1),
-        }, { merge: true });
-      }
-    }
-
-    // 6) Tariffs (distance-based fare bands)
-    const fareBands = (pricing.fare_bands || []).sort((a, b) => a.maxStops - b.maxStops);
-    for (let i = 0; i < stations.length; i += 1) {
-      for (let j = i + 1; j < stations.length; j += 1) {
-        const from = stations[i];
-        const to = stations[j];
-        const stops = Math.abs(to.order - from.order);
-        let price = 5.500; // default full-route fare
-        for (const band of fareBands) {
-          if (stops <= band.maxStops) {
-            price = band.price;
-            break;
-          }
-        }
-
-        batch().set(db.collection('tariffs').doc(`tariff_${from.id}_${to.id}`), {
-          operatorId: timetable.operator.id,
-          fromStationId: from.id,
-          toStationId: to.id,
-          price,
-          currency: 'TND',
-          tariffClass: null,
-          validFrom,
-          validTo,
-          notes: `Banlieue Nabeul – ${stops} stops`,
-          specialDiscounts: [],
-          createdAt: ts(2025, 1, 1),
-        }, { merge: true });
-
-        batch().set(db.collection('tariffs').doc(`tariff_${to.id}_${from.id}`), {
-          operatorId: timetable.operator.id,
-          fromStationId: to.id,
-          toStationId: from.id,
-          price,
-          currency: 'TND',
-          tariffClass: null,
-          validFrom,
-          validTo,
-          notes: `Banlieue Nabeul – ${stops} stops`,
-          specialDiscounts: [],
-          createdAt: ts(2025, 1, 1),
-        }, { merge: true });
-      }
-    }
-
-    // Commit all batches
-    for (let i = 0; i < batches.length; i += 1) {
-      await batches[i].commit();
-      console.log(`Committed batch ${i + 1}/${batches.length}`);
-    }
-
-    if (removedRouteStops > 0 || removedTrips > 0 || removedLegacyTariffs > 0 || removedLegacyStations > 0) {
-      console.log(
-        `Cleanup: ${removedRouteStops} route_stops, ${removedTrips} trips, ${removedLegacyTariffs} tariffs, ${removedLegacyStations} legacy stations removed`,
-      );
-    }
-
-    const forwardTrips = routesById.get('route_bn_forward')?.trips.length ?? 0;
-    const reverseTrips = routesById.get('route_bn_reverse')?.trips.length ?? 0;
-
-    console.log('Banlieue de Nabeul seed complete.');
-    console.log(`Stations: ${stations.length} (${stations.filter((s) => s.shared).length} shared)`);
-    console.log(`Routes: ${timetable.routes.length}`);
-    console.log(`Trips: ${forwardTrips + reverseTrips} (${forwardTrips} forward + ${reverseTrips} reverse)`);
-    console.log(`Tariffs: ${stations.length * (stations.length - 1)} pairs`);
-    process.exit(0);
-  } catch (error) {
-    console.error('Banlieue de Nabeul seed failed:', error);
+  if (!fs.existsSync(dataDir)) {
+    console.error(`❌ Folder not found: ${dataDir}`);
     process.exit(1);
   }
+
+  const files = fs.readdirSync(dataDir).filter(f => f.endsWith('.json')).sort();
+  if (files.length === 0) {
+    console.error('❌ No .json files found in scripts/data/banlieue_nabeul/');
+    process.exit(1);
+  }
+
+  console.log(`🚆 Seeding Banlieue de Nabeul from ${files.length} JSON file(s)...\n`);
+
+  // Upsert operator
+  await db.collection('operators').doc('sncft_banlieue_nabeul').set({
+    id:        'sncft_banlieue_nabeul',
+    name:      'SNCFT - Banlieue de Nabeul',
+    shortName: 'Banlieue Nabeul',
+    phone:     '+216 71 334 444',
+    typeId:    'train',
+    color:     '#8BC34A',
+  }, { merge: true });
+  console.log('  ✓ Operator doc upserted\n');
+
+  const grand = { stations: 0, routes: 0, routeStops: 0, trips: 0 };
+
+  for (const file of files) {
+    const filePath = path.join(dataDir, file);
+    let d;
+    try {
+      d = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    } catch (e) {
+      console.error(`  ❌ Failed to parse ${file}: ${e.message}`);
+      continue;
+    }
+
+    const bw    = new BatchWriter();
+    const stats = { stations: 0, routes: 0, routeStops: 0, trips: 0 };
+
+    await seedTrainFile(d, bw, stats);
+    await bw.flush();
+
+    console.log(
+      `  ✓ ${file.padEnd(40)}` +
+      `  stations=${String(stats.stations).padStart(3)}` +
+      `  routes=${String(stats.routes).padStart(2)}` +
+      `  routeStops=${String(stats.routeStops).padStart(3)}` +
+      `  trips=${String(stats.trips).padStart(3)}`
+    );
+
+    for (const k of Object.keys(grand)) grand[k] += stats[k];
+  }
+
+  console.log('\n📊 Grand total:');
+  console.log(`   stations   : ${grand.stations}`);
+  console.log(`   routes     : ${grand.routes}`);
+  console.log(`   route_stops: ${grand.routeStops}`);
+  console.log(`   trips      : ${grand.trips}`);
+  console.log('\n✅ Banlieue Nabeul seed complete!\n');
+  process.exit(0);
 }
 
-seedBanlieueNabeul();
+main().catch(err => {
+  console.error('❌ Fatal error:', err);
+  process.exit(1);
+});

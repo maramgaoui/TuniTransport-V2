@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'journey_search_state.dart';
 import '../models/bus_service_model.dart';
+import '../models/metro_sahel_result.dart';
 import '../services/station_repository.dart';
 import '../services/route_repository.dart';
 import '../services/journey_repository.dart';
@@ -96,7 +97,7 @@ class JourneySearchController extends ChangeNotifier {
         _bnDeprecatedStationIds.contains(toStationId)) {
       _emit(_state.copyWith(
         isLoading: false,
-        clearMetro: true,
+        clearTrainResults: true,
         error:
             'Station BN ancienne détectée. Veuillez re-sélectionner les stations depuis la recherche (ex: Bir El Bey, Bou Kornine, Hammam Chott).',
       ));
@@ -127,7 +128,7 @@ class JourneySearchController extends ChangeNotifier {
 
     _emit(_state.copyWith(
       isLoading: true,
-      clearMetro: true,
+      clearTrainResults: true,
       clearError: true,
       clearBus: true,
       clearBestBus: true,
@@ -157,14 +158,16 @@ class JourneySearchController extends ChangeNotifier {
       final searchDateTime = DateTime.now();
 
       // ═══════════════════════════════════════════════════════════════════════
-      // BRANCH ORDER IS SIGNIFICANT — DO NOT REORDER WITHOUT CAREFUL REVIEW.
-      // A station may belong to multiple operator types (e.g. bs_tunis_ville
-      // serves both Banlieue Sud and SNCFT mainline). The first branch that
-      // returns a non-null result wins. Banlieue Nabeul is checked first as a
-      // priority override for its overlapping station IDs.
+      // All branches run — results are collected and emitted together so the
+      // UI can show every available transport mode for this A→B pair.
+      // Banlieue Nabeul is still checked first and gates Banlieue Sud to avoid
+      // duplicates for their overlapping physical station set.
       // ═══════════════════════════════════════════════════════════════════════
 
-      // Banlieue Nabeul — priority path for overlapping station ID sets.
+      final List<MetroSahelResult> collectedTrainResults = [];
+
+      // Banlieue Nabeul — priority; if it matches, skip Banlieue Sud.
+      bool bnMatched = false;
       if (_isBnStationSet(fromStation.id, toStation.id)) {
         if (kDebugMode) {
           debugPrint('[JourneySearch] branch=banlieue_nabeul (priority)');
@@ -175,8 +178,8 @@ class JourneySearchController extends ChangeNotifier {
           searchDateTime: searchDateTime,
         );
         if (bnResult != null) {
-          _emit(_state.copyWith(isLoading: false, metroSahelResult: bnResult));
-          return;
+          collectedTrainResults.add(bnResult);
+          bnMatched = true;
         }
       }
 
@@ -188,24 +191,20 @@ class JourneySearchController extends ChangeNotifier {
           toStationId: toStation.id,
           searchDateTime: searchDateTime,
         );
-        if (metroResult != null) {
-          _emit(_state.copyWith(isLoading: false, metroSahelResult: metroResult));
-          return;
-        }
+        if (metroResult != null) collectedTrainResults.add(metroResult);
       }
 
-      // Banlieue Sud.
-      if (_stationRepository.isBanlieueSudStation(fromStation) &&
+      // Banlieue Sud — skipped when Banlieue Nabeul already matched to avoid
+      // duplicate results for their shared station set.
+      if (!bnMatched &&
+          _stationRepository.isBanlieueSudStation(fromStation) &&
           _stationRepository.isBanlieueSudStation(toStation)) {
         final bsResult = await _journeyRepository.findNextBanlieueSudTrip(
           fromStationId: fromStation.id,
           toStationId: toStation.id,
           searchDateTime: searchDateTime,
         );
-        if (bsResult != null) {
-          _emit(_state.copyWith(isLoading: false, metroSahelResult: bsResult));
-          return;
-        }
+        if (bsResult != null) collectedTrainResults.add(bsResult);
       }
 
       // Banlieue Ligne D.
@@ -216,10 +215,7 @@ class JourneySearchController extends ChangeNotifier {
           toStationId: toStation.id,
           searchDateTime: searchDateTime,
         );
-        if (bdResult != null) {
-          _emit(_state.copyWith(isLoading: false, metroSahelResult: bdResult));
-          return;
-        }
+        if (bdResult != null) collectedTrainResults.add(bdResult);
       }
 
       // Banlieue Ligne E.
@@ -230,10 +226,7 @@ class JourneySearchController extends ChangeNotifier {
           toStationId: toStation.id,
           searchDateTime: searchDateTime,
         );
-        if (beResult != null) {
-          _emit(_state.copyWith(isLoading: false, metroSahelResult: beResult));
-          return;
-        }
+        if (beResult != null) collectedTrainResults.add(beResult);
       }
 
       // SNCFT Grandes Lignes (L5, Kef, Bizerte, Annaba…).
@@ -244,13 +237,29 @@ class JourneySearchController extends ChangeNotifier {
           toStationId: toStation.id,
           searchDateTime: searchDateTime,
         );
-        if (sncftResult != null) {
-          _emit(_state.copyWith(isLoading: false, metroSahelResult: sncftResult));
-          return;
+        if (sncftResult != null) collectedTrainResults.add(sncftResult);
+      }
+
+      // STS Sahel intercity bus (Sousse ↔ Mahdia via Sahel corridor).
+      if (_stationRepository.isStsSahelStation(fromStation) &&
+          _stationRepository.isStsSahelStation(toStation)) {
+        if (kDebugMode) {
+          debugPrint('[JourneySearch] branch=sts_sahel');
         }
+        final stsResult = await _journeyRepository.findNextStsSahelTrip(
+          fromStationId: fromStation.id,
+          toStationId: toStation.id,
+          searchDateTime: searchDateTime,
+        );
+        if (stsResult != null) collectedTrainResults.add(stsResult);
       }
 
       // ─── TRANSTU bus — departure must be a TRANSTU hub. ──────────────────
+      BusService? bestBusService;
+      String? bestBusDepartureTime;
+      String? busHubName;
+      String? busError;
+
       if (_stationRepository.isTranstuStation(fromStation)) {
         if (kDebugMode) {
           debugPrint('[JourneySearch] branch=transtu hub=${fromStation.id}');
@@ -263,35 +272,22 @@ class JourneySearchController extends ChangeNotifier {
         );
 
         if (busServices.isNotEmpty) {
-          // Find the soonest departure across all matching services.
-          // bestMinutes is -1 (invalid) until bestService is first assigned;
-          // the bestService == null guard ensures it is never compared while invalid.
-          BusService? bestService;
-          String? bestTime;
           int bestMinutes = -1;
 
-          // Detect reverse direction: user is going from a destination/suburb hub back to
-          // the main departure hub. This covers:
-          //   - dest→hub  (transtu_dest_* → transtu_hub_barcelone)
-          //   - hub→hub where the origin hub is itself served BY lines from the to-hub
-          //     (e.g. transtu_hub_morneg → transtu_hub_barcelone)
+          // Detect reverse direction (dest→hub or hub→hub where services run
+          // the other way).
           final isReverse = _busServiceRepository.isTranstuHub(toStation.id) &&
-              (
-                !_busServiceRepository.isTranstuHub(fromStation.id) ||
-                // Hub→Hub reverse: the found services depart FROM toStation TO fromStation,
-                // so fromSuburb times are the correct direction for the user.
-                busServices.any((s) => s.destinationStationId == fromStation.id)
-              );
+              (!_busServiceRepository.isTranstuHub(fromStation.id) ||
+                  busServices.any((s) => s.destinationStationId == fromStation.id));
 
           for (final svc in busServices) {
             final nextDep = isReverse
                 ? svc.nextDepartureFromSuburb(now: searchDateTime)
                 : svc.nextDepartureFromHub(now: searchDateTime);
-            if (nextDep == null) continue; // service ended for today
+            if (nextDep == null) continue;
 
             final parts = nextDep.split(':');
             if (parts.length != 2) continue;
-
             final h = int.tryParse(parts[0]);
             final m = int.tryParse(parts[1]);
             if (h == null || m == null) {
@@ -305,73 +301,72 @@ class JourneySearchController extends ChangeNotifier {
             }
 
             final depMins = h * 60 + m;
-            if (bestService == null || depMins < bestMinutes) {
+            if (bestBusService == null || depMins < bestMinutes) {
               bestMinutes = depMins;
-              bestService = svc;
-              bestTime = nextDep;
+              bestBusService = svc;
+              bestBusDepartureTime = nextDep;
             }
           }
 
-          if (bestService != null) {
-            _emit(_state.copyWith(
-              isLoading: false,
-              clearBus: true,
-              bestBusService: bestService,
-              bestBusDepartureTime: bestTime,
-              busHubName:
-                  '${fromStation.localizedName('fr')} → ${toStation.localizedName('fr')}',
-            ));
-            return;
+          if (bestBusService == null) {
+            // All services ended for today — pick the earliest for tomorrow.
+            final sorted = List<BusService>.from(busServices)
+              ..sort((BusService a, BusService b) =>
+                  (a.parseTimePublic(isReverse
+                              ? a.firstDepartureFromSuburb
+                              : a.firstDepartureFromHub) ??
+                          9999)
+                      .compareTo(b.parseTimePublic(isReverse
+                              ? b.firstDepartureFromSuburb
+                              : b.firstDepartureFromHub) ??
+                          9999));
+            bestBusService = sorted.first;
+            bestBusDepartureTime = isReverse
+                ? sorted.first.firstDepartureFromSuburb
+                : sorted.first.firstDepartureFromHub;
+            busError = 'Service terminé pour ce soir. Prochain départ demain.';
           }
 
-          // All services ended for today — show the earliest departure tomorrow.
-          final sorted = List<BusService>.from(busServices)
-            ..sort((BusService a, BusService b) =>
-                (a.parseTimePublic(isReverse ? a.firstDepartureFromSuburb : a.firstDepartureFromHub) ?? 9999).compareTo(
-                    b.parseTimePublic(isReverse ? b.firstDepartureFromSuburb : b.firstDepartureFromHub) ?? 9999));
-
-          _emit(_state.copyWith(
-            isLoading: false,
-            clearBus: true,
-            bestBusService: sorted.first,
-            bestBusDepartureTime: isReverse
-                ? sorted.first.firstDepartureFromSuburb
-                : sorted.first.firstDepartureFromHub,
-            busHubName:
-                '${fromStation.localizedName('fr')} → ${toStation.localizedName('fr')}',
-            error: 'Service terminé pour ce soir. Prochain départ demain.',
-          ));
-          return;
+          busHubName =
+              '${fromStation.localizedName('fr')} → ${toStation.localizedName('fr')}';
+        } else if (collectedTrainResults.isEmpty) {
+          // Hub found but no connecting lines — only surface error when there
+          // are no train results either.
+          if (kDebugMode) {
+            debugPrint(
+              '[JourneySearch] No connecting lines found from '
+              '${fromStation.name} to ${toStation.name}',
+            );
+          }
+          busError =
+              'Aucune ligne ne relie ${fromStation.name} à ${toStation.name}.';
         }
+      }
 
-        // Hub found but no connecting lines to the destination.
+      // ─── Emit combined results ────────────────────────────────────────────
+      if (collectedTrainResults.isEmpty && bestBusService == null) {
         if (kDebugMode) {
           debugPrint(
-            '[JourneySearch] No connecting lines found from '
-            '${fromStation.name} to ${toStation.name}',
+            '[JourneySearch] no branch matched for from=$fromStationId '
+            'to=$toStationId normalizedFrom=$normalizedFromStationId '
+            'normalizedTo=$normalizedToStationId',
           );
         }
         _emit(_state.copyWith(
           isLoading: false,
-          clearMetro: true,
-          error: 'Aucune ligne ne relie ${fromStation.name} à ${toStation.name}.',
+          clearTrainResults: true,
+          error: busError ?? 'Ces stations n\'appartiennent pas à la même ligne.',
         ));
-        return;
+      } else {
+        _emit(_state.copyWith(
+          isLoading: false,
+          trainResults: collectedTrainResults,
+          bestBusService: bestBusService,
+          bestBusDepartureTime: bestBusDepartureTime,
+          busHubName: busHubName,
+          error: busError,
+        ));
       }
-
-      // No branch matched — stations exist but share no common line.
-      if (kDebugMode) {
-        debugPrint(
-          '[JourneySearch] no branch matched for from=$fromStationId '
-          'to=$toStationId normalizedFrom=$normalizedFromStationId '
-          'normalizedTo=$normalizedToStationId',
-        );
-      }
-      _emit(_state.copyWith(
-        isLoading: false,
-        clearMetro: true,
-        error: 'Ces stations n\'appartiennent pas à la même ligne.',
-      ));
     } catch (e) {
       // Map exceptions to user-friendly French messages.
       // Raw exception text is only visible in debug logs, never shown in the UI.

@@ -25,6 +25,11 @@ class BusServiceRepository {
     'transtu_hub_montazah',
     'transtu_hub_bel_houan',
     'transtu_hub_kabaa',
+    // Hubs from official TRANSTU open data (not in legacy data)
+    'transtu_hub_gare_routiere_sud',
+    'transtu_hub_hopital_des_enfants',
+    'transtu_hub_mourouj_5',
+    'transtu_hub_mourouj_2',
   };
 
   BusServiceRepository([FirebaseFirestore? firestore])

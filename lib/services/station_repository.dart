@@ -93,10 +93,15 @@ class StationRepository {
     'transtu_hub_kabaa':         ['kabaa', 'قباعة'],
     'transtu_hub_khaireddine':   ['kheireddine', 'khaireddine', 'khaireddin', 'kheredine'],
     'transtu_hub_montazah':      ['montazah', 'montazeh', 'منتزه'],
-    'transtu_hub_morneg':        ['mornag', 'morneg', 'مرناق'],
-    'transtu_hub_10_decembre':   ['10 decembre', 'dix decembre'],
-    'transtu_hub_slimlen_kahia': ['slimane kahia', 'slim kahia', 'slimlen kahia', 'سليمان كاهية'],
-    'transtu_hub_tbourba':       ['tebourba', 'tbourba', 'طبربة'],
+    'transtu_hub_morneg':               ['mornag', 'morneg', 'مرناق'],
+    'transtu_hub_10_decembre':          ['10 decembre', 'dix decembre'],
+    'transtu_hub_slimlen_kahia':        ['slimane kahia', 'slim kahia', 'slimlen kahia', 'سليمان كاهية'],
+    'transtu_hub_tbourba':              ['tebourba', 'tbourba', 'طبربة'],
+    // Hubs from official TRANSTU open data (not in legacy data)
+    'transtu_hub_gare_routiere_sud':    ['gare routiere sud', 'gare sud', 'bab el khadra', 'باب الخضراء'],
+    'transtu_hub_hopital_des_enfants':  ['hopital des enfants', 'hospital des enfants', 'مستشفى الأطفال'],
+    'transtu_hub_mourouj_5':            ['mourouj 5', 'el mourouj 5', 'المروج 5'],
+    'transtu_hub_mourouj_2':            ['mourouj 2', 'el mourouj 2', 'المروج 2', 'rabattement mourouj'],
     // TRANSTU intermediate stops (10 Décembre lines)
     'transtu_stop_ariana_centre':  ['ariana centre', 'centre ariana'],
     'transtu_stop_ghazala_techno': ['technopole ghazala', 'el ghazala tech', 'technopole'],
@@ -109,15 +114,23 @@ class StationRepository {
     // them to appear as departure options too.
     
     // Barcelone hub destinations (for filtering)
-    'transtu_dest_medina_jdida':   ['medina jdida', 'madina jdida', 'nouvelle medina', 'مدينة جديدة', 'المدينة الجديدة'],
-    'transtu_dest_hay_thameur':    ['hay thameur', 'cité thameur', 'حي ثامر'],
-    'transtu_dest_mornag':         ['mornag', 'مرناق', 'mrornag'],
-    'transtu_dest_ben_arous':      ['ben arous', 'بن عروس'],
-    'transtu_dest_ibn_sina':       ['ibn sina', 'ابن سينا'],
-    'transtu_dest_boumhal':        ['boumhal', 'bou mhal', 'بومهل'],
-    'transtu_dest_port_rades':     ['port de rades', 'port rades', 'ميناء رادس', 'mina rades'],
-    'transtu_dest_megrine_coteau': ['megrine coteau', 'megrine coteaux', 'مقرين كوطو', 'مقرين'],
-    'transtu_dest_belvedere':      ['belvedere', 'belvédère', 'بلفي'],    
+    'transtu_dest_medina_jdida':        ['medina jdida', 'madina jdida', 'المدينة الجديدة'],
+    'transtu_dest_hay_thameur':         ['hay thameur', 'cité thameur', 'cite thameur', 'حي ثامر'],
+    'transtu_dest_mornag':              ['mornag', 'مرناق', 'mrornag'],
+    'transtu_dest_ben_arous':           ['ben arous', 'benarous', 'بن عروس'],
+    'transtu_dest_yasminettes':         ['yasminettes', 'les yasminettes', 'الياسمينات', 'jasminate'],
+    'transtu_dest_ibn_sina':            ['ibn sina', 'ibnsina', 'ابن سينا'],
+    'transtu_dest_boumhal':             ['boumhal', 'boumhel', 'bou mhal', 'بومهل'],
+    'transtu_dest_boumhal_gp1':         ['boumhal gp1', 'boumhel gp1', 'boumhal via gp1', 'بومهل عبر الوطنية 1'],
+    'transtu_dest_port_rades':          ['port de rades', 'port rades', 'ميناء رادس', 'mina rades'],
+    'transtu_dest_megrine_coteau':      ['megrine coteau', 'megrine coteaux', 'مقرين كوطو', 'مقرين'],
+    'transtu_dest_megrine_chaker':      ['megrine chaker', 'mégrine chaker', 'مقرين شاكر', 'chaker'],
+    'transtu_dest_nouvelle_medina_1':   ['nouvelle medina 1', 'medina jdida 1', 'مدينة جديدة 1', 'المدينة الجديدة 1'],
+    'transtu_dest_nouvelle_medina_123': ['nouvelle medina 123', 'medina jdida 123', 'مدينة جديدة 123', 'المدينة الجديدة 123'],
+    'transtu_dest_rades_foret':         ['rades foret', 'rades foret', 'رادس الغابة', 'radès forêt'],
+    'transtu_dest_el_mourouj_1':        ['el mourouj 1', 'mourouj 1', 'المروج 1', 'morouj 1'],
+    'transtu_dest_jaama_el_houda':      ['jaama el houda', 'jamaa el houda', 'جامع الهدى', 'village moyenne', 'جامع الهدى القرية المتوسطية'],
+    'transtu_dest_belvedere':           ['belvedere', 'belvédère', 'بلفي'],
     // 10 Décembre hub destinations
     'transtu_dest_sidi_sofiane':   ['sidi sofiane', 'سيدي سفيان'],
     'transtu_dest_cité_mellaha':   ['cite mellaha', 'cité mellaha', 'mellaha', 'حي الملاحة'],
@@ -229,11 +242,12 @@ class StationRepository {
   }
 
   bool isSncftMainlineStation(Station station) {
-    // SNCFT mainline stations either have the sncft_ prefix (Grombalia, Sfax, etc.)
-    // or are shared hub stations with the 'sncft_grandes_lignes' or 'sncft' operator.
     if (station.id.startsWith('sncft_')) return true;
-    // Shared hubs (bs_tunis_ville, bs_hammam_lif, bs_borj_cedria) also serve mainline
     return station.operatorsHere.contains('sncft_grandes_lignes');
+  }
+
+  bool isStsSahelStation(Station station) {
+    return station.operatorsHere.contains('sts_sahel');
   }
 
   Future<List<Station>> getAllStations({bool forceRefresh = false}) async {
@@ -399,6 +413,7 @@ class StationRepository {
             isBanlieueEStation(s) ||
             isBanlieueNabeulStation(s) ||
             isSncftMainlineStation(s) ||
+            isStsSahelStation(s) ||
             isTranstuStation(s))
         .map((s) => StationDistance(
               station: s,

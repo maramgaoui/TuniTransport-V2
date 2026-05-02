@@ -5,16 +5,16 @@ import '../models/metro_sahel_result.dart';
 class JourneySearchState extends Equatable {
   final bool isLoading;
   final String? error;
-  final MetroSahelResult? metroSahelResult;
-  final List<BusService>? busServices;   // full timetable list (hub → hub)
-  final BusService? bestBusService;      // single "next bus" result
-  final String? bestBusDepartureTime;    // computed next departure "HH:MM"
-  final String? busHubName;              // display name for best bus result
+  final List<MetroSahelResult> trainResults;   // all matched train/metro results
+  final List<BusService>? busServices;         // full timetable list (hub → hub)
+  final BusService? bestBusService;            // single "next bus" result
+  final String? bestBusDepartureTime;          // computed next departure "HH:MM"
+  final String? busHubName;                    // display name for best bus result
 
   const JourneySearchState({
     this.isLoading = false,
     this.error,
-    this.metroSahelResult,
+    this.trainResults = const [],
     this.busServices,
     this.bestBusService,
     this.bestBusDepartureTime,
@@ -23,8 +23,13 @@ class JourneySearchState extends Equatable {
 
   // ── Convenience getters for UI state checks ──────────────────────────────
 
+  /// First train result, or null — for backward-compat with any callers
+  /// that still reference a single metroSahelResult.
+  MetroSahelResult? get metroSahelResult =>
+      trainResults.isNotEmpty ? trainResults.first : null;
+
   /// True when at least one result (train or bus) is available to display.
-  bool get hasResult => metroSahelResult != null || bestBusService != null;
+  bool get hasResult => trainResults.isNotEmpty || bestBusService != null;
 
   /// True when not loading, no error, and no result — initial/reset state.
   bool get isEmpty => !isLoading && error == null && !hasResult;
@@ -34,13 +39,11 @@ class JourneySearchState extends Equatable {
 
   // ── Equatable ─────────────────────────────────────────────────────────────
 
-  /// Equatable uses DeepCollectionEquality for List fields in props,
-  /// so busServices is compared by content, not by reference.
   @override
   List<Object?> get props => [
         isLoading,
         error,
-        metroSahelResult,
+        trainResults,
         busServices,
         bestBusService,
         bestBusDepartureTime,
@@ -58,16 +61,16 @@ class JourneySearchState extends Equatable {
   /// "keep existing value" through a nullable parameter alone.
   ///
   /// Grouping:
-  ///   clearError    → clears error only
-  ///   clearMetro    → clears metroSahelResult only
-  ///   clearBus      → clears busServices only
-  ///   clearBestBus  → clears bestBusService + bestBusDepartureTime + busHubName
+  ///   clearError        → clears error only
+  ///   clearTrainResults → clears trainResults list
+  ///   clearBus          → clears busServices only
+  ///   clearBestBus      → clears bestBusService + bestBusDepartureTime + busHubName
   JourneySearchState copyWith({
     bool? isLoading,
     String? error,
     bool clearError = false,
-    MetroSahelResult? metroSahelResult,
-    bool clearMetro = false,
+    List<MetroSahelResult>? trainResults,
+    bool clearTrainResults = false,
     List<BusService>? busServices,
     bool clearBus = false,
     BusService? bestBusService,
@@ -78,8 +81,7 @@ class JourneySearchState extends Equatable {
     return JourneySearchState(
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
-      metroSahelResult:
-          clearMetro ? null : (metroSahelResult ?? this.metroSahelResult),
+      trainResults: clearTrainResults ? const [] : (trainResults ?? this.trainResults),
       busServices: clearBus ? null : (busServices ?? this.busServices),
       bestBusService:
           clearBestBus ? null : (bestBusService ?? this.bestBusService),

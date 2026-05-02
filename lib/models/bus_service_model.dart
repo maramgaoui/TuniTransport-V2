@@ -17,6 +17,7 @@ class BusService {
   final String? zone;
   final double? price;
   final String? destinationNameFr;
+  final int? estimatedTripDurationMinutes;
 
   const BusService({
     required this.id,
@@ -35,6 +36,7 @@ class BusService {
     this.zone,
     this.price,
     this.destinationNameFr,
+    this.estimatedTripDurationMinutes,
   });
 
   factory BusService.fromFirestore(
@@ -61,6 +63,7 @@ class BusService {
       price: (d['price'] as num?)?.toDouble() ??
           ((d['zone'] == 'urbaine') ? 0.5 : null),
       destinationNameFr: d['destinationNameFr'],
+      estimatedTripDurationMinutes: (d['estimatedTripDurationMinutes'] as num?)?.toInt(),
     );
   }
 

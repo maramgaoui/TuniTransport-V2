@@ -189,6 +189,31 @@ class RouteRepository {
         reverseRouteId: 'route_bn_reverse',
       );
 
+  Future<String?> findStsSahelRouteId(
+    String fromStationId,
+    String toStationId,
+  ) async {
+    // Try main forward route (via Sayada) first — covers most city pairs.
+    final viaSayada = await _findDirectionalRouteId(
+      fromStationId: fromStationId,
+      toStationId: toStationId,
+      referenceRouteId: 'route_sts_mahdia_sousse',
+      forwardRouteId: 'route_sts_mahdia_sousse',
+      reverseRouteId: 'route_sts_sousse_mahdia',
+    );
+    if (viaSayada != null) return viaSayada;
+
+    // Fall back to via-Monastir route for Monastir / Ksibet-area stations.
+    // Reverse direction still uses the same Sousse→Mahdia route.
+    return _findDirectionalRouteId(
+      fromStationId: fromStationId,
+      toStationId: toStationId,
+      referenceRouteId: 'route_sts_mahdia_sousse_monastir',
+      forwardRouteId: 'route_sts_mahdia_sousse_monastir',
+      reverseRouteId: 'route_sts_sousse_mahdia',
+    );
+  }
+
   Future<String?> findSncftGlAnnabaRouteId(
     String fromStationId,
     String toStationId,

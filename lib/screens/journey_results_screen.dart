@@ -6,7 +6,6 @@ import '../models/bus_service_model.dart';
 import '../models/journey_model.dart';
 import '../widgets/app_header.dart';
 import '../widgets/metro_sahel_card.dart';
-import '../widgets/bus_service_card.dart';
 
 class JourneyResultsScreen extends StatefulWidget {
   final String departure;
@@ -86,18 +85,20 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
       isOptimal: true,
       operator: 'TRANSTU',
       line: 'Ligne ${service.lineNumber}',
+      estimatedTripDurationMinutes: service.estimatedTripDurationMinutes,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final metroResult = _searchController.state.metroSahelResult;
-    final busServices = _searchController.state.busServices;
+    final trainResults = _searchController.state.trainResults;
     final busHubName = _searchController.state.busHubName;
     final bestBus = _searchController.state.bestBusService;
     final bestTime = _searchController.state.bestBusDepartureTime;
     final isLoading = _searchController.state.isLoading;
     final error = _searchController.state.error;
+
+    final hasAnyResult = trainResults.isNotEmpty || bestBus != null;
 
     return Scaffold(
       body: SafeArea(
@@ -120,99 +121,75 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
             Expanded(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : metroResult != null
-                      // ── Train result ──────────────────────────────────────
-                      ? ListView(
+                  : !hasAnyResult
+                      // ── No results / error ────────────────────────────────
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Text(
+                              error ??
+                                  'Aucun trajet trouvé pour cette recherche.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ),
+                        )
+                      // ── All available transport options ───────────────────
+                      : ListView(
                           padding: const EdgeInsets.all(16),
                           children: [
-                            _sectionLabel(
-                                '🚆 Prochain ${metroResult.operatorName}'),
-                            const SizedBox(height: 12),
-                            GestureDetector(
-                              onTap: () => context.push(
-                                '/home/journey-details',
-                                extra: metroResult,
+                            // Train / metro results
+                            for (final result in trainResults) ...[
+                              _sectionLabel(
+                                result.lineType == 'sts_sahel'
+                                    ? '🚌 Prochain bus ${result.operatorName}'
+                                    : '🚆 Prochain ${result.operatorName}',
                               ),
-                              child: MetroSahelCard(result: metroResult),
-                            ),
-                          ],
-                        )
-                      : bestBus != null
-                          // ── Best next bus ─────────────────────────────────
-                          ? ListView(
-                              padding: const EdgeInsets.all(16),
-                              children: [
-                                _sectionLabel('🚌 Prochain bus TRANSTU'),
-                                const SizedBox(height: 12),
-                                if (error != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 8),
-                                    child: Text(
-                                      error,
-                                      style: const TextStyle(
-                                          color: Colors.orange, fontSize: 13),
-                                    ),
+                              const SizedBox(height: 12),
+                              GestureDetector(
+                                onTap: () => context.push(
+                                  '/home/journey-details',
+                                  extra: result,
+                                ),
+                                child: MetroSahelCard(result: result),
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+                            // Bus result
+                            if (bestBus != null) ...[
+                              _sectionLabel('🚌 Prochain bus TRANSTU'),
+                              const SizedBox(height: 12),
+                              if (error != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Text(
+                                    error,
+                                    style: const TextStyle(
+                                        color: Colors.orange, fontSize: 13),
                                   ),
-                                GestureDetector(
-                                  onTap: () {
-                                    final journey = _busServiceToJourney(
-                                      bestBus,
-                                      hubName: busHubName,
-                                      nextDeparture: bestTime,
-                                    );
-                                    context.push('/home/journey-details',
-                                        extra: journey);
-                                  },
-                                  child: _BestBusCard(
-                                    service: bestBus,
+                                ),
+                              GestureDetector(
+                                onTap: () {
+                                  final journey = _busServiceToJourney(
+                                    bestBus,
+                                    hubName: busHubName,
                                     nextDeparture: bestTime,
-                                    routeLabel: busHubName ?? '',
-                                  ),
+                                  );
+                                  context.push('/home/journey-details',
+                                      extra: journey);
+                                },
+                                child: _BestBusCard(
+                                  service: bestBus,
+                                  nextDeparture: bestTime,
+                                  routeLabel: busHubName ?? '',
                                 ),
-                              ],
-                            )
-                          : busServices != null && busServices.isNotEmpty
-                              // ── Full timetable list (hub → hub) ───────────
-                              ? ListView.separated(
-                                  padding: const EdgeInsets.all(16),
-                                  itemCount: busServices.length + 1,
-                                  separatorBuilder: (_, __) =>
-                                      const SizedBox(height: 12),
-                                  itemBuilder: (context, index) {
-                                    if (index == 0) {
-                                      return _sectionLabel(
-                                        '🚌 Bus TRANSTU – ${busHubName ?? ""}',
-                                      );
-                                    }
-                                    final service = busServices[index - 1];
-                                    return GestureDetector(
-                                      onTap: () {
-                                        final journey = _busServiceToJourney(
-                                          service,
-                                          hubName: busHubName,
-                                        );
-                                        context.push('/home/journey-details',
-                                            extra: journey);
-                                      },
-                                      child: BusServiceCard(service: service),
-                                    );
-                                  },
-                                )
-                              // ── No results / error ────────────────────────
-                              : Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(32),
-                                    child: Text(
-                                      error ??
-                                          'Aucun trajet trouvé pour cette recherche.',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                              ),
+                            ],
+                          ],
+                        ),
             ),
           ],
         ),
@@ -336,18 +313,25 @@ class _BestBusCard extends StatelessWidget {
               ],
             ),
           ),
-          if (service.frequencyLabel.isNotEmpty ||
+          if (service.estimatedTripDurationMinutes != null ||
+              service.frequencyLabel.isNotEmpty ||
               service.priceLabel.isNotEmpty) ...[
             const SizedBox(height: 10),
             Row(
               children: [
-                if (service.frequencyLabel.isNotEmpty) ...[
+                if (service.estimatedTripDurationMinutes != null) ...[
+                  const Icon(Icons.timer_outlined, color: Colors.white70, size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    '~${service.estimatedTripDurationMinutes} min de trajet',
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ] else if (service.frequencyLabel.isNotEmpty) ...[
                   const Icon(Icons.schedule, color: Colors.white54, size: 16),
                   const SizedBox(width: 6),
                   Text(
                     service.frequencyLabel,
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 12),
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 ],
                 const Spacer(),
@@ -362,6 +346,19 @@ class _BestBusCard extends StatelessWidget {
                   ),
               ],
             ),
+            if (service.estimatedTripDurationMinutes != null && service.frequencyLabel.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.schedule, color: Colors.white38, size: 14),
+                  const SizedBox(width: 4),
+                  Text(
+                    service.frequencyLabel,
+                    style: const TextStyle(color: Colors.white54, fontSize: 11),
+                  ),
+                ],
+              ),
+            ],
           ],
           // Tap hint
           const SizedBox(height: 10),

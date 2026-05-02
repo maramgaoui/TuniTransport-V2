@@ -17,6 +17,7 @@ class Journey {
   final bool isOptimal;
   final String operator;
   final String line;
+  final int? estimatedTripDurationMinutes;
 
   Journey({
     required this.id,
@@ -35,6 +36,7 @@ class Journey {
     required this.isOptimal,
     required this.operator,
     required this.line,
+    this.estimatedTripDurationMinutes,
   });
 
   // Backward-compatible aliases used by existing screens.
@@ -58,6 +60,7 @@ class Journey {
     bool? isOptimal,
     String? operator,
     String? line,
+    int? estimatedTripDurationMinutes,
   }) {
     return Journey(
       id: id ?? this.id,
@@ -76,6 +79,7 @@ class Journey {
       isOptimal: isOptimal ?? this.isOptimal,
       operator: operator ?? this.operator,
       line: line ?? this.line,
+      estimatedTripDurationMinutes: estimatedTripDurationMinutes ?? this.estimatedTripDurationMinutes,
     );
   }
 
@@ -99,6 +103,7 @@ class Journey {
       isOptimal: (json['isOptimal'] ?? false) == true,
       operator: (json['operator'] ?? '').toString(),
       line: (json['line'] ?? '').toString(),
+      estimatedTripDurationMinutes: (json['estimatedTripDurationMinutes'] as num?)?.toInt(),
     );
   }
 
@@ -120,6 +125,7 @@ class Journey {
       'isOptimal': isOptimal,
       'operator': operator,
       'line': line,
+      'estimatedTripDurationMinutes': estimatedTripDurationMinutes,
     };
   }
 }

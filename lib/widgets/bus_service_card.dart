@@ -94,13 +94,39 @@ class BusServiceCard extends StatelessWidget {
                 ),
               ],
             ),
-            // Frequency badge + price/zone
-            if (service.frequencyLabel.isNotEmpty || service.priceLabel.isNotEmpty) ...[
+            // Duration + frequency badge + price/zone
+            if (service.estimatedTripDurationMinutes != null ||
+                service.frequencyLabel.isNotEmpty ||
+                service.priceLabel.isNotEmpty) ...[
               const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
                 runSpacing: 6,
                 children: [
+                  if (service.estimatedTripDurationMinutes != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.shade800.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.timer_outlined, color: Colors.white, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            '~${service.estimatedTripDurationMinutes} min',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   if (service.frequencyLabel.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

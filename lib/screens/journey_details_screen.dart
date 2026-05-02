@@ -44,8 +44,10 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     _journey = widget.journey ?? widget.metroResult!.toJourney();
     if (widget.metroResult != null) {
       _loadIntermediateStops();
+    } else if (_isTranstuBus) {
+      _loadTranstuStops();
     } else {
-      // Bus or generic journey: no route_stops to load.
+      // Generic journey: no route_stops to load.
       _stopsLoading = false;
     }
   }
@@ -78,6 +80,13 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
             : 'route_bn_forward';
       } else if (metro.lineType == 'sncft_mainline') {
         final resolvedRouteId = await _resolveSncftMainlineRouteId(metro);
+        if (resolvedRouteId == null) {
+          setState(() => _stopsLoading = false);
+          return;
+        }
+        routeId = resolvedRouteId;
+      } else if (metro.lineType == 'sts_sahel') {
+        final resolvedRouteId = await _resolveStsSahelRouteId(metro);
         if (resolvedRouteId == null) {
           setState(() => _stopsLoading = false);
           return;
@@ -143,6 +152,81 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
 
         stops.add(_StopInfo(
           name: data['name'] ?? orderToStationId[orderedKeys[i]]!,
+          time: timeStr,
+          lat: (data['latitude'] ?? 0.0).toDouble(),
+          lng: (data['longitude'] ?? 0.0).toDouble(),
+        ));
+      }
+
+      if (mounted) {
+        setState(() {
+          _intermediateStops = stops;
+          _stopsLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _stopsLoading = false);
+    }
+  }
+
+  /// Loads route stops for a TRANSTU bus journey from Firestore.
+  Future<void> _loadTranstuStops() async {
+    try {
+      final db = FirebaseFirestore.instance;
+      // Derive routeId: Journey.id is 'bus_svc_route_transtu_...' → 'route_transtu_...'
+      final String routeId;
+      if (_journey.id.startsWith('bus_svc_')) {
+        routeId = _journey.id.substring('bus_svc_'.length);
+      } else {
+        final svcDoc =
+            await db.collection('bus_services').doc(_journey.id).get();
+        if (!svcDoc.exists) {
+          if (mounted) setState(() => _stopsLoading = false);
+          return;
+        }
+        routeId = (svcDoc.data()!['routeId'] as String?) ?? '';
+      }
+
+      if (routeId.isEmpty) {
+        if (mounted) setState(() => _stopsLoading = false);
+        return;
+      }
+
+      final rsSnap = await db
+          .collection('route_stops')
+          .where('routeId', isEqualTo: routeId)
+          .get();
+
+      if (rsSnap.docs.isEmpty) {
+        if (mounted) setState(() => _stopsLoading = false);
+        return;
+      }
+
+      final sorted = rsSnap.docs.toList()
+        ..sort((a, b) => (a.data()['stopOrder'] as int)
+            .compareTo(b.data()['stopOrder'] as int));
+
+      final stationDocs = await Future.wait(
+        sorted.map((d) =>
+            db.collection('stations').doc(d.data()['stationId'] as String).get()),
+      );
+
+      final stops = <_StopInfo>[];
+      final depMinutes = _parseMinutes(_journey.departureTime);
+      final baseOffset =
+          (sorted.first.data()['estimatedArrivalTimeMinutes'] ?? 0) as int;
+
+      for (int i = 0; i < sorted.length; i++) {
+        final data = stationDocs[i].data();
+        if (data == null) continue;
+        final offset =
+            ((sorted[i].data()['estimatedArrivalTimeMinutes'] ?? 0) as int) -
+                baseOffset;
+        final arr = depMinutes + offset;
+        final timeStr =
+            '${(arr ~/ 60).toString().padLeft(2, '0')}:${(arr % 60).toString().padLeft(2, '0')}';
+        stops.add(_StopInfo(
+          name: data['name'] ?? sorted[i].data()['stationId'],
           time: timeStr,
           lat: (data['latitude'] ?? 0.0).toDouble(),
           lng: (data['longitude'] ?? 0.0).toDouble(),
@@ -274,10 +358,11 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     final shareText = StringBuffer();
 
     if (metro != null) {
+      final isBus = metro.lineType == 'sts_sahel';
       shareText
-        ..writeln('🚆 ${metro.operatorName}')
+        ..writeln('${isBus ? '🚌' : '🚆'} ${metro.operatorName}')
         ..writeln('${metro.fromStationName} → ${metro.toStationName}')
-        ..writeln('Train N°${metro.tripNumberStr ?? metro.tripNumber}')
+        ..writeln('${isBus ? 'Bus N°' : 'Train N°'}${metro.tripNumberStr ?? metro.tripNumber}')
         ..writeln('Départ: ${metro.departureTime}')
         ..writeln(
             'Arrivée: ${metro.noTrainToday ? "Demain" : metro.arrivalTime}')
@@ -331,6 +416,39 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       'route_sncft_gl_annaba_reverse',
       'route_sncft_gl_bizerte_forward',
       'route_sncft_gl_bizerte_reverse',
+    ];
+
+    String? fallbackRouteId;
+    for (final candidateRouteId in candidateRoutes) {
+      final routeStops = await db
+          .collection('route_stops')
+          .where('routeId', isEqualTo: candidateRouteId)
+          .get();
+
+      int? fromOrder;
+      int? toOrder;
+      for (final doc in routeStops.docs) {
+        final data = doc.data();
+        final sid = data['stationId'] as String;
+        final order = data['stopOrder'] as int;
+        if (sid == metro.fromStationId) fromOrder = order;
+        if (sid == metro.toStationId) toOrder = order;
+      }
+
+      if (fromOrder != null && toOrder != null) {
+        if (fromOrder < toOrder) return candidateRouteId;
+        fallbackRouteId ??= candidateRouteId;
+      }
+    }
+    return fallbackRouteId;
+  }
+
+  Future<String?> _resolveStsSahelRouteId(MetroSahelResult metro) async {
+    final db = FirebaseFirestore.instance;
+    const candidateRoutes = [
+      'route_sts_mahdia_sousse',
+      'route_sts_sousse_mahdia',
+      'route_sts_mahdia_sousse_monastir',
     ];
 
     String? fallbackRouteId;
@@ -415,6 +533,14 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
             title: 'Tarif estimé',
             value: '${j.price} TND',
           ),
+          if (j.estimatedTripDurationMinutes != null) ...[
+            const SizedBox(height: 12),
+            _buildInfoCard(
+              icon: Icons.timer_outlined,
+              title: 'Durée estimée du trajet',
+              value: '~${j.estimatedTripDurationMinutes} min',
+            ),
+          ],
           const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
@@ -565,8 +691,8 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    // Map (train only — hidden for TRANSTU bus)
-                    if (!_isTranstuBus)
+                    // Map — shown for trains and TRANSTU bus when route data is available
+                    if (_stopsLoading || _intermediateStops.isNotEmpty)
                       SizedBox(
                         height: 250,
                         child: _stopsLoading
@@ -663,9 +789,10 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                                 child: Text.rich(
                                   TextSpan(
                                     children: [
-                                      const TextSpan(
-                                          text:
-                                              'Aucun train disponible ce soir.\nPremier train demain à '),
+                                      TextSpan(
+                                          text: metro.lineType == 'sts_sahel'
+                                              ? 'Aucun bus disponible ce soir.\nProchain bus demain à '
+                                              : 'Aucun train disponible ce soir.\nPremier train demain à '),
                                       WidgetSpan(
                                         alignment:
                                             PlaceholderAlignment.middle,
@@ -689,10 +816,44 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                         ),
                       ),
 
+                    // TRANSTU bus departure + last departure banner
+                    if (_isTranstuBus)
+                      Padding(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 20),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFF00695C),
+                                Color(0xFF00897B),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              _timeBadge(
+                                  'Premier départ',
+                                  _journey.departureTime),
+                              const Spacer(),
+                              const Icon(Icons.directions_bus,
+                                  color: Colors.white54, size: 22),
+                              const Spacer(),
+                              if ((_journey.arrivalTime ?? '').isNotEmpty)
+                                _timeBadge(
+                                    'Dernier départ',
+                                    _journey.arrivalTime!),
+                            ],
+                          ),
+                        ),
+                      ),
+
                     const SizedBox(height: 20),
 
-                    // ── Route steps OR bus panel ──────────────────────────
-                    if (_isTranstuBus)
+                    // ── Route steps (metro, train, bus with stops) OR basic bus panel ──
+                    if (_isTranstuBus && _intermediateStops.isEmpty && !_stopsLoading)
                       _buildBusDetailsPanel()
                     else
                       Padding(
@@ -731,8 +892,8 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
 
                     const SizedBox(height: 20),
 
-                    // Info cards (train / generic journey only)
-                    if (!_isTranstuBus)
+                    // Info cards (train, metro, and TRANSTU bus with loaded stops)
+                    if (!_isTranstuBus || _intermediateStops.isNotEmpty)
                       Padding(
                         padding:
                             const EdgeInsets.symmetric(horizontal: 20),
@@ -743,7 +904,9 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                               title: l10n.totalDuration,
                               value: isMetro
                                   ? '${metro.durationMinutes} min'
-                                  : _journey.duration,
+                                  : _journey.duration.isNotEmpty
+                                      ? _journey.duration
+                                      : '--',
                             ),
                             const SizedBox(height: 12),
                             _buildInfoCard(
@@ -755,10 +918,14 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                             ),
                             const SizedBox(height: 12),
                             _buildInfoCard(
-                              icon: Icons.train,
+                              icon: isMetro
+                                  ? (metro.lineType == 'sts_sahel'
+                                      ? Icons.directions_bus
+                                      : Icons.train)
+                                  : Icons.directions_bus,
                               title: l10n.journeyType,
                               value: isMetro
-                                  ? 'Métro du Sahel'
+                                  ? metro.operatorName
                                   : _journey.type,
                             ),
                             const SizedBox(height: 12),
@@ -767,9 +934,11 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                               title: 'Arrêts',
                               value: isMetro
                                   ? '${metro.numberOfStops} arrêts (Direct)'
-                                  : _journey.transfers == 0
-                                      ? 'Direct'
-                                      : '${_journey.transfers} correspondance(s)',
+                                  : _intermediateStops.isNotEmpty
+                                      ? '${_intermediateStops.length} arrêts'
+                                      : _journey.transfers == 0
+                                          ? 'Direct'
+                                          : '${_journey.transfers} correspondance(s)',
                             ),
                             if (isMetro) ...[
                               const SizedBox(height: 12),
@@ -777,6 +946,14 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                                 icon: Icons.route,
                                 title: 'Ligne',
                                 value: metro.routeName,
+                              ),
+                            ],
+                            if (_isTranstuBus) ...[
+                              const SizedBox(height: 12),
+                              _buildInfoCard(
+                                icon: Icons.route,
+                                title: 'Ligne',
+                                value: _journey.line,
                               ),
                             ],
                           ],

@@ -187,6 +187,28 @@ class JourneyRepository {
         ),
       );
 
+  Future<MetroSahelResult?> findNextStsSahelTrip({
+    required String fromStationId,
+    required String toStationId,
+    required DateTime searchDateTime,
+  }) =>
+      _findNextOffsetBasedTrip(
+        fromStationId: fromStationId,
+        toStationId: toStationId,
+        searchDateTime: searchDateTime,
+        config: _LineConfig(
+          lineType: 'sts_sahel',
+          operatorName: 'STS – Société de Transport du Sahel',
+          operatorPhone: '+216 73 229 500',
+          fallbackFirstDeparture: '04:45',
+          resolveRouteId: (f, t) =>
+              _routeRepository.findStsSahelRouteId(f, t),
+          calculateFare: (from, to) =>
+              _stsSahelFare((from.order - to.order).abs()),
+          supportsPartialTrips: true,
+        ),
+      );
+
   // ── Metro Sahel — kept separate due to its unique stop-order lookup ────────
   //
   // Metro Sahel uses RouteRepository.getStopOrder() rather than route_stops
@@ -603,6 +625,14 @@ class JourneyRepository {
   }
 
 
+
+  /// STS Sahel: stop-count-based fare (Sousse ↔ Mahdia intercity bus).
+  static double _stsSahelFare(int numberOfStops) {
+    if (numberOfStops <= 2) return 1.500;
+    if (numberOfStops <= 4) return 2.000;
+    if (numberOfStops <= 8) return 3.000;
+    return 4.500;
+  }
 
   /// SNCFT: known pair lookup with distance-band fallback.
   static double _sncftL5Fare(String fromId, String toId) {
