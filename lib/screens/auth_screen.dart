@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:avatar_plus/avatar_plus.dart';
 import 'package:go_router/go_router.dart';
@@ -213,9 +214,17 @@ class _AuthScreenState extends State<AuthScreen>
         );
       }
     } catch (e) {
-      final errorMsg = e.toString().replaceAll('Exception: ', '');
+      final rawMsg = e.toString().replaceAll('Exception: ', '');
+
+      // Unverified email: show a dialog with a resend button
+      if (rawMsg.startsWith('email_not_verified:') && mounted) {
+        setState(() => _isLoading = false);
+        await _showEmailNotVerifiedDialog(rawMsg.replaceFirst('email_not_verified:', ''));
+        return;
+      }
+
       setState(() {
-        _errorMessage = errorMsg;
+        _errorMessage = rawMsg;
         _isLoading = false;
       });
 
@@ -233,6 +242,68 @@ class _AuthScreenState extends State<AuthScreen>
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _showEmailNotVerifiedDialog(String email) async {
+    final l10n = AppLocalizations.of(context)!;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _EmailNotVerifiedDialog(
+        email: email,
+        password: _loginPasswordController.text,
+        authController: _authController,
+        l10n: l10n,
+      ),
+    );
+  }
+
+  Future<void> _showVerificationSentDialog(String email) async {
+    if (!mounted) return;
+    // Capture password now before the form might be cleared.
+    final password = _signupPasswordController.text;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _VerificationSentDialog(
+        email: email,
+        password: password,
+        authController: _authController,
+        onDismiss: () {
+          Navigator.of(ctx).pop();
+          _tabController.animateTo(0); // switch to login tab
+        },
+        onVerified: (email, password) async {
+          // Close the dialog first.
+          Navigator.of(ctx).pop();
+          if (!mounted) return;
+          // Show a brief success snackbar.
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: const [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('Email vérifié ! Connexion en cours...')),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          // Sign the user in — the router will navigate to home automatically.
+          try {
+            await _authController.signInWithEmail(
+              email: email,
+              password: password,
+            );
+          } catch (_) {
+            // If sign-in fails for any reason, fall back to the login tab.
+            if (mounted) _tabController.animateTo(0);
+          }
+        },
+      ),
+    );
   }
 
   Future<void> _handleSignUp() async {
@@ -269,19 +340,14 @@ class _AuthScreenState extends State<AuthScreen>
         avatarId: _selectedAvatarId,
       );
 
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.signupSuccess),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 1),
-          ),
-        );
-      }
+      final registeredEmail = _signupEmailController.text.trim();
+      await _showVerificationSentDialog(registeredEmail);
     } catch (e) {
-      final errorMsg = e.toString().replaceAll('Exception: ', '');
+      String errorMsg = e.toString().replaceAll('Exception: ', '');
+      // Translate known error codes to localized messages.
+      if (errorMsg == 'auth.error.username_taken') {
+        errorMsg = l10n.usernameTaken;
+      }
       setState(() {
         _errorMessage = errorMsg;
         _isLoading = false;
@@ -738,6 +804,253 @@ class _AuthScreenState extends State<AuthScreen>
           ],
         ),
       ),
+    );
+  }
+}
+
+class _EmailNotVerifiedDialog extends StatefulWidget {
+  const _EmailNotVerifiedDialog({
+    required this.email,
+    required this.password,
+    required this.authController,
+    required this.l10n,
+  });
+
+  final String email;
+  final String password;
+  final AuthController authController;
+  final AppLocalizations l10n;
+
+  @override
+  State<_EmailNotVerifiedDialog> createState() =>
+      _EmailNotVerifiedDialogState();
+}
+
+class _EmailNotVerifiedDialogState extends State<_EmailNotVerifiedDialog> {
+  bool _sending = false;
+  bool _sent = false;
+
+  Future<void> _resend() async {
+    setState(() => _sending = true);
+    try {
+      await widget.authController.resendVerificationEmail(
+        email: widget.email,
+        password: widget.password,
+      );
+      if (mounted) setState(() { _sending = false; _sent = true; });
+    } catch (_) {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = widget.l10n;
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(Icons.email_outlined, color: Colors.orange),
+          SizedBox(width: 8),
+          Flexible(child: Text(l10n.emailVerificationTitle)),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.emailNotVerified),
+          if (_sent) ...[
+            SizedBox(height: 8),
+            Text(
+              l10n.verificationEmailResent,
+              style: TextStyle(color: Colors.green),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _sending ? null : _resend,
+          child: _sending
+              ? SizedBox(
+                  width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(l10n.resendVerificationEmail),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('OK'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Dialog shown after successful signup. Displays a confirmation message and
+/// a Resend button with a 60-second cooldown.
+class _VerificationSentDialog extends StatefulWidget {
+  const _VerificationSentDialog({
+    required this.email,
+    required this.password,
+    required this.authController,
+    required this.onDismiss,
+    required this.onVerified,
+  });
+
+  final String email;
+  final String password;
+  final AuthController authController;
+  /// Called when user dismisses manually (OK button → login tab).
+  final VoidCallback onDismiss;
+  /// Called when email is detected as verified → auto sign-in → home.
+  final Future<void> Function(String email, String password) onVerified;
+
+  @override
+  State<_VerificationSentDialog> createState() => _VerificationSentDialogState();
+}
+
+class _VerificationSentDialogState extends State<_VerificationSentDialog>
+    with WidgetsBindingObserver {
+  static const _cooldownSeconds = 60;
+  int _secondsLeft = _cooldownSeconds;
+  bool _sending = false;
+  bool _sent = false;
+  bool _checking = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _startCooldown();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Called when the app comes back to the foreground (e.g. user returned
+  /// from mail client after clicking the verification link).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkVerification();
+    }
+  }
+
+  /// Signs in temporarily to check whether the email was verified, then
+  /// signs out again. If verified, calls onVerified for auto sign-in → home.
+  Future<void> _checkVerification() async {
+    if (_checking || !mounted) return;
+    setState(() => _checking = true);
+    try {
+      final verified = await widget.authController.isEmailVerified(
+        email: widget.email,
+        password: widget.password,
+      );
+      if (verified && mounted) {
+        await widget.onVerified(widget.email, widget.password);
+      }
+    } catch (_) {
+      // Ignore — user may not have verified yet.
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
+
+  void _startCooldown() {
+    _timer?.cancel();
+    setState(() => _secondsLeft = _cooldownSeconds);
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) { t.cancel(); return; }
+      setState(() {
+        if (_secondsLeft > 0) {
+          _secondsLeft--;
+        } else {
+          t.cancel();
+        }
+      });
+    });
+  }
+
+  Future<void> _resend() async {
+    setState(() { _sending = true; _sent = false; });
+    try {
+      await widget.authController.resendVerificationEmail(
+        email: widget.email,
+        password: widget.password,
+      );
+      if (mounted) setState(() { _sent = true; });
+      _startCooldown();
+    } catch (_) {
+      if (mounted) setState(() { _sent = false; });
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final canResend = _secondsLeft == 0 && !_sending && !_checking;
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          const Icon(Icons.mark_email_read_outlined, color: Colors.green),
+          const SizedBox(width: 8),
+          Flexible(child: Text(l10n.emailVerificationTitle)),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.emailVerificationMessage(widget.email)),
+          if (_checking) ...[
+            const SizedBox(height: 12),
+            const Row(
+              children: [
+                SizedBox(
+                  width: 14, height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 8),
+                Flexible(child: Text('Vérification en cours...',
+                    style: TextStyle(fontSize: 12))),
+              ],
+            ),
+          ],
+          if (_sent && !_checking) ...[
+            const SizedBox(height: 8),
+            Text(l10n.verificationEmailResent,
+                style: const TextStyle(color: Colors.green, fontSize: 12)),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: canResend ? _resend : null,
+          child: _sending
+              ? const SizedBox(
+                  width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(
+                  _secondsLeft > 0
+                      ? '${l10n.resendVerificationEmail} ($_secondsLeft s)'
+                      : l10n.resendVerificationEmail,
+                ),
+        ),
+        TextButton(
+          onPressed: _checking ? null : widget.onDismiss,
+          child: const Text('OK'),
+        ),
+      ],
     );
   }
 }

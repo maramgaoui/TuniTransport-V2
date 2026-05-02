@@ -249,6 +249,15 @@ class AuthController {
         return null;
       }
 
+      // Block email/password accounts that haven't verified their email yet.
+      // Google-authenticated users are pre-verified by Google, so they are exempt.
+      final isEmailPasswordUser = user.providerData
+          .any((p) => p.providerId == 'password');
+      if (isEmailPasswordUser && !user.emailVerified) {
+        _invalidateAuthStreamCache();
+        return null;
+      }
+
       if (_cachedAuthStreamUser != null &&
           _cachedAuthStreamUid == user.uid &&
           _authStreamCachedAt != null &&
@@ -307,6 +316,10 @@ class AuthController {
     final firebaseUser = _firebaseAuth.currentUser;
     if (firebaseUser == null) return null;
 
+    final isEmailPasswordUser = firebaseUser.providerData
+        .any((p) => p.providerId == 'password');
+    if (isEmailPasswordUser && !firebaseUser.emailVerified) return null;
+
     return User(uid: firebaseUser.uid, email: firebaseUser.email ?? '');
   }
 
@@ -330,7 +343,10 @@ class AuthController {
     return User(uid: firebaseUser.uid, email: firebaseUser.email ?? '');
   }
 
-  // Sign up with email and password
+  // Sign up with email and password.
+  // Reserves the username atomically in Firestore before creating the Auth
+  // account. The user Firestore document is only created after email
+  // verification is confirmed (on first successful login).
   Future<User?> signUpWithEmail({
     required String email,
     required String password,
@@ -340,38 +356,30 @@ class AuthController {
     String? avatarId,
   }) async {
     try {
-      // Validate all fields on backend before saving
+      // Validate all fields before touching Firebase
       final emailValidation = ValidationUtils.validateEmail(email);
-      if (emailValidation != null) {
-        throw Exception(emailValidation);
-      }
+      if (emailValidation != null) throw Exception(emailValidation);
 
-      final firstNameValidation = ValidationUtils.validateName(
-        firstName,
-        'Prénom',
-      );
-      if (firstNameValidation != null) {
-        throw Exception(firstNameValidation);
-      }
+      final firstNameValidation = ValidationUtils.validateName(firstName, 'Prénom');
+      if (firstNameValidation != null) throw Exception(firstNameValidation);
 
       final lastNameValidation = ValidationUtils.validateName(lastName, 'Nom');
-      if (lastNameValidation != null) {
-        throw Exception(lastNameValidation);
-      }
+      if (lastNameValidation != null) throw Exception(lastNameValidation);
 
       final passwordValidation = ValidationUtils.validatePassword(password);
-      if (passwordValidation != null) {
-        throw Exception(passwordValidation);
+      if (passwordValidation != null) throw Exception(passwordValidation);
+
+      final effectiveUsername = (username != null && username.isNotEmpty) ? username : null;
+      if (effectiveUsername != null) {
+        final usernameValidation = ValidationUtils.validateUsername(effectiveUsername);
+        if (usernameValidation != null) throw Exception(usernameValidation);
+
+        // Check if username is already taken (confirmed user or recent reservation)
+        final taken = await _isUsernameTaken(effectiveUsername);
+        if (taken) throw Exception('auth.error.username_taken');
       }
 
-      if (username != null && username.isNotEmpty) {
-        final usernameValidation = ValidationUtils.validateUsername(username);
-        if (usernameValidation != null) {
-          throw Exception(usernameValidation);
-        }
-      }
-
-      // Create Firebase Auth user
+      // Create Firebase Auth account
       final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
@@ -382,31 +390,87 @@ class AuthController {
         throw Exception('auth.error.account_creation_failed');
       }
 
-      // Create user model
-      final user = User(
+      // Reserve username in Firestore immediately so no other user can claim it
+      // while this account awaits email verification.
+      if (effectiveUsername != null) {
+        try {
+          await _firestore.collection('usernames').doc(effectiveUsername).set({
+            'uid': firebaseUser.uid,
+            'reservedAt': FieldValue.serverTimestamp(),
+          });
+          developer.log('Username "$effectiveUsername" reserved for ${firebaseUser.uid}', name: 'AuthController');
+        } catch (e) {
+          // If reservation fails, delete the Auth account to avoid orphaned accounts.
+          developer.log('Username reservation failed, rolling back Auth account: $e', name: 'AuthController');
+          await firebaseUser.delete();
+          throw Exception('auth.error.username_taken');
+        }
+      }
+
+      // Persist pending profile locally — Firestore doc written on first verified login.
+      final pendingProfile = {
+        'uid': firebaseUser.uid,
+        'email': email,
+        'username': effectiveUsername ?? '',
+        'firstName': firstName,
+        'lastName': lastName,
+        'avatarId': avatarId ?? 'avatar-01',
+        'status': 'active',
+        'banUntil': null,
+      };
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        'pending_profile_${firebaseUser.uid}',
+        jsonEncode(pendingProfile),
+      );
+      developer.log('Pending profile saved for ${firebaseUser.uid}', name: 'AuthController');
+
+      // Send verification email then immediately sign out.
+      developer.log('Sending verification email to ${firebaseUser.email}', name: 'AuthController');
+      try {
+        await firebaseUser.sendEmailVerification();
+        developer.log('Verification email sent successfully', name: 'AuthController');
+      } on firebase_auth.FirebaseAuthException catch (e) {
+        developer.log('sendEmailVerification failed: ${e.code} ${e.message}', name: 'AuthController');
+      }
+      await _firebaseAuth.signOut();
+      _invalidateSessionCache();
+
+      return User(
         uid: firebaseUser.uid,
         email: email,
-        username: username,
+        username: effectiveUsername,
         firstName: firstName,
         lastName: lastName,
         avatarId: avatarId,
       );
-
-      // Save full account + profile data in one users document
-      final userData = user.toMap();
-      userData['status'] = 'active';
-      userData['banUntil'] = null;
-      developer.log('Saving user data: $userData', name: 'AuthController');
-      await _firestore.collection('users').doc(firebaseUser.uid).set(userData);
-
-      _invalidateSessionCache();
-      return user;
     } on firebase_auth.FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
       developer.log('Sign up error: $e', name: 'AuthController');
       throw Exception(e.toString());
     }
+  }
+
+  /// Returns true if [username] is already taken by a confirmed user or a
+  /// recent (< 24 h) reservation.
+  Future<bool> _isUsernameTaken(String username) async {
+    // Only query the `usernames` collection — it's publicly readable and holds
+    // both active reservations (pending unverified signups) and confirmed users
+    // (backfilled on first login). The `users` collection query is forbidden
+    // before the user is authenticated.
+    final reservationDoc = await _firestore
+        .collection('usernames')
+        .doc(username)
+        .get();
+    if (!reservationDoc.exists) return false;
+
+    final data = reservationDoc.data()!;
+    // A doc without a reservedAt timestamp means it's a backfilled confirmed
+    // username — always considered taken.
+    final reservedAt = (data['reservedAt'] as Timestamp?)?.toDate();
+    if (reservedAt == null) return true;
+    return DateTime.now().difference(reservedAt).inHours < 24;
   }
 
   // Sign in with email and password
@@ -425,6 +489,12 @@ class AuthController {
         throw Exception('Failed to sign in');
       }
 
+      // Block unverified email/password accounts.
+      if (!firebaseUser.emailVerified) {
+        await _firebaseAuth.signOut();
+        throw Exception('email_not_verified:${firebaseUser.email ?? ''}');
+      }
+
       final accessError = await _validateAndNormalizeUserAccess(
         uid: firebaseUser.uid,
         enforceRestriction: true,
@@ -434,20 +504,56 @@ class AuthController {
         throw Exception(accessError);
       }
 
-      // Fetch user data from Firestore
-      final userDoc = await _firestore
-          .collection('users')
-          .doc(firebaseUser.uid)
-          .get();
+      // Fetch (or create) user data in Firestore.
+      // If no document exists yet, this is the first login after email
+      // verification — restore the pending profile saved during signup.
+      final userDocRef = _firestore.collection('users').doc(firebaseUser.uid);
+      final userDoc = await userDocRef.get();
 
       if (userDoc.exists) {
         _invalidateSessionCache(uid: firebaseUser.uid);
-        return User.fromMap(userDoc.data() ?? {});
-      } else {
-        // Return basic user if not in Firestore
-        _invalidateSessionCache(uid: firebaseUser.uid);
-        return User(uid: firebaseUser.uid, email: firebaseUser.email ?? '');
+        final user = User.fromMap(userDoc.data() ?? {});
+        // Backfill usernames/{username} for confirmed users who pre-date the
+        // reservation system so username uniqueness checks stay accurate.
+        if (user.username != null && user.username!.isNotEmpty) {
+          final usernameRef = _firestore.collection('usernames').doc(user.username);
+          final usernameDoc = await usernameRef.get();
+          if (!usernameDoc.exists) {
+            await usernameRef.set({'uid': firebaseUser.uid}).catchError((_) {});
+          }
+        }
+        return user;
       }
+
+      // Try to restore pending profile from SharedPreferences.
+      final prefs = await SharedPreferences.getInstance();
+      final pendingJson = prefs.getString('pending_profile_${firebaseUser.uid}');
+      if (pendingJson != null) {
+        try {
+          final pendingData = jsonDecode(pendingJson) as Map<String, dynamic>;
+          pendingData['status'] = 'active';
+          pendingData['banUntil'] = null;
+          developer.log('Creating Firestore doc from pending profile for ${firebaseUser.uid}', name: 'AuthController');
+          await userDocRef.set(pendingData);
+          // Update the reservation: remove reservedAt to mark username as
+          // permanently confirmed (won't expire on the 24-hour TTL check).
+          final confirmedUsername = pendingData['username'] as String?;
+          if (confirmedUsername != null && confirmedUsername.isNotEmpty) {
+            await _firestore.collection('usernames').doc(confirmedUsername)
+                .set({'uid': firebaseUser.uid})
+                .catchError((_) {});
+          }
+          await prefs.remove('pending_profile_${firebaseUser.uid}');
+          _invalidateSessionCache(uid: firebaseUser.uid);
+          return User.fromMap(pendingData);
+        } catch (e) {
+          developer.log('Failed to restore pending profile: $e', name: 'AuthController');
+        }
+      }
+
+      // Fallback: return basic user if no pending profile found.
+      _invalidateSessionCache(uid: firebaseUser.uid);
+      return User(uid: firebaseUser.uid, email: firebaseUser.email ?? '');
     } on firebase_auth.FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } on Exception {
@@ -456,6 +562,56 @@ class AuthController {
     } catch (e) {
       developer.log('Sign in error: $e', name: 'AuthController');
       throw Exception('An error occurred during sign in. Please try again.');
+    }
+  }
+
+  /// Sends a new verification email. Signs in temporarily with [email] and
+  /// [password] to obtain a Firebase user with a fresh token, then immediately
+  /// signs out again.
+  Future<void> resendVerificationEmail({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final firebaseUser = userCredential.user;
+      if (firebaseUser != null && !firebaseUser.emailVerified) {
+        await firebaseUser.sendEmailVerification();
+      }
+      await _firebaseAuth.signOut();
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  /// Signs in temporarily to check whether [email] has been verified, then
+  /// signs out again immediately. Returns `true` if verified.
+  Future<bool> isEmailVerified({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final firebaseUser = userCredential.user;
+      if (firebaseUser != null) {
+        await firebaseUser.reload();
+        final verified = firebaseUser.emailVerified;
+        await _firebaseAuth.signOut();
+        return verified;
+      }
+      await _firebaseAuth.signOut();
+      return false;
+    } catch (_) {
+      try { await _firebaseAuth.signOut(); } catch (_) {}
+      return false;
     }
   }
 

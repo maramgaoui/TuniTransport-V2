@@ -7,11 +7,13 @@ import '../services/station_repository.dart';
 import '../services/route_repository.dart';
 import '../services/journey_repository.dart';
 import '../services/bus_service_repository.dart';
+import '../services/taxi_collectif_service.dart';
 
 class JourneySearchController extends ChangeNotifier {
   final StationRepository _stationRepository;
   final JourneyRepository _journeyRepository;
   final BusServiceRepository _busServiceRepository;
+  final TaxiCollectifService _taxiCollectifService;
 
   JourneySearchState _state = const JourneySearchState();
   JourneySearchState get state => _state;
@@ -20,6 +22,7 @@ class JourneySearchController extends ChangeNotifier {
     StationRepository? stationRepository,
     JourneyRepository? journeyRepository,
     BusServiceRepository? busServiceRepository,
+    TaxiCollectifService? taxiCollectifService,
   })  : _stationRepository = stationRepository ??
             StationRepository(FirebaseFirestore.instance),
         _journeyRepository = journeyRepository ??
@@ -28,7 +31,9 @@ class JourneySearchController extends ChangeNotifier {
               RouteRepository(FirebaseFirestore.instance),
             ),
         _busServiceRepository =
-            busServiceRepository ?? BusServiceRepository();
+            busServiceRepository ?? BusServiceRepository(),
+        _taxiCollectifService =
+            taxiCollectifService ?? TaxiCollectifService(FirebaseFirestore.instance);
 
   static const Set<String> _bnCanonicalStationIds = {
     'bn_tunis',
@@ -60,6 +65,28 @@ class JourneySearchController extends ChangeNotifier {
     'sncft_grombalia',
   };
 
+  /// Maps a metro/STS station ID to its SNCFT mainline equivalent for cities
+  /// served by both networks, so picking one "Sousse" covers all modes.
+  static const Map<String, String> _sncftMainlineAlias = {
+    'ms_sousse_bab_jedid': 'sncft_sousse_voyageurs',
+  };
+
+  /// Remaps redundant STS-only station IDs to their canonical metro hub IDs.
+  /// The STS Sahel and Métro du Sahel share the same physical stations; some
+  /// Firestore seeds created `sts_*` documents that only list `sts_sahel` as
+  /// operator.  By remapping early we ensure both the metro and STS branches
+  /// resolve against the fully-populated `ms_*` station document.
+  static const Map<String, String> _stsToMetroHubMap = {
+    'sts_sousse':   'ms_sousse_bab_jedid',
+    'sts_monastir': 'ms_monastir',
+    'sts_mahdia':   'ms_mahdia',
+    'sts_bekalta':  'ms_bekalta',
+    'sts_moknine':  'ms_moknine',
+    'sts_ksar_hellal': 'ms_ksar_hellal',
+    'sts_jem':      'ms_el_jem',
+    'sts_sahline':  'ms_sahline',
+  };
+
   /// Emits a new state and notifies listeners in one call.
   void _emit(JourneySearchState newState) {
     _state = newState;
@@ -74,6 +101,11 @@ class JourneySearchController extends ChangeNotifier {
   /// Maps a legacy station ID to its canonical BN equivalent, if any.
   String _normalizeBnLegacyStationId(String stationId) {
     return _bnLegacyIdMap[stationId] ?? stationId;
+  }
+
+  /// Remaps redundant STS-only station IDs to their canonical metro hub.
+  String _normalizeStsToMetroHub(String stationId) {
+    return _stsToMetroHubMap[stationId] ?? stationId;
   }
 
   /// Remaps bn_tunis → bs_tunis_ville when the other station is a Banlieue Sud
@@ -108,15 +140,19 @@ class JourneySearchController extends ChangeNotifier {
     final rawFromNormalized = _normalizeBnLegacyStationId(fromStationId);
     final rawToNormalized = _normalizeBnLegacyStationId(toStationId);
 
+    // Step 1b — remap redundant sts_* duplicates to their ms_* metro hub.
+    final bnFromNormalized = _normalizeStsToMetroHub(rawFromNormalized);
+    final bnToNormalized = _normalizeStsToMetroHub(rawToNormalized);
+
     // Step 2 — remap bn_tunis → bs_tunis_ville when paired with a bs_ station.
     // Both calls use the raw-normalized values (symmetric, no ordering dependency).
     final normalizedFromStationId = _normalizeSharedTunisForBanlieueSud(
-      rawFromNormalized,
-      rawToNormalized,
+      bnFromNormalized,
+      bnToNormalized,
     );
     final normalizedToStationId = _normalizeSharedTunisForBanlieueSud(
-      rawToNormalized,
-      rawFromNormalized,
+      bnToNormalized,
+      bnFromNormalized,
     );
 
     if (kDebugMode) {
@@ -132,6 +168,7 @@ class JourneySearchController extends ChangeNotifier {
       clearError: true,
       clearBus: true,
       clearBestBus: true,
+      clearTaxi: true,
     ));
 
     try {
@@ -151,6 +188,16 @@ class JourneySearchController extends ChangeNotifier {
       if (kDebugMode) {
         debugPrint(
           '[JourneySearch] resolved from=${fromStation.id} to=${toStation.id}',
+        );
+        debugPrint(
+          '[JourneySearch] from.operatorsHere=${fromStation.operatorsHere} '
+          'to.operatorsHere=${toStation.operatorsHere}',
+        );
+        debugPrint(
+          '[JourneySearch] isMetro(from)=${_stationRepository.isMetroSahelStation(fromStation)} '
+          'isMetro(to)=${_stationRepository.isMetroSahelStation(toStation)} '
+          'isSts(from)=${_stationRepository.isStsSahelStation(fromStation)} '
+          'isSts(to)=${_stationRepository.isStsSahelStation(toStation)}',
         );
       }
 
@@ -186,11 +233,13 @@ class JourneySearchController extends ChangeNotifier {
       // Métro du Sahel.
       if (_stationRepository.isMetroSahelStation(fromStation) &&
           _stationRepository.isMetroSahelStation(toStation)) {
+        if (kDebugMode) debugPrint('[JourneySearch] branch=metro_sahel firing');
         final metroResult = await _journeyRepository.findNextMetroSahelTrip(
           fromStationId: fromStation.id,
           toStationId: toStation.id,
           searchDateTime: searchDateTime,
         );
+        if (kDebugMode) debugPrint('[JourneySearch] metro_sahel result=$metroResult');
         if (metroResult != null) collectedTrainResults.add(metroResult);
       }
 
@@ -230,14 +279,22 @@ class JourneySearchController extends ChangeNotifier {
       }
 
       // SNCFT Grandes Lignes (L5, Kef, Bizerte, Annaba…).
-      if (_stationRepository.isSncftMainlineStation(fromStation) &&
-          _stationRepository.isSncftMainlineStation(toStation)) {
-        final sncftResult = await _journeyRepository.findNextSncftL5Trip(
-          fromStationId: fromStation.id,
-          toStationId: toStation.id,
-          searchDateTime: searchDateTime,
-        );
-        if (sncftResult != null) collectedTrainResults.add(sncftResult);
+      // If either station is a cross-network hub (e.g. ms_sousse_bab_jedid),
+      // resolve its SNCFT mainline equivalent before running the branch.
+      {
+        final sncftFromId = _sncftMainlineAlias[fromStation.id] ?? fromStation.id;
+        final sncftToId   = _sncftMainlineAlias[toStation.id]   ?? toStation.id;
+        if ((_stationRepository.isSncftMainlineStation(fromStation) ||
+                _sncftMainlineAlias.containsKey(fromStation.id)) &&
+            (_stationRepository.isSncftMainlineStation(toStation) ||
+                _sncftMainlineAlias.containsKey(toStation.id))) {
+          final sncftResult = await _journeyRepository.findNextSncftL5Trip(
+            fromStationId: sncftFromId,
+            toStationId: sncftToId,
+            searchDateTime: searchDateTime,
+          );
+          if (sncftResult != null) collectedTrainResults.add(sncftResult);
+        }
       }
 
       // STS Sahel intercity bus (Sousse ↔ Mahdia via Sahel corridor).
@@ -343,8 +400,19 @@ class JourneySearchController extends ChangeNotifier {
         }
       }
 
+      // ─── Taxi collectif — runs for every search, independent of other modes ─
+      // Use cityId (e.g. "sousse", "monastir") which already matches the seed
+      // script's normalization, rather than the full station name which may
+      // contain suffixes like " - Bab Jedid" that break the lookup.
+      final taxiResult = await _taxiCollectifService.findRoute(
+        fromCityId: fromStation.cityId,
+        toCityId: toStation.cityId,
+      );
+
       // ─── Emit combined results ────────────────────────────────────────────
-      if (collectedTrainResults.isEmpty && bestBusService == null) {
+      if (collectedTrainResults.isEmpty &&
+          bestBusService == null &&
+          taxiResult == null) {
         if (kDebugMode) {
           debugPrint(
             '[JourneySearch] no branch matched for from=$fromStationId '
@@ -355,6 +423,7 @@ class JourneySearchController extends ChangeNotifier {
         _emit(_state.copyWith(
           isLoading: false,
           clearTrainResults: true,
+          clearTaxi: true,
           error: busError ?? 'Ces stations n\'appartiennent pas à la même ligne.',
         ));
       } else {
@@ -365,6 +434,8 @@ class JourneySearchController extends ChangeNotifier {
           bestBusDepartureTime: bestBusDepartureTime,
           busHubName: busHubName,
           error: busError,
+          taxiCollectifResult: taxiResult,
+          clearTaxi: taxiResult == null,
         ));
       }
     } catch (e) {

@@ -137,6 +137,17 @@
   "fillAllFieldsCorrectly": "Please fill all fields correctly",
   "loginSuccess": "Login successful!",
   "signupSuccess": "Account created successfully!",
+  "emailVerificationTitle": "Verify your email",
+  "emailVerificationMessage": "A verification email has been sent to {email}. Please check your inbox and click the link before signing in.",
+  "@emailVerificationMessage": {
+    "placeholders": {
+      "email": {}
+    }
+  },
+  "emailNotVerified": "Your email is not yet verified. Please check your inbox.",
+  "resendVerificationEmail": "Resend verification email",
+  "verificationEmailResent": "Verification email resent. Check your inbox.",
+  "usernameTaken": "This username is already taken. Please choose another.",
   "loginFailed": "Login failed",
   "signupFailed": "Sign up failed",
   "googleSignInSuccess": "Signed in with Google!",

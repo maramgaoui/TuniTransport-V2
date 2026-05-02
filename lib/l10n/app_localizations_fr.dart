@@ -352,6 +352,24 @@ class AppLocalizationsFr extends AppLocalizations {
   String get signupSuccess => 'Compte créé avec succès!';
 
   @override
+  String get emailVerificationTitle => 'Vérifiez votre email';
+
+  @override
+  String emailVerificationMessage(String email) => 'Un email de vérification a été envoyé à $email. Veuillez vérifier votre boîte de réception et cliquer sur le lien avant de vous connecter.';
+
+  @override
+  String get emailNotVerified => 'Votre email n\'est pas encore vérifié. Vérifiez votre boîte de réception.';
+
+  @override
+  String get resendVerificationEmail => 'Renvoyer l\'email de vérification';
+
+  @override
+  String get verificationEmailResent => 'Email de vérification renvoyé. Vérifiez votre boîte de réception.';
+
+  @override
+  String get usernameTaken => 'Ce nom d\'utilisateur est déjà pris. Veuillez en choisir un autre.';
+
+  @override
   String get loginFailed => 'Connexion échouée';
 
   @override

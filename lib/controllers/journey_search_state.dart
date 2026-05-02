@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import '../models/bus_service_model.dart';
 import '../models/metro_sahel_result.dart';
+import '../models/taxi_collectif_result.dart';
 
 class JourneySearchState extends Equatable {
   final bool isLoading;
@@ -10,6 +11,7 @@ class JourneySearchState extends Equatable {
   final BusService? bestBusService;            // single "next bus" result
   final String? bestBusDepartureTime;          // computed next departure "HH:MM"
   final String? busHubName;                    // display name for best bus result
+  final TaxiCollectifResult? taxiCollectifResult; // taxi collectif route if available
 
   const JourneySearchState({
     this.isLoading = false,
@@ -19,6 +21,7 @@ class JourneySearchState extends Equatable {
     this.bestBusService,
     this.bestBusDepartureTime,
     this.busHubName,
+    this.taxiCollectifResult,
   });
 
   // ── Convenience getters for UI state checks ──────────────────────────────
@@ -28,8 +31,11 @@ class JourneySearchState extends Equatable {
   MetroSahelResult? get metroSahelResult =>
       trainResults.isNotEmpty ? trainResults.first : null;
 
-  /// True when at least one result (train or bus) is available to display.
-  bool get hasResult => trainResults.isNotEmpty || bestBusService != null;
+  /// True when at least one result (train, bus, or taxi) is available to display.
+  bool get hasResult =>
+      trainResults.isNotEmpty ||
+      bestBusService != null ||
+      taxiCollectifResult != null;
 
   /// True when not loading, no error, and no result — initial/reset state.
   bool get isEmpty => !isLoading && error == null && !hasResult;
@@ -48,6 +54,7 @@ class JourneySearchState extends Equatable {
         bestBusService,
         bestBusDepartureTime,
         busHubName,
+        taxiCollectifResult,
       ];
 
   /// Enables readable toString() output for debugPrint and Flutter DevTools.
@@ -77,6 +84,8 @@ class JourneySearchState extends Equatable {
     String? bestBusDepartureTime,
     bool clearBestBus = false,
     String? busHubName,
+    TaxiCollectifResult? taxiCollectifResult,
+    bool clearTaxi = false,
   }) {
     return JourneySearchState(
       isLoading: isLoading ?? this.isLoading,
@@ -89,6 +98,8 @@ class JourneySearchState extends Equatable {
           ? null
           : (bestBusDepartureTime ?? this.bestBusDepartureTime),
       busHubName: clearBestBus ? null : (busHubName ?? this.busHubName),
+      taxiCollectifResult:
+          clearTaxi ? null : (taxiCollectifResult ?? this.taxiCollectifResult),
     );
   }
 }

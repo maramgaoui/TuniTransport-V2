@@ -352,6 +352,24 @@ class AppLocalizationsAr extends AppLocalizations {
   String get signupSuccess => 'تم إنشاء الحساب بنجاح!';
 
   @override
+  String get emailVerificationTitle => 'تحقق من بريدك الإلكتروني';
+
+  @override
+  String emailVerificationMessage(String email) => 'تم إرسال بريد التحقق إلى $email. يرجى التحقق من صندوق الوارد والنقر على الرابط قبل تسجيل الدخول.';
+
+  @override
+  String get emailNotVerified => 'لم يتم التحقق من بريدك الإلكتروني بعد. تحقق من صندوق الوارد.';
+
+  @override
+  String get resendVerificationEmail => 'إعادة إرسال بريد التحقق';
+
+  @override
+  String get verificationEmailResent => 'تم إعادة إرسال بريد التحقق. تحقق من صندوق الوارد.';
+
+  @override
+  String get usernameTaken => 'اسم المستخدم هذا مستخدم بالفعل. يرجى اختيار اسم آخر.';
+
+  @override
   String get loginFailed => 'فشل تسجيل الدخول';
 
   @override

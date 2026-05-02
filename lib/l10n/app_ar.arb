@@ -137,6 +137,17 @@
   "fillAllFieldsCorrectly": "يرجى ملء جميع الحقول بشكل صحيح",
   "loginSuccess": "تم تسجيل الدخول بنجاح!",
   "signupSuccess": "تم إنشاء الحساب بنجاح!",
+  "emailVerificationTitle": "تحقق من بريدك الإلكتروني",
+  "emailVerificationMessage": "تم إرسال بريد التحقق إلى {email}. يرجى التحقق من صندوق الوارد والنقر على الرابط قبل تسجيل الدخول.",
+  "@emailVerificationMessage": {
+    "placeholders": {
+      "email": {}
+    }
+  },
+  "emailNotVerified": "لم يتم التحقق من بريدك الإلكتروني بعد. تحقق من صندوق الوارد.",
+  "resendVerificationEmail": "إعادة إرسال بريد التحقق",
+  "verificationEmailResent": "تم إعادة إرسال بريد التحقق. تحقق من صندوق الوارد.",
+  "usernameTaken": "اسم المستخدم هذا مستخدم بالفعل. يرجى اختيار اسم آخر.",
   "loginFailed": "فشل تسجيل الدخول",
   "signupFailed": "فشل إنشاء الحساب",
   "googleSignInSuccess": "تم تسجيل الدخول عبر Google!",

@@ -352,6 +352,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signupSuccess => 'Account created successfully!';
 
   @override
+  String get emailVerificationTitle => 'Verify your email';
+
+  @override
+  String emailVerificationMessage(String email) => 'A verification email has been sent to $email. Please check your inbox and click the link before signing in.';
+
+  @override
+  String get emailNotVerified => 'Your email is not yet verified. Please check your inbox.';
+
+  @override
+  String get resendVerificationEmail => 'Resend verification email';
+
+  @override
+  String get verificationEmailResent => 'Verification email resent. Check your inbox.';
+
+  @override
+  String get usernameTaken => 'This username is already taken. Please choose another.';
+
+  @override
   String get loginFailed => 'Login failed';
 
   @override

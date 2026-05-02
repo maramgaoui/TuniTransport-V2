@@ -137,6 +137,17 @@
   "fillAllFieldsCorrectly": "Veuillez remplir tous les champs correctement",
   "loginSuccess": "Connexion réussie!",
   "signupSuccess": "Compte créé avec succès!",
+  "emailVerificationTitle": "Vérifiez votre email",
+  "emailVerificationMessage": "Un email de vérification a été envoyé à {email}. Veuillez vérifier votre boîte de réception et cliquer sur le lien avant de vous connecter.",
+  "@emailVerificationMessage": {
+    "placeholders": {
+      "email": {}
+    }
+  },
+  "emailNotVerified": "Votre email n'est pas encore vérifié. Vérifiez votre boîte de réception.",
+  "resendVerificationEmail": "Renvoyer l'email de vérification",
+  "verificationEmailResent": "Email de vérification renvoyé. Vérifiez votre boîte de réception.",
+  "usernameTaken": "Ce nom d'utilisateur est déjà pris. Veuillez en choisir un autre.",
   "loginFailed": "Connexion échouée",
   "signupFailed": "Inscription échouée",
   "googleSignInSuccess": "Connecté avec Google!",

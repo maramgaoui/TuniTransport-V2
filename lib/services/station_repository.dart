@@ -41,6 +41,8 @@ class StationRepository {
     'bs_lycee_rades': ['lycee rades'],
     'bs_arret_stade': ['arret stade', 'stade hammam lif'],
     'ms_aeroport': ['aeroport', 'airport', 'aeroport skanes monastir', 'l aeroport'],
+    'ms_sousse_bab_jedid': ['sousse', 'sousse bab jedid', 'gare sousse', 'sousse centre'],
+    'ms_monastir': ['monastir', 'monastir centre'],
     'ms_sousse_zi': ['sousse zi', 'sousse zone industrielle'],
     'ms_monastir_zi': ['monastir zi', 'monastir zone industrielle'],
     'ms_teboulba_zi': ['teboulba zi', 'teboulba zone industrielle'],
@@ -48,7 +50,7 @@ class StationRepository {
     'ms_ksar_hellal_zi': ['ksar hellal zi', 'ksar hellal zone industrielle'],
     'rd_gobaa_ville': ['gobaa ville', 'la gobaa'],
     // SNCFT mainline
-    'sncft_sousse_voyageurs': ['sousse', 'sousse gare', 'gare de sousse'],
+    'sncft_sousse_voyageurs': ['sousse voyageurs', 'sousse gare', 'gare de sousse'],
     'sncft_sfax':             ['sfax gare', 'gare de sfax'],
     'sncft_gabes':            ['gabes gare', 'gare de gabes', 'gabès'],
     'sncft_gafsa':            ['gafsa gare'],
@@ -259,7 +261,51 @@ class StationRepository {
     }
 
     final snapshot = await _firestore.collection('stations').get();
-    _cachedStations = snapshot.docs.map((doc) => Station.fromFirestore(doc)).toList();
+    final stations = snapshot.docs.map((doc) => Station.fromFirestore(doc)).toList();
+
+    // Inject synthetic Station entries for taxi-collectif-only cities.
+    // A city is skipped if ANY real station already has the same cityId (e.g.
+    // "sousse" covers ms_sousse, sncft_sousse_voyageurs, etc.) or the same
+    // normalized name. This prevents synthetic entries from shadowing real
+    // stations that serve metro/train/bus on the same city.
+    try {
+      final taxiSnapshot = await _firestore.collection('taxi_collectif_routes').get();
+      final existingCityIds = <String>{
+        for (final s in stations) s.cityId.toLowerCase().trim(),
+      };
+      final existingNames = <String>{
+        for (final s in stations) normalizeStationText(s.name),
+      };
+      final seenCityIds = <String>{};
+      for (final doc in taxiSnapshot.docs) {
+        final data = doc.data();
+        for (final pair in [
+          (id: (data['fromCityId'] ?? '') as String, name: (data['fromCityName'] ?? '') as String, nameAr: data['fromCityNameAr'] as String?),
+          (id: (data['toCityId'] ?? '') as String, name: (data['toCityName'] ?? '') as String, nameAr: data['toCityNameAr'] as String?),
+        ]) {
+          if (pair.id.isEmpty || pair.name.isEmpty) continue;
+          if (!seenCityIds.add(pair.id)) continue;
+          // Skip if a real station already covers this city.
+          if (existingCityIds.contains(pair.id.toLowerCase())) continue;
+          if (existingNames.contains(normalizeStationText(pair.name))) continue;
+          stations.add(Station(
+            id: 'tc_city_${pair.id}',
+            name: pair.name,
+            nameAr: pair.nameAr,
+            cityId: pair.id,
+            latitude: 0.0,
+            longitude: 0.0,
+            transportTypes: const ['taxi'],
+            operatorsHere: const ['taxi_collectif'],
+            createdAt: DateTime(2024),
+          ));
+        }
+      }
+    } catch (_) {
+      // Best-effort; don't break station list if taxi routes fetch fails.
+    }
+
+    _cachedStations = stations;
     _cacheTimestamp = DateTime.now();
     return _cachedStations!;
   }
@@ -339,6 +385,10 @@ class StationRepository {
         score = 1.0;
       } else if (searchable == q) {
         score = 1.0;
+      } else if (aliases.contains(q)) {
+        // Exact alias match (e.g. "sousse" → ms_sousse_bab_jedid) ranks as
+        // high as a direct name match so the hub station always wins.
+        score = 1.0;
       } else {
         if (searchable.startsWith(q)) {
           score = score > 0.95 ? score : 0.95;
@@ -383,6 +433,10 @@ class StationRepository {
         }
       }
 
+      // Synthetic taxi-collectif cities are a last resort — penalise them so
+      // real stations always rank above them when both match a query equally.
+      if (station.id.startsWith('tc_city_')) score *= 0.6;
+
       if (score > 0.5) {
         matches.add(StationMatch(station: station, score: score));
       }
@@ -396,7 +450,16 @@ class StationRepository {
       return a.station.name.compareTo(b.station.name);
     });
 
-    return matches.take(limit).toList();
+    // Deduplicate by (name, cityId) — same physical station can exist under
+    // multiple network IDs (e.g. ms_bekalta and sts_bekalta). Keep highest score.
+    final seen = <String>{};
+    final deduped = <StationMatch>[];
+    for (final m in matches) {
+      final key = '${m.station.name.toLowerCase()}|${m.station.cityId}';
+      if (seen.add(key)) deduped.add(m);
+    }
+
+    return deduped.take(limit).toList();
   }
 
   Future<List<StationDistance>> findNearestStations({
@@ -426,6 +489,26 @@ class StationRepository {
   }
 
   Future<Station?> getStationById(String id) async {
+    // Synthetic taxi-collectif city IDs (tc_city_*) are not Firestore docs.
+    // Reconstruct the Station from the ID so the controller can proceed.
+    if (id.startsWith('tc_city_')) {
+      final cityId = id.substring('tc_city_'.length);
+      // Convert cityId back to a display name: underscores → spaces, title-case.
+      final name = cityId
+          .split('_')
+          .map((w) => w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1)}')
+          .join(' ');
+      return Station(
+        id: id,
+        name: name,
+        cityId: cityId,
+        latitude: 0.0,
+        longitude: 0.0,
+        transportTypes: const ['taxi'],
+        operatorsHere: const ['taxi_collectif'],
+        createdAt: DateTime(2024),
+      );
+    }
     final doc = await _firestore.collection('stations').doc(id).get();
     return doc.exists ? Station.fromFirestore(doc) : null;
   }

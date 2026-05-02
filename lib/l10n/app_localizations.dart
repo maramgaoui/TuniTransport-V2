@@ -763,6 +763,42 @@ abstract class AppLocalizations {
   /// **'Account created successfully!'**
   String get signupSuccess;
 
+  /// No description provided for @emailVerificationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify your email'**
+  String get emailVerificationTitle;
+
+  /// No description provided for @emailVerificationMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'A verification email has been sent to {email}. Please check your inbox and click the link before signing in.'**
+  String emailVerificationMessage(String email);
+
+  /// No description provided for @emailNotVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Your email is not yet verified. Please check your inbox.'**
+  String get emailNotVerified;
+
+  /// No description provided for @resendVerificationEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend verification email'**
+  String get resendVerificationEmail;
+
+  /// No description provided for @verificationEmailResent.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification email resent. Check your inbox.'**
+  String get verificationEmailResent;
+
+  /// No description provided for @usernameTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'This username is already taken. Please choose another.'**
+  String get usernameTaken;
+
   /// No description provided for @loginFailed.
   ///
   /// In en, this message translates to:

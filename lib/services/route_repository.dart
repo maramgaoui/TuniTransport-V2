@@ -204,15 +204,42 @@ class RouteRepository {
     if (viaSayada != null) return viaSayada;
 
     // Fall back to via-Monastir route for Monastir / Ksibet-area stations.
-    // Reverse direction still uses the same Sousse→Mahdia route.
     return _findDirectionalRouteId(
       fromStationId: fromStationId,
       toStationId: toStationId,
       referenceRouteId: 'route_sts_mahdia_sousse_monastir',
       forwardRouteId: 'route_sts_mahdia_sousse_monastir',
-      reverseRouteId: 'route_sts_sousse_mahdia',
+      reverseRouteId: 'route_sts_sousse_mahdia_monastir',
     );
   }
+
+  /// Returns the via-Sayada route ID for the given station pair, or null if
+  /// neither station is on the via-Sayada routes.
+  Future<String?> findStsSahelViaSayadaRouteId(
+    String fromStationId,
+    String toStationId,
+  ) =>
+      _findDirectionalRouteId(
+        fromStationId: fromStationId,
+        toStationId: toStationId,
+        referenceRouteId: 'route_sts_mahdia_sousse',
+        forwardRouteId: 'route_sts_mahdia_sousse',
+        reverseRouteId: 'route_sts_sousse_mahdia',
+      );
+
+  /// Returns the via-Monastir route ID for the given station pair, or null if
+  /// neither station is on the via-Monastir routes.
+  Future<String?> findStsSahelViaMonastirRouteId(
+    String fromStationId,
+    String toStationId,
+  ) =>
+      _findDirectionalRouteId(
+        fromStationId: fromStationId,
+        toStationId: toStationId,
+        referenceRouteId: 'route_sts_mahdia_sousse_monastir',
+        forwardRouteId: 'route_sts_mahdia_sousse_monastir',
+        reverseRouteId: 'route_sts_sousse_mahdia_monastir',
+      );
 
   Future<String?> findSncftGlAnnabaRouteId(
     String fromStationId,

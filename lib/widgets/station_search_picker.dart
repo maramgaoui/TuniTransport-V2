@@ -51,11 +51,13 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
     'bs_hammam_echatt': ['hammam chott', 'hammam echatt'],
     'bs_megrine': ['megrine', 'megrine'],
     'ms_aeroport': ['aeroport', 'airport', 'aeroport skanes monastir'],
+    'ms_sousse_bab_jedid': ['sousse', 'sousse bab jedid', 'gare sousse', 'sousse centre'],
+    'ms_monastir': ['monastir', 'monastir centre'],
     'ms_sousse_zi': ['sousse zi', 'sousse zone industrielle'],
     'ms_monastir_zi': ['monastir zi', 'monastir zone industrielle'],
     'bn_tunis': ['tunis', 'tunis banlieue', 'gare de tunis'],
     'bn_hammamet': ['hammamet', 'hammament', 'hammamet banlieue'],
-    'sncft_sousse_voyageurs': ['sousse', 'sousse gare', 'gare de sousse'],
+    'sncft_sousse_voyageurs': ['sousse voyageurs', 'sousse gare', 'gare de sousse'],
     'sncft_sfax': ['sfax gare', 'gare de sfax'],
     'sncft_gabes': ['gabes gare', 'gare de gabes'],
     // TRANSTU hubs
@@ -126,11 +128,61 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
   }
 
   Future<List<_StationSearchItem>> _fetchStationsFromFirestore() async {
+    // 1. Fetch real stations.
     final snapshot = await _firestore.collection('stations').limit(500).get();
-    return snapshot.docs
+    final seen = <String>{};
+    final items = snapshot.docs
         .map((doc) => _StationSearchItem.fromDoc(doc))
-        .where((item) => item.station.name.trim().isNotEmpty)
+        .where((item) {
+          if (item.station.name.trim().isEmpty) return false;
+          final key =
+              '${_normalize(item.station.name)}|${item.station.cityId.toLowerCase().trim()}';
+          return seen.add(key);
+        })
         .toList();
+
+    // 2. Fetch unique cities from taxi_collectif_routes and add those that are
+    //    not already covered by a real station entry (matched by cityId OR name).
+    try {
+      final taxiSnapshot =
+          await _firestore.collection('taxi_collectif_routes').get();
+      final existingCityIds = <String>{
+        for (final item in items)
+          item.station.cityId.toLowerCase().trim(),
+      };
+      for (final doc in taxiSnapshot.docs) {
+        final data = doc.data();
+        final cities = [
+          (
+            name: (data['fromCityName'] ?? '').toString(),
+            nameAr: data['fromCityNameAr']?.toString(),
+            id: (data['fromCityId'] ?? '').toString(),
+          ),
+          (
+            name: (data['toCityName'] ?? '').toString(),
+            nameAr: data['toCityNameAr']?.toString(),
+            id: (data['toCityId'] ?? '').toString(),
+          ),
+        ];
+        for (final city in cities) {
+          if (city.name.isEmpty || city.id.isEmpty) continue;
+          // Skip if a real station already covers this city by cityId or name.
+          if (existingCityIds.contains(city.id.toLowerCase())) continue;
+          final key = '${_normalize(city.name)}|${city.id}';
+          if (!seen.add(key)) continue;
+          existingCityIds.add(city.id.toLowerCase());
+          items.add(_StationSearchItem.taxiCity(
+            name: city.name,
+            nameAr: city.nameAr,
+            cityId: city.id,
+          ));
+        }
+      }
+    } catch (_) {
+      // Taxi route fetch is best-effort; don't break station search if it fails.
+    }
+
+    return items;
   }
 
   void _onQueryChanged(String value) {
@@ -338,10 +390,12 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
         operators.any((op) => op.startsWith('sncft_banlieue_'));
     final isGrandesLignes = operators.contains('sncft_grandes_lignes') ||
         station.id.startsWith('sncft_');
+    final isTaxi = operators.contains('taxi_collectif');
 
     if (isMetroSahel) return AppTheme.primaryTealBrand;
     if (isBanlieue) return const Color(0xFF1E88E5);
     if (isGrandesLignes) return const Color(0xFFFB8C00);
+    if (isTaxi) return const Color(0xFFF9A825);
     return AppTheme.mediumGrey;
   }
 
@@ -355,6 +409,7 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
         station.id.startsWith('sncft_')) {
       return 'Grandes Lignes';
     }
+    if (operators.contains('taxi_collectif')) return 'Taxi collectif';
     return 'Transport';
   }
 
@@ -551,6 +606,32 @@ class _StationSearchItem {
       nameAr: data['nameAr']?.toString(),
       nameEn: data['nameEn']?.toString(),
       cityLabel: cityLabel,
+    );
+  }
+
+  /// Creates a synthetic search item for a taxi-collectif-only city that has
+  /// no real station document in Firestore.
+  factory _StationSearchItem.taxiCity({
+    required String name,
+    required String cityId,
+    String? nameAr,
+  }) {
+    final station = Station(
+      id: 'tc_city_$cityId',
+      name: name,
+      nameAr: nameAr,
+      cityId: cityId,
+      latitude: 0.0,
+      longitude: 0.0,
+      transportTypes: const ['taxi'],
+      operatorsHere: const ['taxi_collectif'],
+      isMainHub: false,
+      createdAt: DateTime(2024),
+    );
+    return _StationSearchItem(
+      station: station,
+      nameAr: nameAr,
+      cityLabel: name,
     );
   }
 }

@@ -52,6 +52,16 @@ class _LineConfig {
     required this.calculateFare,
     this.supportsPartialTrips = false,
   });
+
+  _LineConfig copyWith({RouteIdResolver? resolveRouteId}) => _LineConfig(
+        lineType: lineType,
+        operatorName: operatorName,
+        operatorPhone: operatorPhone,
+        fallbackFirstDeparture: fallbackFirstDeparture,
+        resolveRouteId: resolveRouteId ?? this.resolveRouteId,
+        calculateFare: calculateFare,
+        supportsPartialTrips: supportsPartialTrips,
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -191,23 +201,74 @@ class JourneyRepository {
     required String fromStationId,
     required String toStationId,
     required DateTime searchDateTime,
-  }) =>
+  }) async {
+    final baseConfig = _LineConfig(
+      lineType: 'sts_sahel',
+      operatorName: 'STS – Société de Transport du Sahel',
+      operatorPhone: '+216 73 229 500',
+      fallbackFirstDeparture: '04:45',
+      resolveRouteId: (f, t) => _routeRepository.findStsSahelRouteId(f, t),
+      calculateFare: (from, to) =>
+          _stsSahelFare((from.order - to.order).abs()),
+      supportsPartialTrips: true,
+    );
+
+    // Try both routes in parallel and return the one with the earliest departure.
+    final results = await Future.wait([
       _findNextOffsetBasedTrip(
         fromStationId: fromStationId,
         toStationId: toStationId,
         searchDateTime: searchDateTime,
-        config: _LineConfig(
-          lineType: 'sts_sahel',
-          operatorName: 'STS – Société de Transport du Sahel',
-          operatorPhone: '+216 73 229 500',
-          fallbackFirstDeparture: '04:45',
+        config: baseConfig.copyWith(
           resolveRouteId: (f, t) =>
-              _routeRepository.findStsSahelRouteId(f, t),
-          calculateFare: (from, to) =>
-              _stsSahelFare((from.order - to.order).abs()),
-          supportsPartialTrips: true,
+              _routeRepository.findStsSahelViaSayadaRouteId(f, t),
         ),
-      );
+      ),
+      _findNextOffsetBasedTrip(
+        fromStationId: fromStationId,
+        toStationId: toStationId,
+        searchDateTime: searchDateTime,
+        config: baseConfig.copyWith(
+          resolveRouteId: (f, t) =>
+              _routeRepository.findStsSahelViaMonastirRouteId(f, t),
+        ),
+      ),
+    ]);
+
+    final sayadaResult = results[0];
+    final monastirResult = results[1];
+
+    if (sayadaResult == null) return monastirResult;
+    if (monastirResult == null) return sayadaResult;
+
+    // Both routes serve this pair — return whichever departs sooner.
+    return _pickEarlierStsResult(sayadaResult, monastirResult);
+  }
+
+  /// Returns the result with the earlier departure. Results scheduled for
+  /// TOMORROW rank after any same-day result.
+  static MetroSahelResult _pickEarlierStsResult(
+    MetroSahelResult a,
+    MetroSahelResult b,
+  ) {
+    final aTomorrow = a.noTrainToday;
+    final bTomorrow = b.noTrainToday;
+    if (aTomorrow && !bTomorrow) return b;
+    if (!aTomorrow && bTomorrow) return a;
+    return _parseStsDepMinutes(a.departureTime) <=
+            _parseStsDepMinutes(b.departureTime)
+        ? a
+        : b;
+  }
+
+  static int _parseStsDepMinutes(String depTime) {
+    final s = depTime.replaceAll(RegExp(r'\s*\(\+\d+\)'), '').trim();
+    final parts = s.split(':');
+    if (parts.length != 2) return 99999;
+    final h = int.tryParse(parts[0]) ?? 99;
+    final m = int.tryParse(parts[1]) ?? 99;
+    return h * 60 + m;
+  }
 
   // ── Metro Sahel — kept separate due to its unique stop-order lookup ────────
   //
@@ -494,6 +555,7 @@ class JourneyRepository {
 
     final actualArr = rawActualArr % 1440;
     final crossesMidnight = rawActualArr >= 1440;
+    final depCrossesMidnight = actualDep >= 1440;
     final actualDuration = config.supportsPartialTrips
         ? (rawActualArr >= actualDep
             ? rawActualArr - actualDep
@@ -501,14 +563,15 @@ class JourneyRepository {
         : durationMinutes;
 
     return _assembleResult(
-      departureTime: _minutesToTime(actualDep),
+      departureTime:
+          '${_minutesToTime(actualDep)}${depCrossesMidnight ? ' (+1)' : ''}',
       arrivalTime:
           '${_minutesToTime(actualArr)}${crossesMidnight ? ' (+1)' : ''}',
       tripNumber: config.supportsPartialTrips
           ? 0
           : (next['tripNumber'] as int? ?? 0),
       tripNumberStr: config.supportsPartialTrips
-          ? (next['tripNumber'] as String? ?? '–')
+          ? _normalizeTripNumberStr(next['tripNumber'])
           : null,
       routeName: routeName,
       fromStationId: fromStationId,
@@ -582,6 +645,15 @@ class JourneyRepository {
   }
 
   // ── Time utilities ────────────────────────────────────────────────────────
+
+  /// Normalises a raw Firestore tripNumber value (for partial-trip lines like
+  /// STS) into a display string. Returns '–' for null, 0, "0", or empty.
+  static String _normalizeTripNumberStr(dynamic raw) {
+    if (raw == null) return '–';
+    final s = raw.toString().trim();
+    if (s.isEmpty || s == '0') return '–';
+    return s;
+  }
 
   int _parseMinutes(String timeStr) {
     final parts = timeStr.split(':');

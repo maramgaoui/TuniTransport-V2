@@ -34,7 +34,7 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.auth.uid == userId
         && (!('status' in request.resource.data) || request.resource.data.status == 'active')
-        && !('banUntil' in request.resource.data);
+        && (!('banUntil' in request.resource.data) || request.resource.data.banUntil == null);
 
       allow update: if isSignedIn()
         && request.auth.uid == userId
@@ -136,6 +136,26 @@ service cloud.firestore {
 
       allow update, delete: if isSignedIn()
         && (resource.data.uid == request.auth.uid || isAdmin());
+    }
+
+    match /taxi_collectif_routes/{routeId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Username reservations — created at signup to enforce uniqueness across
+    // pending (unverified) and confirmed accounts.
+    // Users may only create a reservation for their own UID. Admins can delete
+    // stale reservations if needed.
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid;
+      // Allow the owner to update (e.g., drop reservedAt on first verified login).
+      allow update: if isSignedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if isAdmin();
     }
 
     // Admin profiles are sensitive but must be readable during session resolution.

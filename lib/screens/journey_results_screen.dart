@@ -6,6 +6,7 @@ import '../models/bus_service_model.dart';
 import '../models/journey_model.dart';
 import '../widgets/app_header.dart';
 import '../widgets/metro_sahel_card.dart';
+import '../widgets/taxi_collectif_card.dart';
 
 class JourneyResultsScreen extends StatefulWidget {
   final String departure;
@@ -95,10 +96,11 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
     final busHubName = _searchController.state.busHubName;
     final bestBus = _searchController.state.bestBusService;
     final bestTime = _searchController.state.bestBusDepartureTime;
+    final taxiResult = _searchController.state.taxiCollectifResult;
     final isLoading = _searchController.state.isLoading;
     final error = _searchController.state.error;
 
-    final hasAnyResult = trainResults.isNotEmpty || bestBus != null;
+    final hasAnyResult = trainResults.isNotEmpty || bestBus != null || taxiResult != null;
 
     return Scaffold(
       body: SafeArea(
@@ -186,6 +188,19 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
                                   nextDeparture: bestTime,
                                   routeLabel: busHubName ?? '',
                                 ),
+                              ),
+                            ],
+                            // Taxi collectif result
+                            if (taxiResult != null) ...[
+                              const SizedBox(height: 20),
+                              _sectionLabel('🚕 Taxi collectif disponible'),
+                              const SizedBox(height: 12),
+                              GestureDetector(
+                                onTap: () => context.push(
+                                  '/home/journey-details',
+                                  extra: taxiResult,
+                                ),
+                                child: TaxiCollectifCard(result: taxiResult),
                               ),
                             ],
                           ],

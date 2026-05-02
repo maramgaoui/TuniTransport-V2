@@ -14,6 +14,8 @@ import '../controllers/auth_controller.dart';
 import '../models/journey_model.dart';
 import '../models/metro_sahel_result.dart';
 import '../models/session_result.dart';
+import '../models/taxi_collectif_result.dart';
+import '../screens/taxi_collectif_details_screen.dart';
 import '../screens/auth_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/active_journey_screen.dart';
@@ -172,6 +174,9 @@ class AppRouter {
             }
             if (extra is MetroSahelResult) {
               return JourneyDetailsScreen(metroResult: extra);
+            }
+            if (extra is TaxiCollectifResult) {
+              return TaxiCollectifDetailsScreen(result: extra);
             }
             return const HomeScreen();
           },

@@ -9,6 +9,7 @@ class MetroSahelCard extends StatelessWidget {
   const MetroSahelCard({super.key, required this.result});
 
   bool get _noTrainToday => result.arrivalTime == 'TOMORROW';
+  bool get _isBus => result.lineType == 'sts_sahel';
 
   Future<void> _callOperator() async {
     final uri = Uri(scheme: 'tel', path: result.operatorPhone);
@@ -49,7 +50,11 @@ class MetroSahelCard extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.train, color: Colors.white, size: 20),
+                  child: Icon(
+                    _isBus ? Icons.directions_bus : Icons.train,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -62,7 +67,11 @@ class MetroSahelCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (!_noTrainToday)
+                if (!_noTrainToday &&
+                    !(result.tripNumber == 0 &&
+                        (result.tripNumberStr == null ||
+                            result.tripNumberStr == '–' ||
+                            result.tripNumberStr == '0')))
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 4),
@@ -71,7 +80,7 @@ class MetroSahelCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      'Train ${result.tripNumber}',
+                      'Train ${result.tripNumberStr ?? result.tripNumber}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -106,7 +115,11 @@ class MetroSahelCard extends StatelessWidget {
                     child: Text.rich(
                       TextSpan(
                         children: [
-                          const TextSpan(text: 'Aucun train disponible ce soir.\nPremier train demain à '),
+                          TextSpan(
+                  text: _isBus
+                      ? 'Aucun bus disponible ce soir.\nProchain bus demain à '
+                      : 'Aucun train disponible ce soir.\nPremier train demain à ',
+                ),
                           WidgetSpan(
                             alignment: PlaceholderAlignment.middle,
                             child: TimeText(
