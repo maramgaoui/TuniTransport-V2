@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -102,18 +103,18 @@ class AdminAuthController {
   }
 
   Future<AdminAuthResult> login({
-    required String matricule,
+    required String emailOrMatricule,
     required String password,
   }) async {
     await _restoreLockoutStateIfNeeded();
 
-    final sanitizedMatricule = matricule.trim();
+    final sanitizedInput = emailOrMatricule.trim();
     final sanitizedPassword = password.trim();
 
-    if (sanitizedMatricule.isEmpty || sanitizedPassword.isEmpty) {
+    if (sanitizedInput.isEmpty || sanitizedPassword.isEmpty) {
       return const AdminAuthResult(
         isAuthenticated: false,
-        errorMessage: 'Matricule and password are required.',
+        errorMessage: 'Email/matricule et mot de passe sont requis.',
       );
     }
 
@@ -129,16 +130,49 @@ class AdminAuthController {
     }
 
     try {
-      // Derive the Firebase Auth email from the matricule so we can
-      // authenticate BEFORE reading Firestore.  Admin accounts are
-      // registered as {matricule}@admin.local by create_admin_accounts.js.
-      final email = '${sanitizedMatricule.toLowerCase()}@admin.local';
+      // Auto-detect: real email (contains @) or legacy matricule.
+      // Accounts created via Cloud Function use {matricule}@admin.local.
+      // Accounts promoted from existing users keep their real email — we
+      // resolve that via the resolveAdminEmail Cloud Function as a fallback.
+      String email = sanitizedInput.contains('@')
+          ? sanitizedInput
+          : '${sanitizedInput.toLowerCase()}@admin.local';
 
       // Sign in first — no unauthenticated Firestore read required.
-      final credential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: sanitizedPassword,
-      );
+      late UserCredential credential;
+      try {
+        credential = await _auth.signInWithEmailAndPassword(
+          email: email,
+          password: sanitizedPassword,
+        );
+      } on FirebaseAuthException catch (e) {
+        // If @admin.local lookup failed AND the input was a plain matricule,
+        // the admin may have been promoted from an existing account (their
+        // Firebase Auth email is their real email, not @admin.local).
+        // Check the admin_login_lookup collection (public read) for their
+        // real email, then retry.
+        if ((e.code == 'user-not-found' || e.code == 'invalid-credential') &&
+            !sanitizedInput.contains('@')) {
+          final lookupDoc = await _firestore
+              .collection('admin_login_lookup')
+              .doc(sanitizedInput.toLowerCase())
+              .get();
+          final resolvedEmail =
+              (lookupDoc.data()?['email'] as String? ?? '').trim().toLowerCase();
+          if (resolvedEmail.isNotEmpty) {
+            email = resolvedEmail;
+            // Retry with the real email. Any exception bubbles to the outer catch.
+            credential = await _auth.signInWithEmailAndPassword(
+              email: resolvedEmail,
+              password: sanitizedPassword,
+            );
+          } else {
+            rethrow;
+          }
+        } else {
+          rethrow;
+        }
+      }
 
       final uid = credential.user?.uid;
       if (uid == null) {
@@ -148,30 +182,48 @@ class AdminAuthController {
         );
       }
 
-      // Now authenticated — fetch the admin profile by uid.
-      final adminDoc =
-          await _firestore.collection('admins').doc(uid).get();
+      // Fetch admin profile — check unified users collection first (new schema),
+      // then fall back to legacy admins collection.
+      Map<String, dynamic>? adminData;
 
-      if (!adminDoc.exists) {
-        // Auth succeeded but no Firestore profile exists; sign out to keep
-        // the session clean and surface a useful message.
+      final userDoc = await _firestore.collection('users').doc(uid).get();
+      if (userDoc.exists && userDoc.data()?['role'] == 'admin') {
+        adminData = userDoc.data();
+      } else {
+        final adminDoc = await _firestore.collection('admins').doc(uid).get();
+        if (adminDoc.exists) {
+          adminData = adminDoc.data();
+        }
+      }
+
+      if (adminData == null) {
         await _auth.signOut();
         return const AdminAuthResult(
           isAuthenticated: false,
-          errorMessage:
-              'Admin profile not found. Ensure the account was provisioned with create_admin_accounts.js.',
+          errorMessage: 'Admin profile not found.',
         );
       }
 
       // Successful login — reset the failure counter.
       await _clearLockoutState();
 
-      final adminData = adminDoc.data()!;
+      // Resolve display name — new schema uses firstName/lastName, old uses name.
+      final firstName = (adminData['firstName'] as String?)?.trim() ?? '';
+      final lastName = (adminData['lastName'] as String?)?.trim() ?? '';
+      final legacyName = (adminData['name'] as String?)?.trim() ?? '';
+      final resolvedName = firstName.isNotEmpty
+          ? [firstName, lastName].where((s) => s.isNotEmpty).join(' ')
+          : legacyName.isNotEmpty ? legacyName : null;
+
+      // Resolve admin type — new schema uses adminType, old uses role.
+      final resolvedType = (adminData['adminType'] as String?) ??
+          (adminData['role'] as String?);
+
       return AdminAuthResult(
         isAuthenticated: true,
-        role: adminData['role'] as String?,
-        name: adminData['name'] as String?,
-        matricule: (adminData['matricule'] ?? sanitizedMatricule).toString(),
+        role: resolvedType,
+        name: resolvedName,
+        matricule: (adminData['matricule'] ?? sanitizedInput).toString(),
       );
     } on FirebaseAuthException catch (e) {
       // Count credential errors toward the lockout threshold.
@@ -212,6 +264,18 @@ class AdminAuthController {
   // Ensures any Firebase session is cleared before returning to login.
   Future<void> signOut() async {
     await _auth.signOut();
+  }
+
+  /// Requests a password reset for an admin account.
+  /// Calls the `sendAdminPasswordReset` Cloud Function, which looks up the
+  /// admin's real email by matricule and sends the Firebase reset link there
+  /// (because admin Firebase Auth emails are non-deliverable @admin.local addresses).
+  Future<void> sendPasswordResetRequest(String matricule) async {
+    final callable = FirebaseFunctions.instance
+        .httpsCallable('sendAdminPasswordReset');
+    await callable.call(<String, dynamic>{
+      'matricule': matricule.trim().toLowerCase(),
+    });
   }
 
   Future<void> changePassword({

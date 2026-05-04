@@ -6,6 +6,11 @@ firebase-*.json
 node_modules/
 package-lock.json
 
+# Local environment and worker logs
+.env
+mail-worker.log
+mail-worker.err.log
+
 # OS files
 .DS_Store
 Thumbs.db

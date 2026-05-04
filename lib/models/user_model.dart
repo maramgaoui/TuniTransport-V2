@@ -8,6 +8,12 @@ class User {
   final String? city;
   final String status;
   final DateTime? banUntil;
+  // Role: 'user' | 'admin' | 'super_admin'
+  final String role;
+  // Admin sub-type: 'metro_train' | 'bus' | 'taxicollectifs' | 'louage'
+  final String? adminType;
+  final String? matricule;
+  final List<String> permissions;
 
   User({
     required this.uid,
@@ -19,6 +25,10 @@ class User {
     this.city,
     this.status = 'active',
     this.banUntil,
+    this.role = 'user',
+    this.adminType,
+    this.matricule,
+    this.permissions = const [],
   });
 
   // Convert User to JSON for Firestore
@@ -26,6 +36,7 @@ class User {
     final map = <String, dynamic>{
       'uid': uid,
       'email': email,
+      'role': role,
     };
     if (username != null) map['username'] = username;
     if (firstName != null) map['firstName'] = firstName;
@@ -34,6 +45,9 @@ class User {
     if (city != null) map['city'] = city;
     map['status'] = status;
     if (banUntil != null) map['banUntil'] = banUntil!.toIso8601String();
+    if (adminType != null) map['adminType'] = adminType;
+    if (matricule != null) map['matricule'] = matricule;
+    if (permissions.isNotEmpty) map['permissions'] = permissions;
     return map;
   }
 
@@ -63,6 +77,10 @@ class User {
       city: map['city'],
       status: (map['status'] ?? 'active').toString(),
       banUntil: parsedBanUntil,
+      role: (map['role'] ?? 'user').toString(),
+      adminType: map['adminType'] as String?,
+      matricule: map['matricule'] as String?,
+      permissions: List<String>.from(map['permissions'] ?? const <String>[]),
     );
   }
 
@@ -78,6 +96,10 @@ class User {
     String? status,
     DateTime? banUntil,
     bool clearBanUntil = false,
+    String? role,
+    String? adminType,
+    String? matricule,
+    List<String>? permissions,
   }) {
     return User(
       uid: uid ?? this.uid,
@@ -89,6 +111,10 @@ class User {
       city: city ?? this.city,
       status: status ?? this.status,
       banUntil: clearBanUntil ? null : (banUntil ?? this.banUntil),
+      role: role ?? this.role,
+      adminType: adminType ?? this.adminType,
+      matricule: matricule ?? this.matricule,
+      permissions: permissions ?? this.permissions,
     );
   }
 

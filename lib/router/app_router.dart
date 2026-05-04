@@ -19,9 +19,11 @@ import '../screens/taxi_collectif_details_screen.dart';
 import '../screens/auth_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/active_journey_screen.dart';
+import '../screens/login_screen.dart';
 import '../screens/journey_details_screen.dart';
 import '../screens/journey_results_screen.dart';
 import '../screens/splash_screen.dart';
+import '../screens/super_admin_dashboard.dart';
 import '../screens/route_map_screen.dart';
 import 'package:tuni_transport/services/settings_service.dart';
 
@@ -40,6 +42,7 @@ class AppRouter {
     '/admin/manage-stations',
     '/admin/send-notifications',
     '/admin/profile',
+    '/super-admin/dashboard',
   };
 
   static bool _isRestorableRoute(String location) {
@@ -55,6 +58,8 @@ class AppRouter {
 
     // Admin route — no sensitive data in URL (#25).
     const adminLocation = '/admin';
+    const superAdminLoginLocation = '/super-admin/login';
+    const superAdminDashboardLocation = '/super-admin/dashboard';
 
     return GoRouter(
       initialLocation: '/splash',
@@ -65,65 +70,94 @@ class AppRouter {
         final user = authController.currentUser;
         final savedRoute = settingsService.getLastRoute();
 
-        final isPublic = path == '/auth' || path == '/admin/login' || path == '/splash';
+        final isSuperAdminRoute = path.startsWith('/super-admin');
+        final isPublic =
+          path == '/auth' ||
+          path == '/admin/login' ||
+          path == '/splash' ||
+          path == superAdminLoginLocation;
 
         if (_isRestorableRoute(location)) {
           unawaited(settingsService.setLastRoute(location));
         }
 
         if (user == null) {
-          if (path == '/splash') {
-            return '/auth';
+          if (path == '/splash') return '/auth';
+          if (isSuperAdminRoute && path != superAdminLoginLocation) {
+            return superAdminLoginLocation;
           }
-          if (isPublic) {
-            return null;
-          }
+          if (isPublic) return null;
           return '/auth';
         }
 
+        // Single resolveSession call covers user / admin / super_admin.
         SessionResult session;
         try {
           session = await authController.resolveSession(user);
         } catch (_) {
-          // Session policy (transient vs definitive failures) is centralized
-          // in AuthController.resolveSession.
-          return '/auth';
-        }
-        if (session.isGuest) {
           return '/auth';
         }
 
-        if (session.isAdmin) {
+        if (session.isGuest) return '/auth';
+
+        final actingAsUser = authController.isActingAsUser;
+
+        // ── Super admin (in admin mode) ──────────────────────────────────────
+        if (session.isSuperAdmin && !actingAsUser) {
           if (path == '/splash') {
-            if (savedRoute != null && _isRestorableRoute(savedRoute) && savedRoute.startsWith('/admin')) {
+            if (savedRoute != null &&
+                _isRestorableRoute(savedRoute) &&
+                savedRoute.startsWith('/super-admin')) {
               return savedRoute;
             }
-            return adminLocation;
+            return superAdminDashboardLocation;
           }
-
-          if (path == '/admin/login') {
-            return adminLocation;
-          }
-          if (path == '/auth' || path == '/splash' || path.startsWith('/home')) {
-            return adminLocation;
+          if (path == superAdminLoginLocation || path == '/auth') {
+            return superAdminDashboardLocation;
           }
           return null;
         }
 
-        if (path.startsWith('/admin')) {
+        // ── Admin (in admin mode) ────────────────────────────────────────────
+        if (session.isAdmin && !actingAsUser) {
+          if (path == '/splash') {
+            if (savedRoute != null &&
+                _isRestorableRoute(savedRoute) &&
+                savedRoute.startsWith('/admin')) {
+              return savedRoute;
+            }
+            return adminLocation;
+          }
+          if (path == '/admin/login') return adminLocation;
+          if (path == '/auth' || path.startsWith('/home')) return adminLocation;
+          if (isSuperAdminRoute) return adminLocation;
+          return null;
+        }
+
+        // ── Privileged user acting as regular user ───────────────────────────
+        // Block access back to privileged areas while in user mode.
+        if (actingAsUser && session.isPrivileged) {
+          if (path.startsWith('/admin') || isSuperAdminRoute) {
+            return '/home/journey-input';
+          }
+        }
+
+        // ── Regular user (or privileged acting as user) ──────────────────────
+        if (path.startsWith('/admin')) return '/home/journey-input';
+        if (isSuperAdminRoute && path != superAdminLoginLocation) {
           return '/home/journey-input';
         }
 
         if (path == '/splash') {
-          if (savedRoute != null && _isRestorableRoute(savedRoute) && savedRoute.startsWith('/home')) {
+          if (savedRoute != null &&
+              _isRestorableRoute(savedRoute) &&
+              savedRoute.startsWith('/home')) {
             return savedRoute;
           }
           return '/home/journey-input';
         }
 
-        if (path == '/auth' || path == '/') {
-          return '/home/journey-input';
-        }
+        if (path == '/auth' || path == '/') return '/home/journey-input';
 
         return null;
       },
@@ -232,6 +266,14 @@ class AppRouter {
         GoRoute(
           path: '/admin/profile',
           builder: (context, state) => const AdminProfileScreen(),
+        ),
+        GoRoute(
+          path: '/super-admin/login',
+          builder: (context, state) => const LoginScreen(),
+        ),
+        GoRoute(
+          path: '/super-admin/dashboard',
+          builder: (context, state) => const SuperAdminDashboard(),
         ),
       ],
     );

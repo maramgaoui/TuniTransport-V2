@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/theme/app_theme.dart';
+import '../controllers/auth_controller.dart';
 import '../services/active_journey_service.dart';
 import 'journey_input_screen.dart';
 import 'favorites_screen.dart';
@@ -67,7 +68,20 @@ class _HomeScreenState extends State<HomeScreen> {
       textDirection: Directionality.of(context),
       child: Scaffold(
         key: const Key('home_screen'),
-        body: _screens[selectedIndex],
+        body: Column(
+          children: [
+            if (AuthController.instance.isActingAsUser)
+              _AdminModeBanner(
+                onSwitch: () {
+                  AuthController.instance.switchToAdminMode();
+                  // Let the router restore privileged home based on real role
+                  // (admin -> /admin, super_admin -> /super-admin/dashboard).
+                  context.go('/splash');
+                },
+              ),
+            Expanded(child: _screens[selectedIndex]),
+          ],
+        ),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         floatingActionButton: ListenableBuilder(
           listenable: ActiveJourneyService.instance,
@@ -142,6 +156,45 @@ class _HomeScreenState extends State<HomeScreen> {
               label: l10n.profile,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AdminModeBanner extends StatelessWidget {
+  const _AdminModeBanner({required this.onSwitch});
+
+  final VoidCallback onSwitch;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppTheme.primaryTeal,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Row(
+            children: [
+              const Icon(Icons.admin_panel_settings, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Mode utilisateur (compte admin)',
+                  style: TextStyle(color: Colors.white, fontSize: 13),
+                ),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+                onPressed: onSwitch,
+                child: const Text('Retour admin', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
         ),
       ),
     );

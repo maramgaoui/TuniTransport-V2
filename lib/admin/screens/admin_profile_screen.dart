@@ -75,61 +75,94 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     });
 
     try {
-      QuerySnapshot<Map<String, dynamic>> querySnapshot;
+      // Primary: look up the admin's own document by UID in the unified users collection.
+      final currentUid = AuthController.instance.currentUser?.uid;
+      DocumentSnapshot<Map<String, dynamic>>? directDoc;
 
-      if (_session?.adminMatricule != null && _session!.adminMatricule!.trim().isNotEmpty) {
-        querySnapshot = await _firestore
-            .collection('admins')
-            .where('matricule', isEqualTo: _session!.adminMatricule!.trim())
+      if (currentUid != null) {
+        final doc = await _firestore.collection('users').doc(currentUid).get();
+        if (doc.exists && doc.data()?['role'] == 'admin') {
+          directDoc = doc;
+        }
+      }
+
+      // Fallback: query by matricule across both collections.
+      Map<String, dynamic>? adminData;
+      if (directDoc != null) {
+        adminData = directDoc.data();
+      } else if (_session?.adminMatricule != null &&
+          _session!.adminMatricule!.trim().isNotEmpty) {
+        final matricule = _session!.adminMatricule!.trim();
+
+        // Check unified users collection first.
+        final usersSnap = await _firestore
+            .collection('users')
+            .where('matricule', isEqualTo: matricule)
+            .where('role', isEqualTo: 'admin')
             .limit(1)
             .get();
-      } else {
-        querySnapshot = await _firestore.collection('admins').limit(1).get();
+
+        if (usersSnap.docs.isNotEmpty) {
+          adminData = usersSnap.docs.first.data();
+        } else {
+          // Legacy admins collection.
+          final adminsSnap = await _firestore
+              .collection('admins')
+              .where('matricule', isEqualTo: matricule)
+              .limit(1)
+              .get();
+          if (adminsSnap.docs.isNotEmpty) {
+            adminData = adminsSnap.docs.first.data();
+          }
+        }
       }
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
-      if (querySnapshot.docs.isEmpty) {
+      if (adminData == null) {
         setState(() {
           _name = _session?.adminName;
           _matricule = _session?.adminMatricule;
-          _role = _session?.adminRole;
+          _role = _session?.adminType;
           _errorMessage = 'Admin profile not found in Firestore.';
           _isLoading = false;
         });
         return;
       }
 
-      final adminData = querySnapshot.docs.first.data();
+      // Handle both old schema (name field) and new schema (firstName field).
+      final firstName = (adminData['firstName'] as String?)?.trim() ?? '';
+      final lastName = (adminData['lastName'] as String?)?.trim() ?? '';
+      final legacyName = (adminData['name'] as String?)?.trim() ?? '';
+      final resolvedName = firstName.isNotEmpty
+          ? [firstName, lastName].where((s) => s.isNotEmpty).join(' ')
+          : legacyName.isNotEmpty
+              ? legacyName
+              : _session?.adminName;
+
       setState(() {
-        _name = (adminData['name'] as String?)?.trim().isNotEmpty == true
-            ? adminData['name'] as String
-            : _session?.adminName;
-        _matricule = adminData['matricule']?.toString() ?? _session?.adminMatricule;
-        _role = _session?.adminRole ?? (adminData['role'] as String?);
+        _name = resolvedName;
+        _matricule = adminData!['matricule']?.toString() ?? _session?.adminMatricule;
+        _role = _session?.adminType ??
+            (adminData['adminType'] as String?) ??
+            (adminData['role'] as String?);
         _isLoading = false;
       });
     } on FirebaseException catch (e) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _name = _session?.adminName;
         _matricule = _session?.adminMatricule;
-        _role = _session?.adminRole;
+        _role = _session?.adminType;
         _errorMessage = e.message ?? 'Failed to load admin profile.';
         _isLoading = false;
       });
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _name = _session?.adminName;
         _matricule = _session?.adminMatricule;
-        _role = _session?.adminRole;
+        _role = _session?.adminType;
         _errorMessage = 'Unexpected error while loading admin profile.';
         _isLoading = false;
       });

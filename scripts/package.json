@@ -4,6 +4,12 @@
   "description": "Utility scripts for TuniTranspo Firebase setup",
   "scripts": {
     "create-admins": "node create_admin_accounts.js",
+    "bootstrap-super-admin": "node bootstrap_super_admin.js",
+    "restore-users-from-auth": "node restore_users_from_auth.js",
+    "delete-auth-users": "node delete_auth_users.js",
+    "delete-users-admins": "node delete_users_and_admins.js",
+    "mail-worker": "node process_mail_queue.js",
+    "mail-worker-once": "node process_mail_queue.js --once",
     "seed-integration": "node seed_integration_test_data.js",
     "seed-banlieue-sud": "node seed_banlieue_sud.js",
     "seed-line-e": "node seed_line_e.js",
@@ -26,6 +32,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "firebase-admin": "^11.11.1"
+    "dotenv": "^16.5.0",
+    "firebase-admin": "^11.11.1",
+    "nodemailer": "^6.10.1"
   }
 }

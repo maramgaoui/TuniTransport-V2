@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/controllers/auth_controller.dart';
 import 'package:tuni_transport/constants/avatar_options.dart';
-import 'package:tuni_transport/utils/validation_utils.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_header.dart';
 import '../widgets/validated_text_field.dart';
@@ -25,6 +24,12 @@ class _AuthScreenState extends State<AuthScreen>
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
   String? _errorMessage;
+
+  // Forgot password inline state (no dialog / no Navigator push)
+  bool _showForgotPassword = false;
+  bool _isSendingReset = false;
+  final _forgotPasswordController = TextEditingController();
+  final _forgotPasswordFormKey = GlobalKey<FormState>();
 
   String _selectedAvatarId = avatarOptions.first;
 
@@ -57,6 +62,7 @@ class _AuthScreenState extends State<AuthScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _forgotPasswordController.dispose();
     _loginEmailController.dispose();
     _loginPasswordController.dispose();
     _signupNomController.dispose();
@@ -68,107 +74,53 @@ class _AuthScreenState extends State<AuthScreen>
     super.dispose();
   }
 
-  Future<void> _handleForgotPassword() async {
+  void _handleForgotPassword() {
+    setState(() {
+      _showForgotPassword = true;
+      _forgotPasswordController.clear();
+    });
+  }
+
+  Future<void> _handleSendReset() async {
+    if (!(_forgotPasswordFormKey.currentState?.validate() ?? false)) return;
+
     final l10n = AppLocalizations.of(context)!;
-    final emailController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _isSendingReset = true);
 
     try {
-      await showDialog(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(l10n.resetPasswordTitle),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  l10n.resetPasswordPrompt,
-                  style: const TextStyle(fontSize: 14),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: emailController,
-                  decoration: InputDecoration(
-                    labelText: l10n.email,
-                    hintText: 'votre@email.com',
-                    prefixIcon: const Icon(Icons.email_outlined),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) =>
-                      ValidationUtils.validateEmail(value?.trim()),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(l10n.cancel),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryTeal,
-              ),
-              onPressed: () async {
-                if (formKey.currentState!.validate()) {
-                  Navigator.pop(dialogContext);
-
-                  // Show loading
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(l10n.sendingResetLink),
-                      backgroundColor: AppTheme.primaryTeal,
-                    ),
-                  );
-
-                  try {
-                    await _authController.sendPasswordResetEmail(
-                      emailController.text.trim(),
-                    );
-
-                    if (!mounted) {
-                      return;
-                    }
-
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(l10n.resetLinkSent),
-                        backgroundColor: Colors.green,
-                        duration: const Duration(seconds: 3),
-                      ),
-                    );
-                  } catch (e) {
-                    if (!mounted) {
-                      return;
-                    }
-
-                    final errorMsg = e.toString().replaceAll('Exception: ', '');
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(l10n.errorPrefix(errorMsg)),
-                        backgroundColor: Colors.red,
-                        duration: const Duration(seconds: 3),
-                      ),
-                    );
-                  }
-                }
-              },
-              child: Text(
-                l10n.send,
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
+      await _authController.sendPasswordResetEmail(
+        _forgotPasswordController.text.trim(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _showForgotPassword = false;
+        _isSendingReset = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.resetLinkSent),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
         ),
       );
-    } finally {
-      emailController.dispose();
+    } catch (e) {
+      if (!mounted) return;
+      final rawCode = e.toString().replaceAll('Exception: ', '');
+      final errorMsg = switch (rawCode) {
+        'auth.error.too_many_requests' => 'Trop de tentatives. Réessayez plus tard.',
+        'auth.error.invalid_email' => 'Adresse email invalide.',
+        'auth.error.password_reset_timeout' =>
+          'La requête a pris trop de temps. Vérifiez votre connexion.',
+        _ => 'Une erreur est survenue. Réessayez.',
+      };
+      setState(() => _isSendingReset = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMsg),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -306,6 +258,41 @@ class _AuthScreenState extends State<AuthScreen>
     );
   }
 
+  Future<void> _showEmailAlreadyInUseDialog(String email) async {
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Email deja utilise'),
+        content: const Text(
+          'Ce compte existe deja. Choisissez Se connecter ou lancez une reinitialisation du mot de passe.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _tabController.animateTo(0);
+              _loginEmailController.text = email;
+            },
+            child: const Text('Se connecter'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _tabController.animateTo(0);
+              setState(() {
+                _showForgotPassword = true;
+                _forgotPasswordController.text = email;
+              });
+            },
+            child: const Text('Reinitialiser mot de passe'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleSignUp() async {
     // Validate form first - triggers all validators
     final isFormValid = _signupFormKey.currentState!.validate();
@@ -343,17 +330,35 @@ class _AuthScreenState extends State<AuthScreen>
       final registeredEmail = _signupEmailController.text.trim();
       await _showVerificationSentDialog(registeredEmail);
     } catch (e) {
+      bool handledByDialog = false;
       String errorMsg = e.toString().replaceAll('Exception: ', '');
       // Translate known error codes to localized messages.
       if (errorMsg == 'auth.error.username_taken') {
         errorMsg = l10n.usernameTaken;
+      } else if (errorMsg == 'auth.error.firestore_unavailable') {
+        errorMsg =
+            'Service temporairement indisponible. Verifiez votre connexion puis reessayez dans quelques secondes.';
+      } else if (errorMsg == 'auth.error.email_already_in_use') {
+        errorMsg =
+            'Cet email est deja utilise. Connectez-vous avec cet email, puis utilisez "Mot de passe oublie ?" ou "Renvoyer verification" si necessaire.';
+
+        // Help the user recover quickly: move to login tab and prefill email.
+        _tabController.animateTo(0);
+        _loginEmailController.text = _signupEmailController.text.trim().toLowerCase();
+        handledByDialog = true;
       }
       setState(() {
         _errorMessage = errorMsg;
         _isLoading = false;
       });
 
-      if (mounted) {
+      if (handledByDialog) {
+        await _showEmailAlreadyInUseDialog(
+          _signupEmailController.text.trim().toLowerCase(),
+        );
+      }
+
+      if (mounted && !handledByDialog) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_errorMessage ?? l10n.signupFailed),
@@ -483,6 +488,66 @@ class _AuthScreenState extends State<AuthScreen>
   Widget _buildLoginTab() {
     final l10n = AppLocalizations.of(context)!;
 
+    if (_showForgotPassword) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _forgotPasswordFormKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 20),
+              const Text(
+                'Réinitialiser le mot de passe',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textDark,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Entrez votre email pour recevoir un lien de réinitialisation.',
+                style: TextStyle(fontSize: 14, color: AppTheme.mediumGrey),
+              ),
+              const SizedBox(height: 28),
+              ValidatedTextField(
+                controller: _forgotPasswordController,
+                label: l10n.email,
+                hintText: 'votre@email.com',
+                prefixIcon: Icons.email_outlined,
+                validationType: 'email',
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isSendingReset ? null : _handleSendReset,
+                  child: _isSendingReset
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(l10n.send),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: _isSendingReset
+                      ? null
+                      : () => setState(() => _showForgotPassword = false),
+                  child: Text(l10n.cancel),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Form(
@@ -596,6 +661,20 @@ class _AuthScreenState extends State<AuthScreen>
                       },
                 icon: const Icon(Icons.admin_panel_settings_outlined),
                 label: Text(l10n.loginAsAdmin),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const Key('auth_super_admin_login_nav_button'),
+                onPressed: _isLoading
+                    ? null
+                    : () {
+                        context.push('/super-admin/login');
+                      },
+                icon: const Icon(Icons.verified_user_outlined),
+                label: const Text('Connexion Super Admin'),
               ),
             ),
           ],

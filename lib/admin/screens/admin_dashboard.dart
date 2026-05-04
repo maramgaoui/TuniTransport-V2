@@ -60,7 +60,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
 
     final l10n = AppLocalizations.of(context)!;
-    final trustedRole = _session?.adminRole;
+    final trustedRole = _session?.adminType;
 
     final pages = <Widget>[
       _DashboardTab(role: trustedRole),
@@ -90,10 +90,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
               foregroundColor: Colors.white,
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.person),
+                  tooltip: 'Utiliser comme utilisateur',
+                  icon: const Icon(Icons.person_outline),
                   onPressed: () {
-                    context.push('/admin/profile');
+                    AuthController.instance.switchToUserMode();
+                    context.go('/home/journey-input');
                   },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.person),
+                  onPressed: () => context.push('/admin/profile'),
                 ),
               ],
             ),

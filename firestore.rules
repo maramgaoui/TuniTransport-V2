@@ -5,11 +5,24 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Admin check for rule evaluation.
-    // Admin documents must be keyed by Firebase uid.
-    function isAdmin() {
+    // All roles live in the unified users collection.
+    function userRole() {
       return isSignedIn()
-        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user')
+        : 'guest';
+    }
+
+    function isAdmin() {
+      return userRole() == 'admin';
+    }
+
+    function isSuperAdmin() {
+      return userRole() == 'super_admin';
+    }
+
+    function isPrivileged() {
+      return isAdmin() || isSuperAdmin();
     }
 
     function canUseCommunityChat() {
@@ -24,10 +37,10 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow read: if isSignedIn() && (request.auth.uid == userId || isPrivileged());
 
-      // Admins can write any field (ban, block, unblock, etc.).
-      allow write: if isAdmin();
+      // Privileged users can write any field (ban, block, create admin, etc.).
+      allow write: if isPrivileged();
 
       // Regular users may only create or update their own document and
       // must NEVER touch the security-sensitive status / banUntil fields.
@@ -158,11 +171,42 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Admin profiles are sensitive but must be readable during session resolution.
-    // Write access is permanently disabled to prevent unauthorized admin creation.
+    // Legacy admins collection — kept for backward-compat during migration.
+    // New accounts write to users collection only.
     match /admins/{adminId} {
       allow read: if isSignedIn();
-      allow write: if false;
+      allow write: if isSuperAdmin();
+    }
+
+    match /activity_logs/{logId} {
+      allow create: if isSignedIn();
+      allow read: if isSuperAdmin();
+      allow update, delete: if false;
+    }
+
+    match /system_stats/{statsId} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    match /app_sessions/{sessionId} {
+      allow read: if isSuperAdmin();
+      allow create, update: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow delete: if isSuperAdmin();
+    }
+
+    // Queue for Firebase Trigger Email extension (firestore-send-email).
+    // Super admin writes notification jobs; clients never read queued emails.
+    match /mail_queue/{docId} {
+      allow create: if isSuperAdmin();
+      allow read, update, delete: if false;
+    }
+
+    // Matricule → real Auth email mapping for promoted admins.
+    // Public read: the login screen needs this before the user is authenticated.
+    // Write restricted to privileged roles only.
+    match /admin_login_lookup/{matricule} {
+      allow read: if true;
+      allow write: if isPrivileged();
     }
   }
 }

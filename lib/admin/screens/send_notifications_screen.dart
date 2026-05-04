@@ -25,7 +25,7 @@ class _SendNotificationsScreenState extends State<SendNotificationsScreen> {
   bool _isSending = false;
   DateTime? _lastSentAt;
   Timer? _cooldownTicker;
-  String selectedTarget = 'all'; // all, app_users, drivers
+  String selectedTarget = 'all'; // all, app_users
 
   int get _cooldownRemainingSeconds {
     final last = _lastSentAt;
@@ -50,10 +50,12 @@ class _SendNotificationsScreenState extends State<SendNotificationsScreen> {
   }
 
   Future<int> _estimateRecipients(String target) async {
-    AggregateQuery query;
-    if (target == 'drivers') {
-      query = _usersRef.where('role', isEqualTo: 'driver').count();
+    final AggregateQuery query;
+    if (target == 'app_users') {
+      // Count only regular users (excludes admins and super admins).
+      query = _usersRef.where('role', isEqualTo: 'user').count();
     } else {
+      // 'all' — every document in the users collection.
       query = _usersRef.count();
     }
     final snapshot = await query.get();
@@ -200,17 +202,6 @@ class _SendNotificationsScreenState extends State<SendNotificationsScreen> {
                                   size: 18, color: AppTheme.primaryTeal),
                               const SizedBox(width: 8),
                               Text(l10n.appUsers),
-                            ],
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: 'drivers',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.directions_car,
-                                  size: 18, color: AppTheme.primaryTeal),
-                              const SizedBox(width: 8),
-                              Text(l10n.drivers),
                             ],
                           ),
                         ),
