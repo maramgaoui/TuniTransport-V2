@@ -565,6 +565,18 @@ abstract class AppLocalizations {
   /// **'Choose an avatar'**
   String get chooseAvatar;
 
+  /// No description provided for @uploadCustomAvatar.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload custom avatar'**
+  String get uploadCustomAvatar;
+
+  /// No description provided for @predefinedAvatars.
+  ///
+  /// In en, this message translates to:
+  /// **'Predefined avatars'**
+  String get predefinedAvatars;
+
   /// No description provided for @avatarUpdated.
   ///
   /// In en, this message translates to:
@@ -773,7 +785,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'A verification email has been sent to {email}. Please check your inbox and click the link before signing in.'**
-  String emailVerificationMessage(String email);
+  String emailVerificationMessage(Object email);
 
   /// No description provided for @emailNotVerified.
   ///

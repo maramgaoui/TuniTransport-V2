@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:avatar_plus/avatar_plus.dart';
-import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/controllers/auth_controller.dart';
 import 'package:tuni_transport/constants/avatar_options.dart';
@@ -647,34 +646,6 @@ class _AuthScreenState extends State<AuthScreen>
                 onPressed: _isLoading ? null : _handleGoogleSignIn,
                 icon: const Icon(Icons.g_mobiledata),
                 label: Text(l10n.signInWithGoogle),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                key: const Key('auth_admin_login_nav_button'),
-                onPressed: _isLoading
-                    ? null
-                    : () {
-                        context.push('/admin/login');
-                      },
-                icon: const Icon(Icons.admin_panel_settings_outlined),
-                label: Text(l10n.loginAsAdmin),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                key: const Key('auth_super_admin_login_nav_button'),
-                onPressed: _isLoading
-                    ? null
-                    : () {
-                        context.push('/super-admin/login');
-                      },
-                icon: const Icon(Icons.verified_user_outlined),
-                label: const Text('Connexion Super Admin'),
               ),
             ),
           ],

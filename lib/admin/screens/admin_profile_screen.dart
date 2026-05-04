@@ -222,6 +222,14 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     }
   }
 
+  String _adminTypeLabel(String type) => switch (type) {
+    'bus' => 'Admin Bus (TRANSTU)',
+    'metro_train' => 'Admin Métro / Train',
+    'taxicollectifs' => 'Admin Taxi Collectifs',
+    'louage' => 'Admin Louage',
+    _ => type,
+  };
+
   Future<void> _handleChangePassword() async {
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
@@ -483,7 +491,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                           const SizedBox(height: 10),
                           _InfoTile(
                             label: l10n.role,
-                            value: _role?.isNotEmpty == true ? _role! : '-',
+                            value: _role?.isNotEmpty == true
+                                ? _adminTypeLabel(_role!)
+                                : '-',
                             icon: Icons.workspace_premium_outlined,
                           ),
                           if (_errorMessage != null) ...[

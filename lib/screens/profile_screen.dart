@@ -6,6 +6,7 @@ import 'package:tuni_transport/controllers/profile_controller.dart';
 import 'package:tuni_transport/controllers/auth_controller.dart';
 import 'package:tuni_transport/models/user_model.dart';
 import 'package:tuni_transport/utils/validation_utils.dart';
+
 import '../theme/app_theme.dart';
 import '../widgets/app_settings.dart';
 
@@ -164,6 +165,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _showAvatarPicker(User profile) async {
     final l10n = AppLocalizations.of(context)!;
     String selectedAvatarId = profile.avatarId ?? avatarOptions.first;
+
     final saved = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -171,41 +173,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title: Text(l10n.chooseAvatar),
           content: SizedBox(
             width: double.maxFinite,
-            child: GridView.builder(
-              shrinkWrap: true,
-              itemCount: avatarOptions.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
+            child: SingleChildScrollView(
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: avatarOptions.length,
+                gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                ),
+                itemBuilder: (context, index) {
+                  final avatarId = avatarOptions[index];
+                  final isSelected = selectedAvatarId == avatarId;
+                  return GestureDetector(
+                    onTap: () =>
+                        setDialogState(() => selectedAvatarId = avatarId),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected
+                              ? AppTheme.primaryTeal
+                              : Colors.transparent,
+                          width: 2.5,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(2),
+                      child: ClipOval(
+                        child: AvatarPlus(
+                          avatarId,
+                          width: 56,
+                          height: 56,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
-              itemBuilder: (context, index) {
-                final avatarId = avatarOptions[index];
-                final isSelected = selectedAvatarId == avatarId;
-                return GestureDetector(
-                  onTap: () => setDialogState(() => selectedAvatarId = avatarId),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isSelected
-                            ? AppTheme.primaryTeal
-                            : Colors.transparent,
-                        width: 2.5,
-                      ),
-                    ),
-                    padding: const EdgeInsets.all(2),
-                    child: ClipOval(
-                      child: AvatarPlus(
-                        avatarId,
-                        width: 56,
-                        height: 56,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                );
-              },
             ),
           ),
           actions: [
@@ -231,6 +238,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (saved == true) {
       final success = await _profileController.updateProfileFields({
         'avatarId': selectedAvatarId,
+        'customAvatarUrl': null,
       });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -613,15 +621,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Stack(
                         children: [
                           ClipOval(
-                            child: AvatarPlus(
-                              profile.avatarId ??
-                                  (profile.username?.isNotEmpty == true
-                                      ? profile.username!
-                                      : profile.email),
-                              width: 120,
-                              height: 120,
-                              fit: BoxFit.cover,
-                            ),
+                            child: (profile.customAvatarUrl != null && profile.customAvatarUrl!.isNotEmpty)
+                                ? Image.network(
+                                    profile.customAvatarUrl!,
+                                    width: 120,
+                                    height: 120,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return AvatarPlus(
+                                        profile.avatarId ??
+                                            (profile.username?.isNotEmpty == true
+                                                ? profile.username!
+                                                : profile.email),
+                                        width: 120,
+                                        height: 120,
+                                        fit: BoxFit.cover,
+                                      );
+                                    },
+                                  )
+                                : AvatarPlus(
+                                    profile.avatarId ??
+                                        (profile.username?.isNotEmpty == true
+                                            ? profile.username!
+                                            : profile.email),
+                                    width: 120,
+                                    height: 120,
+                                    fit: BoxFit.cover,
+                                  ),
                           ),
                           Positioned(
                             right: 0,

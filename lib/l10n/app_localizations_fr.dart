@@ -247,6 +247,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get chooseAvatar => 'Choisir un avatar';
 
   @override
+  String get uploadCustomAvatar => 'Télécharger un avatar personnalisé';
+
+  @override
+  String get predefinedAvatars => 'Avatars prédéfinis';
+
+  @override
   String get avatarUpdated => 'Avatar mis à jour';
 
   @override
@@ -314,7 +320,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get createAccountTitle => 'Créer un compte';
 
   @override
-  String get joinTuniTranspo => 'Rejoignez TuniTranspo';
+  String get joinTuniTranspo => 'Rejoignez TuniTransport';
 
   @override
   String get forgotPasswordShort => 'Oublié?';
@@ -355,7 +361,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get emailVerificationTitle => 'Vérifiez votre email';
 
   @override
-  String emailVerificationMessage(String email) => 'Un email de vérification a été envoyé à $email. Veuillez vérifier votre boîte de réception et cliquer sur le lien avant de vous connecter.';
+  String emailVerificationMessage(Object email) {
+    return 'Un email de vérification a été envoyé à $email. Veuillez vérifier votre boîte de réception et cliquer sur le lien avant de vous connecter.';
+  }
 
   @override
   String get emailNotVerified => 'Votre email n\'est pas encore vérifié. Vérifiez votre boîte de réception.';

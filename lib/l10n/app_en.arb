@@ -87,6 +87,8 @@
   "passwordMinLength": "Password must contain at least 6 characters",
   "passwordChangedSuccessfully": "Password changed successfully",
   "chooseAvatar": "Choose an avatar",
+  "uploadCustomAvatar": "Upload custom avatar",
+  "predefinedAvatars": "Predefined avatars",
   "avatarUpdated": "Avatar updated",
   "avatarUpdateFailed": "Failed to update avatar",
   "confirmSignOut": "Are you sure you want to sign out?",

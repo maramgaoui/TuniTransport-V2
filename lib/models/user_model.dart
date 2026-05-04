@@ -5,6 +5,7 @@ class User {
   final String? firstName;
   final String? lastName;
   final String? avatarId;
+  final String? customAvatarUrl;
   final String? city;
   final String status;
   final DateTime? banUntil;
@@ -22,6 +23,7 @@ class User {
     this.firstName,
     this.lastName,
     this.avatarId,
+    this.customAvatarUrl,
     this.city,
     this.status = 'active',
     this.banUntil,
@@ -42,6 +44,7 @@ class User {
     if (firstName != null) map['firstName'] = firstName;
     if (lastName != null) map['lastName'] = lastName;
     if (avatarId != null) map['avatarId'] = avatarId;
+    if (customAvatarUrl != null) map['customAvatarUrl'] = customAvatarUrl;
     if (city != null) map['city'] = city;
     map['status'] = status;
     if (banUntil != null) map['banUntil'] = banUntil!.toIso8601String();
@@ -74,6 +77,7 @@ class User {
       firstName: map['firstName'],
       lastName: map['lastName'],
       avatarId: map['avatarId'],
+      customAvatarUrl: map['customAvatarUrl'],
       city: map['city'],
       status: (map['status'] ?? 'active').toString(),
       banUntil: parsedBanUntil,
@@ -92,6 +96,7 @@ class User {
     String? firstName,
     String? lastName,
     String? avatarId,
+    String? customAvatarUrl,
     String? city,
     String? status,
     DateTime? banUntil,
@@ -108,6 +113,7 @@ class User {
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
       avatarId: avatarId ?? this.avatarId,
+      customAvatarUrl: customAvatarUrl ?? this.customAvatarUrl,
       city: city ?? this.city,
       status: status ?? this.status,
       banUntil: clearBanUntil ? null : (banUntil ?? this.banUntil),

@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:developer' as developer;
+import 'package:image_picker/image_picker.dart';
 import '../models/user_model.dart';
+import '../services/avatar_service.dart';
 
 class ProfileController {
   final firebase_auth.FirebaseAuth _firebaseAuth =
@@ -123,6 +125,41 @@ class ProfileController {
     } catch (e) {
       developer.log('Error updating profile fields: $e', name: 'ProfileController');
       return false;
+    }
+  }
+
+  // Upload custom avatar to Firebase Storage
+  // Returns the download URL on success or null on failure
+  Future<String?> uploadCustomAvatar({
+    required XFile imageFile,
+    void Function(double progress)? onProgress,
+  }) async {
+    final firebaseUser = _firebaseAuth.currentUser;
+    if (firebaseUser == null) {
+      developer.log('Cannot upload avatar: user not authenticated', name: 'ProfileController');
+      return null;
+    }
+
+    try {
+      final avatarService = AvatarService();
+      final downloadUrl = await avatarService.uploadAvatar(
+        uid: firebaseUser.uid,
+        imageFile: imageFile,
+        onProgress: onProgress,
+      );
+
+      if (downloadUrl != null) {
+        // Save the download URL to user profile with a marker that it's a custom avatar
+        await updateProfileFields({
+          'customAvatarUrl': downloadUrl,
+          'avatarUpdatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      return downloadUrl;
+    } catch (e) {
+      developer.log('Error uploading custom avatar: $e', name: 'ProfileController');
+      return null;
     }
   }
 

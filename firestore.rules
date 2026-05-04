@@ -5,20 +5,18 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // All roles live in the unified users collection.
-    function userRole() {
-      return isSignedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user')
-        : 'guest';
-    }
-
+    // Explicit role checks — avoids ternary precedence issues that can
+    // cause PERMISSION_DENIED on collection queries.
     function isAdmin() {
-      return userRole() == 'admin';
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin';
     }
 
     function isSuperAdmin() {
-      return userRole() == 'super_admin';
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'super_admin';
     }
 
     function isPrivileged() {
@@ -31,15 +29,18 @@ service cloud.firestore {
           isAdmin()
           || (
             exists(/databases/$(database)/documents/users/$(request.auth.uid))
-            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active'
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('status', '') == 'active'
           )
         );
     }
 
     match /users/{userId} {
+      // Single-document reads: own doc OR privileged.
+      // Collection queries: privileged users can query all (isPrivileged() is
+      // independent of userId so Firestore allows the list operation).
       allow read: if isSignedIn() && (request.auth.uid == userId || isPrivileged());
 
-      // Privileged users can write any field (ban, block, create admin, etc.).
+      // Privileged users can write any field (ban, block, promote admin, etc.).
       allow write: if isPrivileged();
 
       // Regular users may only create or update their own document and
@@ -47,11 +48,12 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.auth.uid == userId
         && (!('status' in request.resource.data) || request.resource.data.status == 'active')
-        && (!('banUntil' in request.resource.data) || request.resource.data.banUntil == null);
+        && (!('banUntil' in request.resource.data) || request.resource.data.banUntil == null)
+        && (!('role' in request.resource.data) || request.resource.data.role == 'user');
 
       allow update: if isSignedIn()
         && request.auth.uid == userId
-        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'banUntil']));
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'banUntil', 'role', 'adminType', 'permissions']));
     }
 
     match /users/{userId}/favorites/{journeyId} {
@@ -61,52 +63,52 @@ service cloud.firestore {
     // Transport data collections
     match /journeys/{journeyId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isPrivileged();
     }
 
     match /stations/{stationId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isPrivileged();
     }
 
     match /routes/{routeId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isPrivileged();
     }
 
     match /route_stops/{docId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isPrivileged();
     }
 
     match /trips/{tripId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isPrivileged();
     }
 
     match /tariffs/{tariffId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isPrivileged();
     }
 
     match /transport_types/{typeId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isPrivileged();
     }
 
     match /operators/{operatorId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isPrivileged();
     }
 
     match /bus_services/{serviceId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isPrivileged();
     }
 
     match /notifications/{notifId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isPrivileged();
     }
 
     match /community_messages/{messageId} {
@@ -153,26 +155,20 @@ service cloud.firestore {
 
     match /taxi_collectif_routes/{routeId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isPrivileged();
     }
 
-    // Username reservations — created at signup to enforce uniqueness across
-    // pending (unverified) and confirmed accounts.
-    // Users may only create a reservation for their own UID. Admins can delete
-    // stale reservations if needed.
     match /usernames/{username} {
       allow read: if true;
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid;
-      // Allow the owner to update (e.g., drop reservedAt on first verified login).
       allow update: if isSignedIn()
         && resource.data.uid == request.auth.uid
         && request.resource.data.uid == request.auth.uid;
-      allow delete: if isAdmin();
+      allow delete: if isPrivileged();
     }
 
     // Legacy admins collection — kept for backward-compat during migration.
-    // New accounts write to users collection only.
     match /admins/{adminId} {
       allow read: if isSignedIn();
       allow write: if isSuperAdmin();
@@ -195,15 +191,13 @@ service cloud.firestore {
     }
 
     // Queue for Firebase Trigger Email extension (firestore-send-email).
-    // Super admin writes notification jobs; clients never read queued emails.
     match /mail_queue/{docId} {
-      allow create: if isSuperAdmin();
+      allow create: if isPrivileged();
       allow read, update, delete: if false;
     }
 
     // Matricule → real Auth email mapping for promoted admins.
     // Public read: the login screen needs this before the user is authenticated.
-    // Write restricted to privileged roles only.
     match /admin_login_lookup/{matricule} {
       allow read: if true;
       allow write: if isPrivileged();

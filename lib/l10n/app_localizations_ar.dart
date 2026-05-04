@@ -247,6 +247,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get chooseAvatar => 'اختر صورة رمزية';
 
   @override
+  String get uploadCustomAvatar => 'تحميل صورة رمزية مخصصة';
+
+  @override
+  String get predefinedAvatars => 'الصور الرمزية المحددة مسبقاً';
+
+  @override
   String get avatarUpdated => 'تم تحديث الصورة الرمزية';
 
   @override
@@ -355,7 +361,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get emailVerificationTitle => 'تحقق من بريدك الإلكتروني';
 
   @override
-  String emailVerificationMessage(String email) => 'تم إرسال بريد التحقق إلى $email. يرجى التحقق من صندوق الوارد والنقر على الرابط قبل تسجيل الدخول.';
+  String emailVerificationMessage(Object email) {
+    return 'تم إرسال بريد التحقق إلى $email. يرجى التحقق من صندوق الوارد والنقر على الرابط قبل تسجيل الدخول.';
+  }
 
   @override
   String get emailNotVerified => 'لم يتم التحقق من بريدك الإلكتروني بعد. تحقق من صندوق الوارد.';

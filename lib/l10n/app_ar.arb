@@ -87,6 +87,8 @@
   "passwordMinLength": "يجب أن تحتوي كلمة المرور على 6 أحرف على الأقل",
   "passwordChangedSuccessfully": "تم تغيير كلمة المرور بنجاح",
   "chooseAvatar": "اختر صورة رمزية",
+  "uploadCustomAvatar": "تحميل صورة رمزية مخصصة",
+  "predefinedAvatars": "الصور الرمزية المحددة مسبقاً",
   "avatarUpdated": "تم تحديث الصورة الرمزية",
   "avatarUpdateFailed": "فشل تحديث الصورة الرمزية",
   "confirmSignOut": "هل أنت متأكد أنك تريد تسجيل الخروج؟",

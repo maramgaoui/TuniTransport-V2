@@ -247,6 +247,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chooseAvatar => 'Choose an avatar';
 
   @override
+  String get uploadCustomAvatar => 'Upload custom avatar';
+
+  @override
+  String get predefinedAvatars => 'Predefined avatars';
+
+  @override
   String get avatarUpdated => 'Avatar updated';
 
   @override
@@ -355,7 +361,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get emailVerificationTitle => 'Verify your email';
 
   @override
-  String emailVerificationMessage(String email) => 'A verification email has been sent to $email. Please check your inbox and click the link before signing in.';
+  String emailVerificationMessage(Object email) {
+    return 'A verification email has been sent to $email. Please check your inbox and click the link before signing in.';
+  }
 
   @override
   String get emailNotVerified => 'Your email is not yet verified. Please check your inbox.';
