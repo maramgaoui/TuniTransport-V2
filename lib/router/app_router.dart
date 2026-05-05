@@ -8,7 +8,8 @@ import '../admin/screens/admin_login_screen.dart';
 import '../admin/screens/admin_profile_screen.dart';
 import '../admin/screens/manage_users_screen.dart';
 import '../admin/screens/manage_journeys_screen.dart';
-import '../admin/screens/manage_stations_screen.dart';
+import '../admin/screens/manage_tariffs_screen.dart';
+import '../admin/screens/manage_admins_screen.dart';
 import '../admin/screens/send_notifications_screen.dart';
 import '../controllers/auth_controller.dart';
 import '../models/journey_model.dart';
@@ -39,7 +40,8 @@ class AppRouter {
     '/admin',
     '/admin/manage-users',
     '/admin/manage-journeys',
-    '/admin/manage-stations',
+    '/admin/manage-tariffs',
+    '/admin/manage-admins',
     '/admin/send-notifications',
     '/admin/profile',
     '/super-admin/dashboard',
@@ -59,7 +61,6 @@ class AppRouter {
     // Admin route — no sensitive data in URL (#25).
     const adminLocation = '/admin';
     const superAdminLoginLocation = '/super-admin/login';
-    const superAdminDashboardLocation = '/super-admin/dashboard';
 
     return GoRouter(
       initialLocation: '/splash',
@@ -107,14 +108,16 @@ class AppRouter {
           if (path == '/splash') {
             if (savedRoute != null &&
                 _isRestorableRoute(savedRoute) &&
-                savedRoute.startsWith('/super-admin')) {
+                (savedRoute.startsWith('/admin') ||
+                    savedRoute.startsWith('/super-admin'))) {
               return savedRoute;
             }
-            return superAdminDashboardLocation;
+            return adminLocation;
           }
           if (path == superAdminLoginLocation || path == '/auth') {
-            return superAdminDashboardLocation;
+            return adminLocation;
           }
+          if (path.startsWith('/home')) return adminLocation;
           return null;
         }
 
@@ -256,8 +259,12 @@ class AppRouter {
           builder: (context, state) => const ManageJourneysScreen(),
         ),
         GoRoute(
-          path: '/admin/manage-stations',
-          builder: (context, state) => const ManageStationsScreen(),
+          path: '/admin/manage-tariffs',
+          builder: (context, state) => const ManageTariffsScreen(),
+        ),
+        GoRoute(
+          path: '/admin/manage-admins',
+          builder: (context, state) => const ManageAdminsScreen(),
         ),
         GoRoute(
           path: '/admin/send-notifications',
@@ -273,7 +280,10 @@ class AppRouter {
         ),
         GoRoute(
           path: '/super-admin/dashboard',
-          builder: (context, state) => const SuperAdminDashboard(),
+          builder: (context, state) {
+            final tabParam = int.tryParse(state.uri.queryParameters['tab'] ?? '0');
+            return SuperAdminDashboard(initialTab: tabParam ?? 0);
+          },
         ),
       ],
     );

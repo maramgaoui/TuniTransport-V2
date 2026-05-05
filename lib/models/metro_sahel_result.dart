@@ -19,6 +19,9 @@ class MetroSahelResult {
   /// String trip number for operators that use alphanumeric trip numbers (e.g. SNCFT "5-13/57").
   /// When set, this is shown in the UI instead of [tripNumber].
   final String? tripNumberStr;
+  /// Whether the route is currently active. Inactive routes are still shown
+  /// to users but with a visual warning.
+  final bool isActive;
 
   static const String currency = 'TND';
 
@@ -38,6 +41,7 @@ class MetroSahelResult {
     this.operatorPhone = '+216 73 447 425',
     this.lineType = 'metro_sahel',
     this.tripNumberStr,
+    this.isActive = true,
   });
 
   bool get noTrainToday => arrivalTime == 'TOMORROW';

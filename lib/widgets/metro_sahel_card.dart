@@ -93,6 +93,37 @@ class MetroSahelCard extends StatelessWidget {
 
             const SizedBox(height: 12),
 
+            // Inactive route warning
+            if (!result.isActive) ...[
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade800.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        color: Colors.white, size: 16),
+                    const SizedBox(width: 6),
+                    const Expanded(
+                      child: Text(
+                        'Trajet temporairement désactivé',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+
             // Route
             Text(
               '${result.fromStationName} → ${result.toStationName}',

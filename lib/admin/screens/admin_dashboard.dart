@@ -4,10 +4,10 @@ import 'package:tuni_transport/controllers/auth_controller.dart';
 import 'package:tuni_transport/models/session_result.dart';
 import 'package:tuni_transport/controllers/notification_controller.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
+import 'package:tuni_transport/screens/profile_screen.dart';
 import 'package:tuni_transport/screens/chat_screen.dart';
 import 'package:tuni_transport/theme/app_theme.dart';
 import 'package:tuni_transport/utils/notification_l10n.dart';
-import 'package:tuni_transport/widgets/app_settings.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -61,9 +61,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     final l10n = AppLocalizations.of(context)!;
     final trustedRole = _session?.adminType;
+    final isSuperAdmin = _session?.isSuperAdmin ?? false;
 
     final pages = <Widget>[
-      _DashboardTab(role: trustedRole),
+      _DashboardTab(
+        role: trustedRole,
+        isSuperAdmin: isSuperAdmin,
+      ),
       ChatScreen(
         isAdminMode: true,
         adminMatricule: _session?.adminMatricule,
@@ -71,38 +75,30 @@ class _AdminDashboardState extends State<AdminDashboard> {
         adminRole: trustedRole,
       ),
       const _AdminNotificationsTab(),
-      const _AdminEditTab(),
+      const ProfileScreen(),
     ];
 
     return Scaffold(
       key: const Key('admin_dashboard_screen'),
-      appBar: _selectedIndex == 1
-          ? null
-          : AppBar(
-              title: Text(switch (_selectedIndex) {
-                0 => l10n.adminDashboard,
-                1 => l10n.messages,
-                2 => l10n.notifications,
-                _ => l10n.settings,
-              }),
-              automaticallyImplyLeading: false,
-              backgroundColor: AppTheme.primaryTeal,
-              foregroundColor: Colors.white,
-              actions: [
-                IconButton(
-                  tooltip: 'Utiliser comme utilisateur',
-                  icon: const Icon(Icons.person_outline),
-                  onPressed: () {
-                    AuthController.instance.switchToUserMode();
-                    context.go('/home/journey-input');
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.person),
-                  onPressed: () => context.push('/admin/profile'),
-                ),
-              ],
+      appBar: AppBar(
+        title: Text(switch (_selectedIndex) {
+          0 => l10n.adminDashboard,
+          1 => l10n.messages,
+          2 => l10n.notifications,
+          _ => l10n.profile,
+        }),
+        automaticallyImplyLeading: false,
+        backgroundColor: AppTheme.primaryTeal,
+        foregroundColor: Colors.white,
+        actions: [
+          if (_selectedIndex != 3)
+            IconButton(
+              tooltip: l10n.profile,
+              icon: const Icon(Icons.account_circle_outlined),
+              onPressed: () => setState(() => _selectedIndex = 3),
             ),
+        ],
+      ),
       body: IndexedStack(index: _selectedIndex, children: pages),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
@@ -133,18 +129,28 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 );
               },
             ),
-            activeIcon: const Icon(Icons.chat_bubble),
             label: l10n.messages,
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.notifications_none),
-            activeIcon: const Icon(Icons.notifications),
+            icon: ListenableBuilder(
+              listenable: NotificationController.instance,
+              builder: (context, _) {
+                final unread = NotificationController.instance.unreadCount;
+                if (unread == 0) {
+                  return const Icon(Icons.notifications_outlined);
+                }
+                return Badge(
+                  label: Text(unread > 99 ? '99+' : unread.toString()),
+                  child: const Icon(Icons.notifications_outlined),
+                );
+              },
+            ),
             label: l10n.notifications,
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.edit_outlined),
-            activeIcon: const Icon(Icons.edit),
-            label: l10n.settings,
+            icon: const Icon(Icons.person_outline),
+            activeIcon: const Icon(Icons.person),
+            label: l10n.profile,
           ),
         ],
       ),
@@ -153,14 +159,93 @@ class _AdminDashboardState extends State<AdminDashboard> {
 }
 
 class _DashboardTab extends StatelessWidget {
-  const _DashboardTab({this.role});
+  const _DashboardTab({this.role, required this.isSuperAdmin});
 
   final String? role;
+  final bool isSuperAdmin;
+
+  String _roleChipLabel(String role) {
+    return switch (role) {
+      'super_admin' => 'Super Admin',
+      'admin' => 'Admin',
+      'moderator' => 'Modérateur',
+      _ => role,
+    };
+  }
+
+  Widget _buildDashboardCard(
+    BuildContext context,
+    String title,
+    IconData icon, {
+    required VoidCallback onTap,
+    required double height,
+  }) {
+    final primaryGreen = AppTheme.primaryTeal;
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: primaryGreen.withValues(alpha: 0.08),
+            blurRadius: 20,
+            spreadRadius: 2,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          splashColor: primaryGreen.withValues(alpha: 0.10),
+          highlightColor: primaryGreen.withValues(alpha: 0.05),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: primaryGreen.withValues(alpha: 0.10),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 32, color: primaryGreen),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: primaryGreen.withValues(alpha: 0.85),
+                  size: 28,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final actions = <_AdminAction>[
+    final commonActions = <_AdminAction>[
       _AdminAction(
         labelKey: (l) => l.manageUsers,
         icon: Icons.people_outline,
@@ -172,9 +257,9 @@ class _DashboardTab extends StatelessWidget {
         onTap: (ctx) => ctx.push('/admin/manage-journeys'),
       ),
       _AdminAction(
-        labelKey: (l) => l.manageStations,
-        icon: Icons.train_outlined,
-        onTap: (ctx) => ctx.push('/admin/manage-stations'),
+        labelKey: (l) => l.manageTariffs,
+        icon: Icons.sell_outlined,
+        onTap: (ctx) => ctx.push('/admin/manage-tariffs'),
       ),
       _AdminAction(
         labelKey: (l) => l.sendNotifications,
@@ -183,30 +268,128 @@ class _DashboardTab extends StatelessWidget {
       ),
     ];
 
+    final superAdminActions = <_AdminAction>[
+      _AdminAction(
+        labelKey: (l) => l.manageAdmins,
+        icon: Icons.badge_outlined,
+        isSuperAdminOnly: true,
+        onTap: (ctx) => ctx.push('/admin/manage-admins'),
+      ),
+      _AdminAction(
+        labelKey: (l) => l.manageAdminRolesPermissions,
+        icon: Icons.manage_accounts_outlined,
+        isSuperAdminOnly: true,
+        onTap: (ctx) => ctx.push('/super-admin/dashboard?tab=1'),
+      ),
+      _AdminAction(
+        labelKey: (l) => l.globalPlatformSupervision,
+        icon: Icons.monitor_outlined,
+        isSuperAdminOnly: true,
+        onTap: (ctx) => ctx.push('/super-admin/dashboard?tab=2'),
+      ),
+    ];
+
+    final actions = <_AdminAction>[
+      ...commonActions,
+      if (isSuperAdmin) ...superAdminActions,
+    ];
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                AuthController.instance.switchToUserMode();
+                context.go('/home/journey-input');
+              },
+              icon: const Icon(Icons.switch_account, size: 18),
+              label: Text(l10n.switchToUserMode),
+              style: OutlinedButton.styleFrom(
+                shape: const StadiumBorder(),
+                side: BorderSide(
+                  color: AppTheme.primaryTeal.withValues(alpha: 0.35),
+                ),
+                foregroundColor: AppTheme.primaryTeal,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           if (role != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: Text(
-                l10n.connectedRole(role!),
-                style: const TextStyle(fontWeight: FontWeight.w600),
+              child: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  Text(
+                    l10n.role,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  Chip(
+                    avatar: const Icon(
+                      Icons.verified_user_outlined,
+                      size: 18,
+                      color: AppTheme.primaryTeal,
+                    ),
+                    label: Text(
+                      _roleChipLabel(role!),
+                      style: const TextStyle(
+                        color: AppTheme.primaryTeal,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    backgroundColor: Colors.white,
+                    side: BorderSide(color: AppTheme.primaryTeal.withValues(alpha: 0.3)),
+                  ),
+                ],
               ),
             ),
-          ...actions.map((action) {
-            final label = action.labelKey(l10n);
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: ElevatedButton.icon(
-                onPressed: () => action.onTap(context),
-                icon: Icon(action.icon),
-                label: Text(label),
-              ),
-            );
-          }),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                const spacing = 12.0;
+                final cardHeight = (constraints.maxHeight - (spacing * 3)) / 4;
+
+                return ListView.separated(
+                  padding: EdgeInsets.zero,
+                  itemCount: actions.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: spacing),
+                  itemBuilder: (context, index) {
+                    final action = actions[index];
+                    final label = action.labelKey(l10n);
+
+                    return TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: 1),
+                      duration: Duration(milliseconds: 220 + (index * 35)),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, t, child) {
+                        return Opacity(
+                          opacity: t,
+                          child: Transform.translate(
+                            offset: Offset(0, (1 - t) * 12),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: _buildDashboardCard(
+                        context,
+                        label,
+                        action.icon,
+                        height: cardHeight,
+                        onTap: () => action.onTap(context),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
         ],
       ),
     );
@@ -218,18 +401,13 @@ class _AdminAction {
     required this.labelKey,
     required this.icon,
     required this.onTap,
+    this.isSuperAdminOnly = false,
   });
 
   final String Function(AppLocalizations) labelKey;
   final IconData icon;
   final void Function(BuildContext) onTap;
-}
-
-class _AdminEditTab extends StatefulWidget {
-  const _AdminEditTab();
-
-  @override
-  State<_AdminEditTab> createState() => _AdminEditTabState();
+  final bool isSuperAdminOnly;
 }
 
 class _AdminNotificationsTab extends StatelessWidget {
@@ -301,112 +479,6 @@ class _AdminNotificationsTab extends StatelessWidget {
           ],
         );
       },
-    );
-  }
-}
-
-class _AdminEditTabState extends State<_AdminEditTab> {
-  bool _isReady = false;
-  String _themeValue = 'light';
-  String _languageValue = 'fr';
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_isReady) {
-      final settings = AppSettings.of(context);
-      _themeValue = settings.settingsService.getThemeMode();
-      _languageValue = settings.settingsService.getLanguage();
-      _isReady = true;
-    }
-  }
-
-  Future<void> _changeTheme(String value) async {
-    final settings = AppSettings.of(context);
-    await settings.settingsService.setThemeMode(value);
-
-    final themeMode = switch (value) {
-      'dark' => ThemeMode.dark,
-      'system' => ThemeMode.system,
-      _ => ThemeMode.light,
-    };
-
-    settings.onThemeChanged(themeMode);
-
-    if (!mounted) return;
-    setState(() => _themeValue = value);
-  }
-
-  Future<void> _changeLanguage(String value) async {
-    final settings = AppSettings.of(context);
-    await settings.settingsService.setLanguage(value);
-    settings.onLanguageChanged(value);
-
-    if (!mounted) return;
-    setState(() => _languageValue = value);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-
-    if (!_isReady) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              l10n.settings,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 18),
-            DropdownButtonFormField<String>(
-              initialValue: _themeValue,
-              decoration: InputDecoration(
-                labelText: l10n.themeMode,
-                prefixIcon: const Icon(Icons.palette_outlined),
-              ),
-              items: [
-                DropdownMenuItem(value: 'light', child: Text(l10n.lightMode)),
-                DropdownMenuItem(value: 'dark', child: Text(l10n.darkMode)),
-                DropdownMenuItem(
-                  value: 'system',
-                  child: Text(l10n.systemDefault),
-                ),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  _changeTheme(value);
-                }
-              },
-            ),
-            const SizedBox(height: 14),
-            DropdownButtonFormField<String>(
-              initialValue: _languageValue,
-              decoration: InputDecoration(
-                labelText: l10n.language,
-                prefixIcon: const Icon(Icons.language_outlined),
-              ),
-              items: [
-                DropdownMenuItem(value: 'en', child: Text(l10n.english)),
-                DropdownMenuItem(value: 'fr', child: Text(l10n.french)),
-                DropdownMenuItem(value: 'ar', child: Text(l10n.arabic)),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  _changeLanguage(value);
-                }
-              },
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

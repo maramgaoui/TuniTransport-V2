@@ -79,6 +79,17 @@ async function main() {
         );
         console.log(`  🔑 UID document written: admins/${uid}`);
 
+        // SECURITY: Remove plaintext password from Firestore now that the
+        // Firebase Auth account has been created. Passwords must never persist
+        // in Firestore documents.
+        const fieldsToDelete = { password: admin.firestore.FieldValue.delete() };
+        await db.collection('admins').doc(uid).update(fieldsToDelete);
+        // Also remove from the original matricule-keyed document if it differs.
+        if (doc.id !== uid) {
+          await doc.ref.update(fieldsToDelete);
+        }
+        console.log(`  🔒 Plaintext password removed from Firestore for ${matricule}`);
+
         if (created) {
           successCount++;
         } else {

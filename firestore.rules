@@ -150,7 +150,7 @@ service cloud.firestore {
         );
 
       allow update, delete: if isSignedIn()
-        && (resource.data.uid == request.auth.uid || isAdmin());
+        && (resource.data.uid == request.auth.uid || isPrivileged());
     }
 
     match /taxi_collectif_routes/{routeId} {
@@ -197,10 +197,14 @@ service cloud.firestore {
     }
 
     // Matricule → real Auth email mapping for promoted admins.
-    // Public read: the login screen needs this before the user is authenticated.
+    // SECURITY NOTE: This collection is publicly readable because the admin
+    // login screen must resolve matricule → email before the user authenticates.
+    // Mitigation: a future Cloud Function (resolveAdminEmail) should handle this
+    // server-side so the lookup can be made private. Until then, this collection
+    // intentionally exposes admin email addresses to enumerate from valid matricules.
     match /admin_login_lookup/{matricule} {
       allow read: if true;
-      allow write: if isPrivileged();
+      allow write: if isSuperAdmin();
     }
   }
 }

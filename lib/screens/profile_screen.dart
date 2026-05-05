@@ -34,6 +34,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   final _formKey = GlobalKey<FormState>();
 
+  bool get _isPrivilegedReadOnlyMode {
+    return _authController.isActingAsUser &&
+        (_authController.cachedSession?.isPrivileged ?? false);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -547,12 +552,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         title: Text(l10n.profile),
         actions: [
-          if (!_isEditing)
+          if (!_isEditing && !_isPrivilegedReadOnlyMode)
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: () => setState(() => _isEditing = true),
             ),
-          if (_isEditing)
+          if (_isEditing && !_isPrivilegedReadOnlyMode)
             IconButton(
               icon: _isLoading
                   ? const SizedBox(
@@ -575,10 +580,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       }
                     },
             ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: _showSettingsDialog,
-          ),
+          if (!_isPrivilegedReadOnlyMode)
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: _showSettingsDialog,
+            ),
         ],
       ),
       body: StreamBuilder<User?>(
@@ -653,12 +659,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             right: 0,
                             bottom: 0,
                             child: GestureDetector(
-                              onTap: () => _showAvatarPicker(profile),
+                              onTap: _isPrivilegedReadOnlyMode
+                                  ? null
+                                  : () => _showAvatarPicker(profile),
                               child: Container(
                                 width: 36,
                                 height: 36,
                                 decoration: BoxDecoration(
-                                  color: AppTheme.primaryTeal,
+                                  color: _isPrivilegedReadOnlyMode
+                                      ? Colors.grey
+                                      : AppTheme.primaryTeal,
                                   shape: BoxShape.circle,
                                   border: Border.all(color: Colors.white, width: 2),
                                 ),
@@ -713,20 +723,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildProfileDetails(profile),
                 const SizedBox(height: 32),
                 // Change Password Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _showChangePasswordDialog,
-                    icon: const Icon(Icons.lock),
-                    label: Text(l10n.changePassword),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.darkTeal,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                if (!_isPrivilegedReadOnlyMode)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _showChangePasswordDialog,
+                      icon: const Icon(Icons.lock),
+                      label: Text(l10n.changePassword),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.darkTeal,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
+                if (!_isPrivilegedReadOnlyMode) const SizedBox(height: 16),
                 // Sign Out Button
                 SizedBox(
                   width: double.infinity,
@@ -778,12 +789,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 4),
               if (profile.city == null || profile.city!.isEmpty)
                 OutlinedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _isEditing = true;
-                      _cityController.clear();
-                    });
-                  },
+                  onPressed: _isPrivilegedReadOnlyMode
+                      ? null
+                      : () {
+                          setState(() {
+                            _isEditing = true;
+                            _cityController.clear();
+                          });
+                        },
                   icon: const Icon(Icons.add),
                   label: Text(l10n.addCity),
                 )

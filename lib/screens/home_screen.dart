@@ -72,6 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             if (AuthController.instance.isActingAsUser)
               _AdminModeBanner(
+                isSuperAdmin: AuthController.instance.cachedSession?.isSuperAdmin ?? false,
                 onSwitch: () {
                   AuthController.instance.switchToAdminMode();
                   // Let the router restore privileged home based on real role
@@ -163,35 +164,43 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _AdminModeBanner extends StatelessWidget {
-  const _AdminModeBanner({required this.onSwitch});
+  const _AdminModeBanner({required this.onSwitch, this.isSuperAdmin = false});
 
   final VoidCallback onSwitch;
+  final bool isSuperAdmin;
 
   @override
   Widget build(BuildContext context) {
+    final roleLabel = isSuperAdmin ? 'Super Admin' : 'Admin';
+    final dashboardLabel = isSuperAdmin ? 'Dashboard Super Admin' : 'Dashboard Admin';
+    final bannerColor = isSuperAdmin ? const Color(0xFF4A148C) : const Color(0xFF1A6B5E);
+
     return Material(
-      color: AppTheme.primaryTeal,
+      color: bannerColor,
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             children: [
-              const Icon(Icons.admin_panel_settings, color: Colors.white, size: 18),
+              const Icon(Icons.shield_outlined, color: Colors.white70, size: 16),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Mode utilisateur (compte admin)',
-                  style: TextStyle(color: Colors.white, fontSize: 13),
+                  'Mode utilisateur · $roleLabel',
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
                 ),
               ),
-              TextButton(
-                style: TextButton.styleFrom(
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  side: const BorderSide(color: Colors.white54),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  visualDensity: VisualDensity.compact,
                 ),
                 onPressed: onSwitch,
-                child: const Text('Retour admin', style: TextStyle(fontWeight: FontWeight.bold)),
+                icon: const Icon(Icons.switch_account, size: 16),
+                label: Text(dashboardLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
               ),
             ],
           ),

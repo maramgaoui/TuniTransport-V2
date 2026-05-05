@@ -78,6 +78,108 @@ class AppLocalizationsAr extends AppLocalizations {
   String get manageStations => 'إدارة المحطات';
 
   @override
+  String get manageTariffs => 'إدارة التعريفات';
+
+  @override
+  String get manageAdminRolesPermissions => 'إدارة أدوار وصلاحيات المشرفين';
+
+  @override
+  String get globalPlatformSupervision => 'الإشراف الشامل على المنصة';
+
+  @override
+  String get switchToUserMode => 'التبديل إلى وضع المستخدم';
+
+  @override
+  String get manageAdmins => 'إدارة المشرفين';
+
+  @override
+  String get promoteToAdmin => 'ترقية إلى مشرف';
+
+  @override
+  String get revokeAdminAccess => 'سحب صلاحيات المشرف';
+
+  @override
+  String get activateAdminAccount => 'تفعيل';
+
+  @override
+  String get deactivateAdminAccount => 'تعطيل';
+
+  @override
+  String get adminTypeLabel => 'نوع الإدارة';
+
+  @override
+  String get adminPermissions => 'الصلاحيات';
+
+  @override
+  String get searchAdminByEmail => 'البحث عن مستخدم بالبريد الإلكتروني للترقية…';
+
+  @override
+  String get adminPromotedSuccess => 'تمت ترقية المشرف بنجاح.';
+
+  @override
+  String get adminRevokedSuccess => 'تم سحب صلاحيات المشرف.';
+
+  @override
+  String get adminActivatedSuccess => 'تم تفعيل المشرف.';
+
+  @override
+  String get adminDeactivatedSuccess => 'تم تعطيل المشرف.';
+
+  @override
+  String get adminsLoadError => 'تعذر تحميل قائمة المشرفين.';
+
+  @override
+  String get noAdminsFound => 'لا يوجد مشرفون.';
+
+  @override
+  String get confirmRevokeAdmin => 'سحب صلاحيات المشرف؟ سيعود المستخدم إلى حساب عادي.';
+
+  @override
+  String get overviewTab => 'نظرة عامة';
+
+  @override
+  String get adminManagementTab => 'إدارة المشرفين';
+
+  @override
+  String get platformSupervisionTab => 'المنصة';
+
+  @override
+  String get activityLogs => 'سجلات النشاط';
+
+  @override
+  String get systemStats => 'إحصائيات النظام';
+
+  @override
+  String get noActivityLogs => 'لا توجد سجلات نشاط.';
+
+  @override
+  String get operationFailed => 'فشلت العملية.';
+
+  @override
+  String get editRolesPermissions => 'تعديل النوع والصلاحيات';
+
+  @override
+  String get permBus => 'حافلة (TRANSTU)';
+
+  @override
+  String get permMetroTrain => 'مترو / قطار';
+
+  @override
+  String get permTaxi => 'تاكسي جماعي';
+
+  @override
+  String get permLouage => 'لواج';
+
+  @override
+  String get permNotifications => 'الإشعارات';
+
+  @override
+  String get permReports => 'التقارير';
+
+  @override
+  String get permUsersModeration => 'المستخدمون / الإشراف';
+
+  @override
   String get sendNotifications => 'إرسال الإشعارات';
 
   @override
@@ -621,6 +723,72 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get noStationsFound => 'لا توجد محطات';
+
+  @override
+  String get editTariffTitle => 'تعديل التعريفة';
+
+  @override
+  String get addTariffTitle => 'إضافة تعريفة';
+
+  @override
+  String get operatorId => 'معرّف المشغّل';
+
+  @override
+  String get fromStationId => 'معرّف محطة الانطلاق';
+
+  @override
+  String get toStationId => 'معرّف محطة الوصول';
+
+  @override
+  String get price => 'السعر';
+
+  @override
+  String get currency => 'العملة';
+
+  @override
+  String get tariffClass => 'الفئة';
+
+  @override
+  String get validFrom => 'صالحة من';
+
+  @override
+  String get validTo => 'صالحة إلى';
+
+  @override
+  String get notes => 'ملاحظات';
+
+  @override
+  String get dateFormatHint => 'صيغة التاريخ: YYYY-MM-DD';
+
+  @override
+  String get invalidPrice => 'سعر غير صالح.';
+
+  @override
+  String get invalidDateFormat => 'صيغة تاريخ غير صالحة.';
+
+  @override
+  String get tariffUpdatedSuccess => 'تم تعديل التعريفة بنجاح';
+
+  @override
+  String get tariffAddedSuccess => 'تمت إضافة التعريفة بنجاح';
+
+  @override
+  String get tariffsLoadError => 'تعذر تحميل التعريفات';
+
+  @override
+  String get noTariffsFound => 'لا توجد تعريفات';
+
+  @override
+  String get searchTariffsHint => 'ابحث حسب المشغّل أو المحطة…';
+
+  @override
+  String get tariffFilterActive => 'نشطة';
+
+  @override
+  String get tariffFilterExpired => 'منتهية';
+
+  @override
+  String get noTariffsMatchFilter => 'لا توجد تعريفات تطابق عامل التصفية الحالي.';
 
   @override
   String get composeNotification => 'إنشاء إشعار';

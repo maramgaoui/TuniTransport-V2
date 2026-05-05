@@ -287,6 +287,10 @@ class JourneyRepository {
     );
     if (routeId == null) return null;
 
+    final routeDoc =
+        await _firestore.collection('routes').doc(routeId).get();
+    final routeIsActive = (routeDoc.data()?['isActive'] ?? true) == true;
+
     final fromDoc =
         await _firestore.collection('stations').doc(fromStationId).get();
     final toDoc =
@@ -352,6 +356,7 @@ class JourneyRepository {
         durationMinutes: durationMinutes,
         price: price,
         numberOfStops: numberOfStops,
+        isActive: routeIsActive,
       );
     }
 
@@ -376,6 +381,7 @@ class JourneyRepository {
       durationMinutes: durationMinutes,
       price: price,
       numberOfStops: numberOfStops,
+      isActive: routeIsActive,
     );
   }
 
@@ -398,6 +404,10 @@ class JourneyRepository {
     final routeId =
         await config.resolveRouteId(fromStationId, toStationId);
     if (routeId == null) return null;
+
+    final routeDoc =
+        await _firestore.collection('routes').doc(routeId).get();
+    final routeIsActive = (routeDoc.data()?['isActive'] ?? true) == true;
 
     // ── 1. Station names ────────────────────────────────────────────────────
     final fromDoc =
@@ -534,6 +544,7 @@ class JourneyRepository {
         operatorName: config.operatorName,
         operatorPhone: config.operatorPhone,
         lineType: config.lineType,
+        isActive: routeIsActive,
       );
     }
 
@@ -584,6 +595,7 @@ class JourneyRepository {
       operatorName: config.operatorName,
       operatorPhone: config.operatorPhone,
       lineType: config.lineType,
+      isActive: routeIsActive,
     );
   }
 
@@ -605,6 +617,7 @@ class JourneyRepository {
     String operatorName = 'Métro du Sahel - SNCFT',
     String operatorPhone = '+216 73 447 425',
     String lineType = 'metro_sahel',
+    bool isActive = true,
   }) {
     return MetroSahelResult(
       tripNumber: tripNumber,
@@ -622,6 +635,7 @@ class JourneyRepository {
       operatorName: operatorName,
       operatorPhone: operatorPhone,
       lineType: lineType,
+      isActive: isActive,
     );
   }
 

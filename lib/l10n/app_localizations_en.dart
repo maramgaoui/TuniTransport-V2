@@ -78,6 +78,108 @@ class AppLocalizationsEn extends AppLocalizations {
   String get manageStations => 'Manage Stations';
 
   @override
+  String get manageTariffs => 'Manage Tariffs';
+
+  @override
+  String get manageAdminRolesPermissions => 'Manage admin roles & permissions';
+
+  @override
+  String get globalPlatformSupervision => 'Global platform supervision';
+
+  @override
+  String get switchToUserMode => 'Switch to user mode';
+
+  @override
+  String get manageAdmins => 'Manage Admins';
+
+  @override
+  String get promoteToAdmin => 'Promote to Admin';
+
+  @override
+  String get revokeAdminAccess => 'Revoke Admin Access';
+
+  @override
+  String get activateAdminAccount => 'Activate';
+
+  @override
+  String get deactivateAdminAccount => 'Deactivate';
+
+  @override
+  String get adminTypeLabel => 'Admin Type';
+
+  @override
+  String get adminPermissions => 'Permissions';
+
+  @override
+  String get searchAdminByEmail => 'Search user by email to promote…';
+
+  @override
+  String get adminPromotedSuccess => 'Admin promoted successfully.';
+
+  @override
+  String get adminRevokedSuccess => 'Admin access revoked.';
+
+  @override
+  String get adminActivatedSuccess => 'Admin activated.';
+
+  @override
+  String get adminDeactivatedSuccess => 'Admin deactivated.';
+
+  @override
+  String get adminsLoadError => 'Failed to load admins.';
+
+  @override
+  String get noAdminsFound => 'No admins found.';
+
+  @override
+  String get confirmRevokeAdmin => 'Revoke admin access for this user? They will revert to a regular user.';
+
+  @override
+  String get overviewTab => 'Overview';
+
+  @override
+  String get adminManagementTab => 'Admin Management';
+
+  @override
+  String get platformSupervisionTab => 'Platform';
+
+  @override
+  String get activityLogs => 'Activity Logs';
+
+  @override
+  String get systemStats => 'System Stats';
+
+  @override
+  String get noActivityLogs => 'No activity logs yet.';
+
+  @override
+  String get operationFailed => 'Operation failed.';
+
+  @override
+  String get editRolesPermissions => 'Edit type & permissions';
+
+  @override
+  String get permBus => 'Bus (TRANSTU)';
+
+  @override
+  String get permMetroTrain => 'Métro / Train';
+
+  @override
+  String get permTaxi => 'Taxi Collectifs';
+
+  @override
+  String get permLouage => 'Louage';
+
+  @override
+  String get permNotifications => 'Notifications';
+
+  @override
+  String get permReports => 'Reports';
+
+  @override
+  String get permUsersModeration => 'Users / Moderation';
+
+  @override
   String get sendNotifications => 'Send Notifications';
 
   @override
@@ -621,6 +723,72 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noStationsFound => 'No stations found';
+
+  @override
+  String get editTariffTitle => 'Edit tariff';
+
+  @override
+  String get addTariffTitle => 'Add tariff';
+
+  @override
+  String get operatorId => 'Operator ID';
+
+  @override
+  String get fromStationId => 'From station ID';
+
+  @override
+  String get toStationId => 'To station ID';
+
+  @override
+  String get price => 'Price';
+
+  @override
+  String get currency => 'Currency';
+
+  @override
+  String get tariffClass => 'Class';
+
+  @override
+  String get validFrom => 'Valid from';
+
+  @override
+  String get validTo => 'Valid to';
+
+  @override
+  String get notes => 'Notes';
+
+  @override
+  String get dateFormatHint => 'Date format: YYYY-MM-DD';
+
+  @override
+  String get invalidPrice => 'Invalid price.';
+
+  @override
+  String get invalidDateFormat => 'Invalid date format.';
+
+  @override
+  String get tariffUpdatedSuccess => 'Tariff updated successfully';
+
+  @override
+  String get tariffAddedSuccess => 'Tariff added successfully';
+
+  @override
+  String get tariffsLoadError => 'Unable to load tariffs';
+
+  @override
+  String get noTariffsFound => 'No tariffs found';
+
+  @override
+  String get searchTariffsHint => 'Search by operator or station…';
+
+  @override
+  String get tariffFilterActive => 'Active';
+
+  @override
+  String get tariffFilterExpired => 'Expired';
+
+  @override
+  String get noTariffsMatchFilter => 'No tariffs match the current filter.';
 
   @override
   String get composeNotification => 'Compose a notification';

@@ -78,6 +78,108 @@ class AppLocalizationsFr extends AppLocalizations {
   String get manageStations => 'Gérer les stations';
 
   @override
+  String get manageTariffs => 'Gérer les tarifs';
+
+  @override
+  String get manageAdminRolesPermissions => 'Gérer les rôles et permissions admin';
+
+  @override
+  String get globalPlatformSupervision => 'Supervision globale de la plateforme';
+
+  @override
+  String get switchToUserMode => 'Passer en mode utilisateur';
+
+  @override
+  String get manageAdmins => 'Gérer les administrateurs';
+
+  @override
+  String get promoteToAdmin => 'Promouvoir en administrateur';
+
+  @override
+  String get revokeAdminAccess => 'Révoquer l\'accès admin';
+
+  @override
+  String get activateAdminAccount => 'Activer';
+
+  @override
+  String get deactivateAdminAccount => 'Désactiver';
+
+  @override
+  String get adminTypeLabel => 'Type d\'administration';
+
+  @override
+  String get adminPermissions => 'Permissions';
+
+  @override
+  String get searchAdminByEmail => 'Rechercher un utilisateur par email à promouvoir…';
+
+  @override
+  String get adminPromotedSuccess => 'Administrateur promu avec succès.';
+
+  @override
+  String get adminRevokedSuccess => 'Accès admin révoqué.';
+
+  @override
+  String get adminActivatedSuccess => 'Administrateur activé.';
+
+  @override
+  String get adminDeactivatedSuccess => 'Administrateur désactivé.';
+
+  @override
+  String get adminsLoadError => 'Impossible de charger les administrateurs.';
+
+  @override
+  String get noAdminsFound => 'Aucun administrateur trouvé.';
+
+  @override
+  String get confirmRevokeAdmin => 'Révoquer l\'accès admin de cet utilisateur ? Il repassera utilisateur normal.';
+
+  @override
+  String get overviewTab => 'Vue d\'ensemble';
+
+  @override
+  String get adminManagementTab => 'Gestion admins';
+
+  @override
+  String get platformSupervisionTab => 'Plateforme';
+
+  @override
+  String get activityLogs => 'Journaux d\'activité';
+
+  @override
+  String get systemStats => 'Statistiques système';
+
+  @override
+  String get noActivityLogs => 'Aucun journal d\'activité.';
+
+  @override
+  String get operationFailed => 'Opération échouée.';
+
+  @override
+  String get editRolesPermissions => 'Modifier le type et les permissions';
+
+  @override
+  String get permBus => 'Bus (TRANSTU)';
+
+  @override
+  String get permMetroTrain => 'Métro / Train';
+
+  @override
+  String get permTaxi => 'Taxi Collectifs';
+
+  @override
+  String get permLouage => 'Louage';
+
+  @override
+  String get permNotifications => 'Notifications';
+
+  @override
+  String get permReports => 'Rapports';
+
+  @override
+  String get permUsersModeration => 'Utilisateurs / Modération';
+
+  @override
   String get sendNotifications => 'Envoyer des notifications';
 
   @override
@@ -621,6 +723,72 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get noStationsFound => 'Aucune station';
+
+  @override
+  String get editTariffTitle => 'Modifier le tarif';
+
+  @override
+  String get addTariffTitle => 'Ajouter un tarif';
+
+  @override
+  String get operatorId => 'ID opérateur';
+
+  @override
+  String get fromStationId => 'ID station départ';
+
+  @override
+  String get toStationId => 'ID station arrivée';
+
+  @override
+  String get price => 'Prix';
+
+  @override
+  String get currency => 'Devise';
+
+  @override
+  String get tariffClass => 'Classe';
+
+  @override
+  String get validFrom => 'Valide à partir du';
+
+  @override
+  String get validTo => 'Valide jusqu\'au';
+
+  @override
+  String get notes => 'Notes';
+
+  @override
+  String get dateFormatHint => 'Format de date : AAAA-MM-JJ';
+
+  @override
+  String get invalidPrice => 'Prix invalide.';
+
+  @override
+  String get invalidDateFormat => 'Format de date invalide.';
+
+  @override
+  String get tariffUpdatedSuccess => 'Tarif modifié avec succès';
+
+  @override
+  String get tariffAddedSuccess => 'Tarif ajouté avec succès';
+
+  @override
+  String get tariffsLoadError => 'Erreur de chargement des tarifs';
+
+  @override
+  String get noTariffsFound => 'Aucun tarif';
+
+  @override
+  String get searchTariffsHint => 'Rechercher par opérateur ou station…';
+
+  @override
+  String get tariffFilterActive => 'Actifs';
+
+  @override
+  String get tariffFilterExpired => 'Expirés';
+
+  @override
+  String get noTariffsMatchFilter => 'Aucun tarif ne correspond au filtre actuel.';
 
   @override
   String get composeNotification => 'Composer une notification';

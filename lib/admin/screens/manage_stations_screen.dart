@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tuni_transport/controllers/auth_controller.dart';
+import 'package:tuni_transport/admin/utils/admin_data_scope.dart';
+import 'package:tuni_transport/admin/widgets/admin_soft_card.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/theme/app_theme.dart';
 
@@ -14,6 +18,43 @@ class ManageStationsScreen extends StatefulWidget {
 class _ManageStationsScreenState extends State<ManageStationsScreen> {
   final CollectionReference<Map<String, dynamic>> _stationsRef =
       FirebaseFirestore.instance.collection('stations');
+  bool _isResolvingScope = true;
+  bool _isSuperAdmin = false;
+  String? _adminType;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveScope();
+  }
+
+  Future<void> _resolveScope() async {
+    if (Firebase.apps.isEmpty) {
+      if (!mounted) return;
+      setState(() => _isResolvingScope = false);
+      return;
+    }
+
+    final currentUser = AuthController.instance.currentUser;
+    if (currentUser == null) {
+      if (!mounted) return;
+      setState(() => _isResolvingScope = false);
+      return;
+    }
+
+    try {
+      final session = await AuthController.instance.resolveSession(currentUser);
+      if (!mounted) return;
+      setState(() {
+        _isSuperAdmin = session.isSuperAdmin;
+        _adminType = session.adminType;
+        _isResolvingScope = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isResolvingScope = false);
+    }
+  }
 
   Future<void> _showStationForm(
     BuildContext context, [
@@ -98,6 +139,23 @@ class _ManageStationsScreenState extends State<ManageStationsScreen> {
                     final type = typeCtrl.text.trim();
                     final city = cityCtrl.text.trim();
 
+                    if (!_isSuperAdmin &&
+                        _adminType != null &&
+                        !AdminDataScope.matchesStationData(
+                          adminType: _adminType!,
+                          data: <String, dynamic>{
+                            'name': name,
+                            'type': type,
+                          },
+                        )) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('You can only manage stations in your assigned category.'),
+                        ),
+                      );
+                      return;
+                    }
+
                     if (name.isEmpty || type.isEmpty || city.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(l10n.fillAllFields)),
@@ -171,7 +229,9 @@ class _ManageStationsScreenState extends State<ManageStationsScreen> {
           onPressed: () => context.go('/admin'),
         ),
       ),
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      body: _isResolvingScope
+          ? const Center(child: CircularProgressIndicator())
+          : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _stationsRef.orderBy('createdAt', descending: true).snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -181,7 +241,17 @@ class _ManageStationsScreenState extends State<ManageStationsScreen> {
             return Center(child: Text(l10n.stationsLoadError));
           }
 
-          final docs = snapshot.data?.docs ?? [];
+          final allDocs = snapshot.data?.docs ?? [];
+          final docs = (!_isSuperAdmin && _adminType != null)
+              ? allDocs
+                  .where(
+                    (doc) => AdminDataScope.matchesStationData(
+                      adminType: _adminType!,
+                      data: doc.data(),
+                    ),
+                  )
+                  .toList()
+              : allDocs;
           if (docs.isEmpty) {
             return Center(
               child: Column(
@@ -205,7 +275,7 @@ class _ManageStationsScreenState extends State<ManageStationsScreen> {
               final name = (data['name'] ?? '').toString();
               final city = (data['city'] ?? '').toString();
 
-              return Card(
+              return AdminSoftCard(
                 child: ListTile(
                   leading: Icon(
                     type == 'Metro'

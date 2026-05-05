@@ -86,5 +86,37 @@ void main() {
       expect(find.text('blocked_user'), findsOneWidget);
       expect(find.text('active_user'), findsNothing);
     });
+
+    testWidgets('searches by email when username prefix does not match', (
+      tester,
+    ) async {
+      final firestore = FakeFirebaseFirestore();
+
+      await _seedUser(
+        firestore,
+        'u_alpha',
+        username: 'alpha_user',
+        email: 'alpha@tuni.tn',
+      );
+      await _seedUser(
+        firestore,
+        'u_beta',
+        username: 'beta_user',
+        email: 'beta@tuni.tn',
+      );
+
+      await tester.pumpWidget(
+        _buildTestApp(ManageUsersScreen(firestore: firestore, pageSize: 10)),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'beta@tuni.tn');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+
+      expect(find.text('beta_user'), findsOneWidget);
+      expect(find.text('alpha_user'), findsNothing);
+    });
   });
 }

@@ -49,6 +49,7 @@ class AuthController {
   // When true, an admin or super-admin is browsing the app as a regular user.
   bool _actingAsUser = false;
   bool get isActingAsUser => _actingAsUser;
+  SessionResult? get cachedSession => _cachedSession;
 
   void switchToUserMode() => _actingAsUser = true;
   void switchToAdminMode() => _actingAsUser = false;

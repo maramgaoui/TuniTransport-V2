@@ -235,6 +235,210 @@ abstract class AppLocalizations {
   /// **'Manage Stations'**
   String get manageStations;
 
+  /// No description provided for @manageTariffs.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Tariffs'**
+  String get manageTariffs;
+
+  /// No description provided for @manageAdminRolesPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage admin roles & permissions'**
+  String get manageAdminRolesPermissions;
+
+  /// No description provided for @globalPlatformSupervision.
+  ///
+  /// In en, this message translates to:
+  /// **'Global platform supervision'**
+  String get globalPlatformSupervision;
+
+  /// No description provided for @switchToUserMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to user mode'**
+  String get switchToUserMode;
+
+  /// No description provided for @manageAdmins.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Admins'**
+  String get manageAdmins;
+
+  /// No description provided for @promoteToAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Promote to Admin'**
+  String get promoteToAdmin;
+
+  /// No description provided for @revokeAdminAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke Admin Access'**
+  String get revokeAdminAccess;
+
+  /// No description provided for @activateAdminAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Activate'**
+  String get activateAdminAccount;
+
+  /// No description provided for @deactivateAdminAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivate'**
+  String get deactivateAdminAccount;
+
+  /// No description provided for @adminTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin Type'**
+  String get adminTypeLabel;
+
+  /// No description provided for @adminPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Permissions'**
+  String get adminPermissions;
+
+  /// No description provided for @searchAdminByEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Search user by email to promote…'**
+  String get searchAdminByEmail;
+
+  /// No description provided for @adminPromotedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin promoted successfully.'**
+  String get adminPromotedSuccess;
+
+  /// No description provided for @adminRevokedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin access revoked.'**
+  String get adminRevokedSuccess;
+
+  /// No description provided for @adminActivatedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin activated.'**
+  String get adminActivatedSuccess;
+
+  /// No description provided for @adminDeactivatedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin deactivated.'**
+  String get adminDeactivatedSuccess;
+
+  /// No description provided for @adminsLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load admins.'**
+  String get adminsLoadError;
+
+  /// No description provided for @noAdminsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No admins found.'**
+  String get noAdminsFound;
+
+  /// No description provided for @confirmRevokeAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke admin access for this user? They will revert to a regular user.'**
+  String get confirmRevokeAdmin;
+
+  /// No description provided for @overviewTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Overview'**
+  String get overviewTab;
+
+  /// No description provided for @adminManagementTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin Management'**
+  String get adminManagementTab;
+
+  /// No description provided for @platformSupervisionTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Platform'**
+  String get platformSupervisionTab;
+
+  /// No description provided for @activityLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity Logs'**
+  String get activityLogs;
+
+  /// No description provided for @systemStats.
+  ///
+  /// In en, this message translates to:
+  /// **'System Stats'**
+  String get systemStats;
+
+  /// No description provided for @noActivityLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'No activity logs yet.'**
+  String get noActivityLogs;
+
+  /// No description provided for @operationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Operation failed.'**
+  String get operationFailed;
+
+  /// No description provided for @editRolesPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit type & permissions'**
+  String get editRolesPermissions;
+
+  /// No description provided for @permBus.
+  ///
+  /// In en, this message translates to:
+  /// **'Bus (TRANSTU)'**
+  String get permBus;
+
+  /// No description provided for @permMetroTrain.
+  ///
+  /// In en, this message translates to:
+  /// **'Métro / Train'**
+  String get permMetroTrain;
+
+  /// No description provided for @permTaxi.
+  ///
+  /// In en, this message translates to:
+  /// **'Taxi Collectifs'**
+  String get permTaxi;
+
+  /// No description provided for @permLouage.
+  ///
+  /// In en, this message translates to:
+  /// **'Louage'**
+  String get permLouage;
+
+  /// No description provided for @permNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get permNotifications;
+
+  /// No description provided for @permReports.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports'**
+  String get permReports;
+
+  /// No description provided for @permUsersModeration.
+  ///
+  /// In en, this message translates to:
+  /// **'Users / Moderation'**
+  String get permUsersModeration;
+
   /// No description provided for @sendNotifications.
   ///
   /// In en, this message translates to:
@@ -1272,6 +1476,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No stations found'**
   String get noStationsFound;
+
+  /// No description provided for @editTariffTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit tariff'**
+  String get editTariffTitle;
+
+  /// No description provided for @addTariffTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add tariff'**
+  String get addTariffTitle;
+
+  /// No description provided for @operatorId.
+  ///
+  /// In en, this message translates to:
+  /// **'Operator ID'**
+  String get operatorId;
+
+  /// No description provided for @fromStationId.
+  ///
+  /// In en, this message translates to:
+  /// **'From station ID'**
+  String get fromStationId;
+
+  /// No description provided for @toStationId.
+  ///
+  /// In en, this message translates to:
+  /// **'To station ID'**
+  String get toStationId;
+
+  /// No description provided for @price.
+  ///
+  /// In en, this message translates to:
+  /// **'Price'**
+  String get price;
+
+  /// No description provided for @currency.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get currency;
+
+  /// No description provided for @tariffClass.
+  ///
+  /// In en, this message translates to:
+  /// **'Class'**
+  String get tariffClass;
+
+  /// No description provided for @validFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid from'**
+  String get validFrom;
+
+  /// No description provided for @validTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid to'**
+  String get validTo;
+
+  /// No description provided for @notes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get notes;
+
+  /// No description provided for @dateFormatHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Date format: YYYY-MM-DD'**
+  String get dateFormatHint;
+
+  /// No description provided for @invalidPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid price.'**
+  String get invalidPrice;
+
+  /// No description provided for @invalidDateFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid date format.'**
+  String get invalidDateFormat;
+
+  /// No description provided for @tariffUpdatedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Tariff updated successfully'**
+  String get tariffUpdatedSuccess;
+
+  /// No description provided for @tariffAddedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Tariff added successfully'**
+  String get tariffAddedSuccess;
+
+  /// No description provided for @tariffsLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to load tariffs'**
+  String get tariffsLoadError;
+
+  /// No description provided for @noTariffsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No tariffs found'**
+  String get noTariffsFound;
+
+  /// No description provided for @searchTariffsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by operator or station…'**
+  String get searchTariffsHint;
+
+  /// No description provided for @tariffFilterActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get tariffFilterActive;
+
+  /// No description provided for @tariffFilterExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get tariffFilterExpired;
+
+  /// No description provided for @noTariffsMatchFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'No tariffs match the current filter.'**
+  String get noTariffsMatchFilter;
 
   /// No description provided for @composeNotification.
   ///

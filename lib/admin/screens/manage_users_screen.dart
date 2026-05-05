@@ -4,6 +4,7 @@ import 'package:avatar_plus/avatar_plus.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tuni_transport/admin/widgets/admin_soft_card.dart';
 import 'package:tuni_transport/admin/mixins/admin_moderation_mixin.dart';
 import 'package:tuni_transport/admin/mixins/admin_user_status_mixin.dart';
 import '../../l10n/app_localizations.dart';
@@ -35,7 +36,6 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<QueryDocumentSnapshot<Map<String, dynamic>>> _loadedDocs = [];
-  Timer? _searchDebounce;
   DocumentSnapshot<Map<String, dynamic>>? _lastDocument;
 
   bool _isInitialLoading = true;
@@ -49,26 +49,23 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(() {
-      final nextQuery = _searchController.text.trim();
-      if (nextQuery == _searchQuery) return;
-      setState(() => _searchQuery = nextQuery);
-      _searchDebounce?.cancel();
-      _searchDebounce = Timer(const Duration(milliseconds: 300), () {
-        unawaited(_loadInitialUsers());
-      });
-    });
     _scrollController.addListener(_onScroll);
     _loadInitialUsers();
   }
 
   @override
   void dispose() {
-    _searchDebounce?.cancel();
     _searchController.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _applySearch() {
+    final nextQuery = _searchController.text.trim();
+    if (nextQuery == _searchQuery) return;
+    setState(() => _searchQuery = nextQuery);
+    unawaited(_loadInitialUsers());
   }
 
   String? get _statusValueFilter {
@@ -78,6 +75,10 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
       _UserFilter.blocked => 'blocked',
       _UserFilter.all => null,
     };
+  }
+
+  bool _isEmailLikeQuery(String value) {
+    return value.contains('@') || value.contains('.');
   }
 
   Query<Map<String, dynamic>> _buildQuery({
@@ -92,7 +93,10 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
     }
 
     final trimmedQuery = _searchQuery.trim();
-    final canUseServerPrefix = trimmedQuery.isNotEmpty && preferServerPrefixSearch;
+    final canUseServerPrefix =
+      trimmedQuery.isNotEmpty &&
+      preferServerPrefixSearch &&
+      !_isEmailLikeQuery(trimmedQuery);
     if (canUseServerPrefix) {
       // Prefix search stays Firestore-side to reduce scanned documents.
       query = query
@@ -233,15 +237,32 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
             child: TextField(
               controller: _searchController,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => _applySearch(),
+              onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 hintText: AppLocalizations.of(context)!.searchByNameOrEmail,
                 prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_searchController.text.trim().isNotEmpty)
+                      IconButton(
+                        tooltip: MaterialLocalizations.of(context).deleteButtonTooltip,
                         icon: const Icon(Icons.clear),
-                        onPressed: () => _searchController.clear(),
-                      )
-                    : null,
+                        onPressed: () {
+                          _searchController.clear();
+                          _applySearch();
+                          setState(() {});
+                        },
+                      ),
+                    IconButton(
+                      tooltip: MaterialLocalizations.of(context).searchFieldLabel,
+                      icon: const Icon(Icons.search),
+                      onPressed: _applySearch,
+                    ),
+                  ],
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -356,7 +377,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
                           ? banUntilRaw.toDate()
                           : (banUntilRaw is DateTime ? banUntilRaw : null);
 
-                      return Card(
+                      return AdminSoftCard(
                         child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: Column(
