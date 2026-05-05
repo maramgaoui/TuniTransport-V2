@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -172,6 +174,7 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                   'operatorId': selectedOperator,
                   'typeId': selectedType,
                   'isActive': isActive,
+                  'searchVisibilityManaged': false,
                   'createdAt': FieldValue.serverTimestamp(),
                   'updatedAt': FieldValue.serverTimestamp(),
                 });
@@ -367,6 +370,7 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
     BuildContext context,
     QueryDocumentSnapshot<Map<String, dynamic>> routeDoc,
   ) async {
+    final l10n = AppLocalizations.of(context)!;
     final data = routeDoc.data();
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(
@@ -480,6 +484,7 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                       : () async {
                           final isValid = formKey.currentState?.validate() ?? false;
                           if (!isValid) return;
+                          final messenger = ScaffoldMessenger.of(context);
                           setDialogState(() => isSaving = true);
                           try {
                             // Admin isActive toggles are consumed by user search filtering
@@ -490,14 +495,33 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                               'originStationId': originController.text.trim(),
                               'destinationStationId': destinationController.text.trim(),
                               'isActive': isActive,
+                              'searchVisibilityManaged': true,
                               'updatedAt': FieldValue.serverTimestamp(),
-                            });
+                            }).timeout(const Duration(seconds: 12));
                             if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            messenger.showSnackBar(
                               const SnackBar(content: Text('Trajet mis à jour')),
                             );
                             if (!dialogContext.mounted) return;
                             Navigator.of(dialogContext).pop();
+                          } on TimeoutException {
+                            if (!mounted) return;
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'La mise à jour du trajet a expiré. Réessayez.',
+                                ),
+                              ),
+                            );
+                          } on FirebaseException catch (e) {
+                            if (!mounted) return;
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  e.message ?? l10n.firestoreUpdateError,
+                                ),
+                              ),
+                            );
                           } finally {
                             if (dialogContext.mounted) {
                               setDialogState(() => isSaving = false);

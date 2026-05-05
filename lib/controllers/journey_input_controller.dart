@@ -123,7 +123,7 @@ class JourneyInputController {
     // Stale selection check that handles aliases
     // Note: Very short inputs (1-2 chars) may rarely invalidate a selection
     // due to substring matching, but this provides the best UX for common cases
-    if (from != null && trimmedDeparture.isNotEmpty) {
+    if (from != null && trimmedDeparture.trim().length >= 3) {
       final normalizedName = StationRepository.normalizeStationText(from.name);
       final normalizedInput = StationRepository.normalizeStationText(trimmedDeparture);
       if (!normalizedName.contains(normalizedInput) &&
@@ -132,7 +132,7 @@ class JourneyInputController {
       }
     }
 
-    if (to != null && trimmedArrival.isNotEmpty) {
+    if (to != null && trimmedArrival.trim().length >= 3) {
       final normalizedName = StationRepository.normalizeStationText(to.name);
       final normalizedInput = StationRepository.normalizeStationText(trimmedArrival);
       if (!normalizedName.contains(normalizedInput) &&

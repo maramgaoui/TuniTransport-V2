@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/metro_sahel_result.dart';
 import '../models/tariff_model.dart';
 import 'route_repository.dart';
@@ -64,6 +65,16 @@ class _LineConfig {
       );
 }
 
+class _RouteSearchMetadata {
+  final String operatorId;
+  final bool isSearchActive;
+
+  const _RouteSearchMetadata({
+    required this.operatorId,
+    required this.isSearchActive,
+  });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Repository
 // ─────────────────────────────────────────────────────────────────────────────
@@ -73,6 +84,75 @@ class JourneyRepository {
   final RouteRepository _routeRepository;
 
   JourneyRepository(this._firestore, this._routeRepository);
+
+  List<String> _sncftAltCandidates(String stationId) {
+    switch (stationId) {
+      case 'sncft_tunis_barcelone':
+      case 'sncft_tunis':
+      case 'bn_tunis':
+      case 'bs_tunis_ville':
+      case 'tunis':
+        return const [
+          'sncft_tunis_barcelone',
+          'sncft_tunis',
+          'bn_tunis',
+          'bs_tunis_ville',
+          'tunis',
+        ];
+      case 'ms_sfax':
+      case 'sncft_sfax':
+        return const ['sncft_sfax', 'ms_sfax'];
+      case 'ms_gabes':
+      case 'sncft_gabes':
+        return const ['sncft_gabes', 'ms_gabes'];
+      default:
+        return [stationId];
+    }
+  }
+
+  String _resolveAltId({
+    required Set<String> routeStationIds,
+    required List<String> candidates,
+  }) {
+    for (final c in candidates) {
+      if (routeStationIds.contains(c)) return c;
+    }
+    return candidates.first;
+  }
+
+  Future<String> _resolveSncftL5StationId(String stationId) async {
+    final snap = await _firestore
+        .collection('route_stops')
+        .where('routeId', isEqualTo: 'route_sncft_l5_forward')
+        .get();
+    final ids = <String>{
+      for (final doc in snap.docs) (doc.data()['stationId'] ?? '').toString(),
+    };
+    return _resolveAltId(
+      routeStationIds: ids,
+      candidates: _sncftAltCandidates(stationId),
+    );
+  }
+
+  Future<_RouteSearchMetadata> _getRouteSearchMetadata(String routeId) async {
+    final routeDoc = await _firestore.collection('routes').doc(routeId).get();
+    final routeData = routeDoc.data();
+    if (routeData == null) {
+      return const _RouteSearchMetadata(operatorId: '', isSearchActive: true);
+    }
+
+    final operatorId = (routeData['operatorId'] ?? '').toString();
+    final searchVisibilityManaged = routeData['searchVisibilityManaged'] == true;
+    final explicitlyInactive = (routeData['isActive'] ?? true) != true;
+
+    // User search still resolves canonical routes from route_stops/trips.
+    // Only let route metadata hide results after an explicit admin opt-in,
+    // otherwise legacy or incomplete route docs can suppress valid journeys.
+    return _RouteSearchMetadata(
+      operatorId: operatorId,
+      isSearchActive: !(searchVisibilityManaged && explicitlyInactive),
+    );
+  }
 
   // Tariff lookup flow:
   // ManageTariffsScreen edits Firestore documents in the `tariffs` collection.
@@ -242,10 +322,13 @@ class JourneyRepository {
     required String fromStationId,
     required String toStationId,
     required DateTime searchDateTime,
-  }) =>
-      _findNextOffsetBasedTrip(
-        fromStationId: fromStationId,
-        toStationId: toStationId,
+  }) async {
+    final resolvedFrom = await _resolveSncftL5StationId(fromStationId);
+    final resolvedTo = await _resolveSncftL5StationId(toStationId);
+
+    return _findNextOffsetBasedTrip(
+        fromStationId: resolvedFrom,
+        toStationId: resolvedTo,
         searchDateTime: searchDateTime,
         config: _LineConfig(
           lineType: 'sncft_mainline',
@@ -263,6 +346,7 @@ class JourneyRepository {
           supportsPartialTrips: true,
         ),
       );
+  }
 
   Future<MetroSahelResult?> findNextStsSahelTrip({
     required String fromStationId,
@@ -354,14 +438,10 @@ class JourneyRepository {
     );
     if (routeId == null) return null;
 
-    final routeDoc =
-        await _firestore.collection('routes').doc(routeId).get();
-    final routeIsActive = (routeDoc.data()?['isActive'] ?? true) == true;
-    // isActive is managed by admin via ManageJourneysScreen.
-    // Inactive routes are hidden from users until an admin re-activates them.
+    final routeMeta = await _getRouteSearchMetadata(routeId);
+    final routeIsActive = routeMeta.isSearchActive;
     if (!routeIsActive) return null;
-    final routeData = routeDoc.data() ?? <String, dynamic>{};
-    final routeOperatorId = (routeData['operatorId'] ?? '').toString();
+    final routeOperatorId = routeMeta.operatorId;
     // Price should be read from tariffs collection — see ManageTariffsScreen.
 
     final fromDoc =
@@ -482,16 +562,18 @@ class JourneyRepository {
 
     final routeId =
         await config.resolveRouteId(fromStationId, toStationId);
+    if (kDebugMode && config.lineType == 'sncft_mainline') {
+      debugPrint(
+        '[JourneyRepo] sncft_mainline from=$fromStationId to=$toStationId '
+        'routeId=$routeId',
+      );
+    }
     if (routeId == null) return null;
 
-    final routeDoc =
-        await _firestore.collection('routes').doc(routeId).get();
-    final routeIsActive = (routeDoc.data()?['isActive'] ?? true) == true;
-    // isActive is managed by admin via ManageJourneysScreen.
-    // Inactive routes are hidden from users until an admin re-activates them.
+    final routeMeta = await _getRouteSearchMetadata(routeId);
+    final routeIsActive = routeMeta.isSearchActive;
     if (!routeIsActive) return null;
-    final routeData = routeDoc.data() ?? <String, dynamic>{};
-    final routeOperatorId = (routeData['operatorId'] ?? '').toString();
+    final routeOperatorId = routeMeta.operatorId;
     // Price should be read from tariffs collection — see ManageTariffsScreen.
 
     // ── 1. Station names ────────────────────────────────────────────────────
@@ -544,6 +626,16 @@ class JourneyRepository {
           offset: toMeta.offset, order: toMeta.order, section: toSection);
     }
 
+    if (kDebugMode && config.lineType == 'sncft_mainline') {
+      final fromMetaLabel = fromMeta == null ? 'MISSING' : 'order${fromMeta.order}';
+      final toMetaLabel = toMeta == null ? 'MISSING' : 'order${toMeta.order}';
+      debugPrint(
+        '[JourneyRepo] sncft_mainline stop resolution: '
+        'from=$fromStationId meta=$fromMetaLabel '
+        'to=$toStationId meta=$toMetaLabel',
+      );
+    }
+
     if (fromMeta == null || toMeta == null) return null;
 
     final numberOfStops = (fromMeta.order - toMeta.order).abs();
@@ -556,7 +648,7 @@ class JourneyRepository {
       toStationId: toStationId,
       referenceDate: searchDateTime,
     );
-    final price = tariffPrice ?? config.calculateFare(fromMeta!, toMeta!);
+    final price = tariffPrice ?? config.calculateFare(fromMeta, toMeta);
     final routeName = '$fromName → $toName';
 
     // ── 3. Query trips for today's day-of-week ──────────────────────────────
@@ -584,7 +676,7 @@ class JourneyRepository {
         final terminatesAt = data['terminatesAtStationId'] as String?;
         if (terminatesAt != null) {
           final terminateOrder = stationOrderMap[terminatesAt];
-          if (terminateOrder != null && toMeta!.order > terminateOrder) {
+          if (terminateOrder != null && toMeta.order > terminateOrder) {
             continue;
           }
         }
@@ -592,15 +684,15 @@ class JourneyRepository {
         final originStId = data['originStationId'] as String?;
         if (originStId != null) {
           final originOrder = stationOrderMap[originStId];
-          if (originOrder != null && fromMeta!.order < originOrder) continue;
+          if (originOrder != null && fromMeta.order < originOrder) continue;
         }
       }
 
       final depDate = depTimestamp.toDate();
       final originMinutes = depDate.hour * 60 + depDate.minute;
       final actualDep = config.supportsPartialTrips
-          ? _resolveStationMinute(data, fromStationId, originMinutes, fromMeta!.offset)
-          : originMinutes + fromMeta!.offset;
+          ? _resolveStationMinute(data, fromStationId, originMinutes, fromMeta.offset)
+          : originMinutes + fromMeta.offset;
 
       if (actualDep < firstDepAtFrom) firstDepAtFrom = actualDep;
 
@@ -618,7 +710,6 @@ class JourneyRepository {
       final firstDep = firstDepAtFrom < 99999
           ? _minutesToTime(firstDepAtFrom)
           : config.fallbackFirstDeparture;
-      final rawArr = _parseMinutes(firstDep) + durationMinutes;
       return _assembleResult(
         departureTime: firstDep,
         arrivalTime: 'TOMORROW',
@@ -650,7 +741,7 @@ class JourneyRepository {
     if (config.supportsPartialTrips) {
       final originMin = next['_originMin'] as int;
       rawActualArr = _resolveStationMinute(
-          next, toStationId, originMin, toMeta!.offset);
+          next, toStationId, originMin, toMeta.offset);
     } else {
       rawActualArr = actualDep + durationMinutes;
     }

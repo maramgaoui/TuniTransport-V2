@@ -373,10 +373,12 @@ class StationRepository {
 
     for (final station in stations) {
       final normalizedName = normalizeStationText(station.name);
+      final normalizedNameAr = normalizeStationText(station.nameAr ?? '');
       final normalizedCity = normalizeStationText(station.cityId);
       final aliases = _normalizedAliasesForStation(station);
       final aliasSearch = aliases.join(' ');
-      final searchable = '$normalizedName $normalizedCity $aliasSearch'.trim();
+      final searchable =
+          '$normalizedName $normalizedNameAr $normalizedCity $aliasSearch'.trim();
       if (searchable.isEmpty) continue;
 
       var score = 0.0;
@@ -517,6 +519,10 @@ class StationRepository {
     var text = input.trim().toLowerCase();
     if (text.isEmpty) return text;
 
+    // Normalize Arabic text before ASCII cleanup so Arabic queries (e.g. "توزر")
+    // can still match latin station names and aliases.
+    text = _normalizeArabicToLatin(text);
+
     const replacements = {
       'à': 'a',
       'â': 'a',
@@ -537,10 +543,6 @@ class StationRepository {
       '’': "'",
       'ʻ': "'",
       'ʿ': "'",
-      'تونس': 'tunis',
-      'سوسة': 'sousse',
-      'المنستير': 'monastir',
-      'المهدية': 'mahdia',
     };
 
     replacements.forEach((k, v) {
@@ -598,6 +600,135 @@ class StationRepository {
         .toList();
     normalized.sort();
     return normalized;
+  }
+
+  static String _normalizeArabicToLatin(String input) {
+    var text = input;
+
+    // Remove Arabic diacritics/tatweel first.
+    text = text
+        .replaceAll(RegExp(r'[\u064B-\u065F\u0670\u06D6-\u06ED]'), '')
+        .replaceAll('ـ', '');
+
+    // Phrase-level replacements for Tunisian cities and common transport terms.
+    const arabicToLatinPhrases = {
+      'تونس': 'tunis',
+      'تونس العاصمة': 'tunis',
+      'سوسة': 'sousse',
+      'صفاقس': 'sfax',
+      'قابس': 'gabes',
+      'قابس المدينة': 'gabes',
+      'توزر': 'tozeur',
+      'قفصة': 'gafsa',
+      'قليبية': 'kelibia',
+      'قربة': 'korba',
+      'منزل تميم': 'menzel temime',
+      'نابل': 'nabeul',
+      'حمام الأنف': 'hammam lif',
+      'حمام الانف': 'hammam lif',
+      'حمام الشط': 'hammam chott',
+      'برج السدرية': 'borj cedria',
+      'الزهراء': 'ezzahra',
+      'رادس': 'rades',
+      'مقرين': 'megrine',
+      'منوبة': 'manouba',
+      'طبربة': 'tbourba',
+      'المرسى': 'marsa',
+      'حلق الوادي': 'la goulette',
+      'المنستير': 'monastir',
+      'المهدية': 'mahdia',
+      'المكنين': 'moknine',
+      'قصر هلال': 'ksar hellal',
+      'المطار': 'airport',
+      'باب الجديد': 'bab jedid',
+      'باب عليوة': 'bab alioua',
+      'الجمهورية': 'republique',
+      'محطة': 'station',
+      'محطة القطار': 'gare',
+      'القطار': 'train',
+      'مترو': 'metro',
+      'حافلة': 'bus',
+      'حافلات': 'bus',
+      'تاكسي': 'taxi',
+      'تاكسي جماعي': 'taxi collectif',
+      'وسط المدينة': 'centre ville',
+      'المدينة': 'ville',
+      'المنطقة الصناعية': 'zone industrielle',
+      'صناعية': 'industrielle',
+      'الساحل': 'sahel',
+      'المروج': 'mourouj',
+      'العمران': 'omrane',
+      'حي': 'cite',
+      'سيدي': 'sidi',
+      'بنزرت': 'bizerte',
+      'الكاف': 'kef',
+      'عنابة': 'annaba',
+      'رديف': 'redeyef',
+    };
+
+    final phraseKeys = arabicToLatinPhrases.keys.toList()
+      ..sort((a, b) => b.length.compareTo(a.length));
+    for (final key in phraseKeys) {
+      text = text.replaceAll(key, arabicToLatinPhrases[key]!);
+    }
+
+    // Character-level fallback transliteration for unknown Arabic tokens.
+    const arabicCharMap = {
+      'ا': 'a',
+      'أ': 'a',
+      'إ': 'i',
+      'آ': 'a',
+      'ب': 'b',
+      'ت': 't',
+      'ث': 'th',
+      'ج': 'j',
+      'ح': 'h',
+      'خ': 'kh',
+      'د': 'd',
+      'ذ': 'dh',
+      'ر': 'r',
+      'ز': 'z',
+      'س': 's',
+      'ش': 'sh',
+      'ص': 's',
+      'ض': 'd',
+      'ط': 't',
+      'ظ': 'z',
+      'ع': 'a',
+      'غ': 'gh',
+      'ف': 'f',
+      'ق': 'q',
+      'ك': 'k',
+      'ل': 'l',
+      'م': 'm',
+      'ن': 'n',
+      'ه': 'h',
+      'ة': 'a',
+      'و': 'w',
+      'ؤ': 'w',
+      'ي': 'y',
+      'ى': 'a',
+      'ئ': 'y',
+      'ء': '',
+      '٠': '0',
+      '١': '1',
+      '٢': '2',
+      '٣': '3',
+      '٤': '4',
+      '٥': '5',
+      '٦': '6',
+      '٧': '7',
+      '٨': '8',
+      '٩': '9',
+    };
+
+    final sb = StringBuffer();
+    for (final rune in text.runes) {
+      final ch = String.fromCharCode(rune);
+      sb.write(arabicCharMap[ch] ?? ch);
+    }
+
+    return sb.toString();
   }
 
   static double _stringSimilarity(String a, String b) {

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import '../controllers/journey_search_controller.dart';
 import '../models/bus_service_model.dart';
-import '../models/journey_model.dart';
 import '../models/station_model.dart';
 import '../widgets/app_header.dart';
 import '../widgets/metro_sahel_card.dart';
@@ -67,42 +65,8 @@ class _JourneyResultsScreenWithMapsExampleState
     super.dispose();
   }
 
-  /// Example: Convert BusService to Journey
-  Journey _busServiceToJourney(
-    BusService service, {
-    String? hubName,
-    String? nextDeparture,
-  }) {
-    final parts = (hubName ?? '').split(' → ');
-    return Journey(
-      id: service.id,
-      departureStation:
-          parts.isNotEmpty ? parts.first : (service.hubStationId ?? ''),
-      arrivalStation: parts.length > 1
-          ? parts.last
-          : (service.destinationNameFr ?? service.directionAr),
-      departureTime: nextDeparture ?? service.firstDepartureFromHub ?? '--:--',
-      arrivalTime: service.lastDepartureFromHub,
-      price: (service.price ?? 0.5).toStringAsFixed(3),
-      type: 'Bus TRANSTU',
-      iconKey: 'bus',
-      duration: service.peakFrequencyMinutes != null
-          ? 'Fréquence: ${service.peakFrequencyMinutes} min'
-          : '',
-      transfers: 0,
-      isOptimal: true,
-      operator: 'TRANSTU',
-      line: 'Ligne ${service.lineNumber}',
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final metroResult = _searchController.state.metroSahelResult;
-    final busServices = _searchController.state.busServices;
-    final busHubName = _searchController.state.busHubName;
-    final bestBus = _searchController.state.bestBusService;
-    final bestTime = _searchController.state.bestBusDepartureTime;
     final isLoading = _searchController.state.isLoading;
     final error = _searchController.state.error;
 
@@ -192,7 +156,6 @@ class _JourneyResultsScreenWithMapsExampleState
     final metroResult = _searchController.state.metroSahelResult;
     final busServices = _searchController.state.busServices;
     final bestBus = _searchController.state.bestBusService;
-    final bestTime = _searchController.state.bestBusDepartureTime;
 
     return ListView(
       padding: const EdgeInsets.all(16),

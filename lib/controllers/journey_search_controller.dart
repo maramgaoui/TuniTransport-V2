@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'journey_search_state.dart';
 import '../models/bus_service_model.dart';
 import '../models/metro_sahel_result.dart';
+import '../models/station_model.dart';
 import '../services/station_repository.dart';
 import '../services/route_repository.dart';
 import '../services/journey_repository.dart';
@@ -67,9 +68,28 @@ class JourneySearchController extends ChangeNotifier {
 
   /// Maps a metro/STS station ID to its SNCFT mainline equivalent for cities
   /// served by both networks, so picking one "Sousse" covers all modes.
+  /// Also includes shared-hub station IDs that appear directly in SNCFT route
+  /// data (e.g. bs_tunis_ville is the origin of route_sncft_l5_forward) so the
+  /// SNCFT branch guard triggers for them even though they carry a bs_ prefix.
   static const Map<String, String> _sncftMainlineAlias = {
     'ms_sousse_bab_jedid': 'sncft_sousse_voyageurs',
+    // Prefer SNCFT canonical station IDs for shared cross-network hubs.
+    'bn_tunis': 'sncft_tunis_barcelone',
+    'bs_tunis_ville': 'sncft_tunis_barcelone',
+    'ms_sfax': 'sncft_sfax',
+    'ms_gabes': 'sncft_gabes',
   };
+
+  bool _isSncftBranchStation(Station station) {
+    return _stationRepository.isSncftMainlineStation(station) ||
+        station.operatorsHere.contains('sncft') ||
+        _sncftMainlineAlias.containsKey(station.id);
+  }
+
+  // Resolves shared-hub IDs to SNCFT canonical station IDs.
+  String _resolveSncftRouteStationId(String stationId) {
+    return _sncftMainlineAlias[stationId] ?? stationId;
+  }
 
   /// Remaps redundant STS-only station IDs to their canonical metro hub IDs.
   /// The STS Sahel and Métro du Sahel share the same physical stations; some
@@ -176,7 +196,14 @@ class JourneySearchController extends ChangeNotifier {
       final results = await Future.wait([
         _stationRepository.getStationById(normalizedFromStationId),
         _stationRepository.getStationById(normalizedToStationId),
-      ]);
+      ]).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw FirebaseException(
+          plugin: 'firestore',
+          code: 'network-request-failed',
+          message: 'Timeout',
+        ),
+      );
       final fromStation = results[0];
       final toStation = results[1];
 
@@ -282,12 +309,17 @@ class JourneySearchController extends ChangeNotifier {
       // If either station is a cross-network hub (e.g. ms_sousse_bab_jedid),
       // resolve its SNCFT mainline equivalent before running the branch.
       {
-        final sncftFromId = _sncftMainlineAlias[fromStation.id] ?? fromStation.id;
-        final sncftToId   = _sncftMainlineAlias[toStation.id]   ?? toStation.id;
-        if ((_stationRepository.isSncftMainlineStation(fromStation) ||
-                _sncftMainlineAlias.containsKey(fromStation.id)) &&
-            (_stationRepository.isSncftMainlineStation(toStation) ||
-                _sncftMainlineAlias.containsKey(toStation.id))) {
+        final sncftFromId = _resolveSncftRouteStationId(fromStation.id);
+        final sncftToId = _resolveSncftRouteStationId(toStation.id);
+        final sncftFromMatch = _isSncftBranchStation(fromStation);
+        final sncftToMatch = _isSncftBranchStation(toStation);
+        if (sncftFromMatch && sncftToMatch) {
+          if (kDebugMode) {
+            debugPrint(
+              '[JourneySearch] branch=sncft_mainline from=$sncftFromId '
+              'to=$sncftToId',
+            );
+          }
           final sncftResult = await _journeyRepository.findNextSncftL5Trip(
             fromStationId: sncftFromId,
             toStationId: sncftToId,
@@ -331,11 +363,19 @@ class JourneySearchController extends ChangeNotifier {
         if (busServices.isNotEmpty) {
           int bestMinutes = -1;
 
-          // Detect reverse direction (dest→hub or hub→hub where services run
-          // the other way).
-          final isReverse = _busServiceRepository.isTranstuHub(toStation.id) &&
-              (!_busServiceRepository.isTranstuHub(fromStation.id) ||
-                  busServices.any((s) => s.destinationStationId == fromStation.id));
+            // Detect reverse direction (suburb→hub). Keep hub↔hub deterministic
+            // by preferring forward unless all returned services indicate reverse.
+            final hubIsDestination =
+              _busServiceRepository.isTranstuHub(toStation.id) &&
+              !_busServiceRepository.isTranstuHub(fromStation.id);
+            final servicesRunFromDest =
+              busServices.isNotEmpty &&
+              busServices.every(
+              (s) => s.destinationStationId != fromStation.id,
+              );
+            final isReverse = hubIsDestination ||
+              (servicesRunFromDest &&
+                _busServiceRepository.isTranstuHub(toStation.id));
 
           for (final svc in busServices) {
             final nextDep = isReverse

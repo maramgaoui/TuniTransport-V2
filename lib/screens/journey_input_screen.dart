@@ -50,6 +50,11 @@ class _JourneyInputScreenState extends State<JourneyInputScreen> {
     return '${l10n.currentLocation}: ';
   }
 
+  String _displayStationName(Station station) {
+    final languageCode = Localizations.localeOf(context).languageCode;
+    return station.localizedName(languageCode);
+  }
+
   bool _isCurrentLocationText(String value, AppLocalizations l10n) {
     return value.startsWith(_currentLocationPrefix(l10n));
   }
@@ -183,7 +188,9 @@ class _JourneyInputScreenState extends State<JourneyInputScreen> {
         _currentPosition = position;
         _nearestStations = nearestStations;
         _selectedDeparture = nearestStations.first.station;
-        _departureController.text = _currentLocationPrefix(l10n) + nearestStations.first.station.name;
+        _departureController.text =
+            _currentLocationPrefix(l10n) +
+            _displayStationName(nearestStations.first.station);
       });
     } catch (e) {
       _showLocationError(l10n.unableGetGps);
@@ -221,7 +228,7 @@ class _JourneyInputScreenState extends State<JourneyInputScreen> {
     return RawAutocomplete<Station>(
       textEditingController: controller,
       focusNode: focusNode,
-      displayStringForOption: (option) => option.name,
+      displayStringForOption: (option) => _displayStationName(option),
       optionsBuilder: (TextEditingValue textEditingValue) {
         if (isDeparture && _useCurrentLocation) {
           return const Iterable<Station>.empty();
@@ -234,11 +241,11 @@ class _JourneyInputScreenState extends State<JourneyInputScreen> {
       },
       onSelected: (Station selected) {
         setState(() {
-          controller.text = selected.name;
+          controller.text = _displayStationName(selected);
           if (isDeparture) {
             _selectedDeparture = selected;
             if (!_useCurrentLocation) {
-              _manualDepartureBackup = selected.name;
+              _manualDepartureBackup = _displayStationName(selected);
             }
           } else {
             _selectedArrival = selected;
@@ -306,10 +313,22 @@ class _JourneyInputScreenState extends State<JourneyInputScreen> {
                 separatorBuilder: (_, index) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final station = optionsList[index];
+                  final stationNameAr = (station.nameAr ?? '').trim();
                   return ListTile(
                     dense: true,
-                    title: Text(station.name),
-                    subtitle: Text(station.cityId),
+                    title: Text(_displayStationName(station)),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (stationNameAr.isNotEmpty)
+                          Text(
+                            stationNameAr,
+                            textDirection: TextDirection.rtl,
+                          ),
+                        Text(station.cityId),
+                      ],
+                    ),
                     onTap: () => onSelected(station),
                   );
                 },
@@ -387,15 +406,18 @@ class _JourneyInputScreenState extends State<JourneyInputScreen> {
       }
 
       NotificationController.instance.addExampleJourneyNotification(
-        from.name,
-        to.name,
+        _displayStationName(from),
+        _displayStationName(to),
       );
+
+      final departureLabel = _displayStationName(from);
+      final arrivalLabel = _displayStationName(to);
 
       context.push(
         '/home/journey-results',
         extra: {
-          'departure': from.name,
-          'arrival': to.name,
+          'departure': departureLabel,
+          'arrival': arrivalLabel,
           'fromStationId': from.id,
           'toStationId': to.id,
         },
@@ -495,13 +517,14 @@ class _JourneyInputScreenState extends State<JourneyInputScreen> {
                                   selected: selected,
                                   avatar: const Icon(Icons.location_pin, size: 16),
                                   label: Text(
-                                    '${candidate.station.name} (${candidate.distanceKm.toStringAsFixed(1)} km)',
+                                    '${_displayStationName(candidate.station)} (${candidate.distanceKm.toStringAsFixed(1)} km)',
                                   ),
                                   onSelected: (_) {
                                     setState(() {
                                       _selectedDeparture = candidate.station;
-                                      _departureController.text = _currentLocationPrefix(l10n) +
-                                          candidate.station.name;
+                                      _departureController.text =
+                                          _currentLocationPrefix(l10n) +
+                                          _displayStationName(candidate.station);
                                     });
                                   },
                                 );

@@ -5,6 +5,7 @@ import '../services/route_repository.dart';
 
 class MapViewController extends ChangeNotifier {
   final StationRepository _stationRepository;
+  // ignore: unused_field
   final RouteRepository _routeRepository;
 
   List<Station> _stations = [];
