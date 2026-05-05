@@ -81,10 +81,67 @@ class AppLocalizationsFr extends AppLocalizations {
   String get manageTariffs => 'Gérer les tarifs';
 
   @override
-  String get manageAdminRolesPermissions => 'Gérer les rôles et permissions admin';
+  String get manageAdminRolesPermissions => 'Gérer les rôles et permissions';
 
   @override
-  String get globalPlatformSupervision => 'Supervision globale de la plateforme';
+  String get globalPlatformSupervision => 'Supervision globale';
+
+  @override
+  String get addRoute => 'Ajouter un trajet';
+
+  @override
+  String get editRoute => 'Modifier le trajet';
+
+  @override
+  String get routeAdded => 'Trajet ajouté avec succès';
+
+  @override
+  String get routeUpdated => 'Trajet mis à jour';
+
+  @override
+  String get addTariff => 'Ajouter un tarif';
+
+  @override
+  String get editTariff => 'Modifier le tarif';
+
+  @override
+  String get tariffUpdated => 'Tarif mis à jour. Le nouveau prix est visible par les utilisateurs.';
+
+  @override
+  String get adminBus => 'Admin Bus';
+
+  @override
+  String get adminMetroTrain => 'Admin Métro / Train';
+
+  @override
+  String get adminTaxiCollectifs => 'Admin Taxi Collectifs';
+
+  @override
+  String get adminLouage => 'Admin Louage';
+
+  @override
+  String get accessDenied => 'Accès refusé';
+
+  @override
+  String get confirmDelete => 'Êtes-vous sûr de vouloir supprimer ?';
+
+  @override
+  String get rolesTab => 'Gestion des rôles';
+
+  @override
+  String get supervisionTab => 'Supervision';
+
+  @override
+  String get totalRoutes => 'Total trajets';
+
+  @override
+  String get activeRoutes => 'Trajets actifs';
+
+  @override
+  String get totalUsers => 'Total utilisateurs';
+
+  @override
+  String get totalAdmins => 'Total admins';
 
   @override
   String get switchToUserMode => 'Passer en mode utilisateur';

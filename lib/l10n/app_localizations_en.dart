@@ -81,10 +81,67 @@ class AppLocalizationsEn extends AppLocalizations {
   String get manageTariffs => 'Manage Tariffs';
 
   @override
-  String get manageAdminRolesPermissions => 'Manage admin roles & permissions';
+  String get manageAdminRolesPermissions => 'Manage Roles and Permissions';
 
   @override
-  String get globalPlatformSupervision => 'Global platform supervision';
+  String get globalPlatformSupervision => 'Global Supervision';
+
+  @override
+  String get addRoute => 'Add Route';
+
+  @override
+  String get editRoute => 'Edit Route';
+
+  @override
+  String get routeAdded => 'Route added successfully';
+
+  @override
+  String get routeUpdated => 'Route updated';
+
+  @override
+  String get addTariff => 'Add Tariff';
+
+  @override
+  String get editTariff => 'Edit Tariff';
+
+  @override
+  String get tariffUpdated => 'Tariff updated. The new price is visible to users.';
+
+  @override
+  String get adminBus => 'Admin Bus';
+
+  @override
+  String get adminMetroTrain => 'Admin Metro / Train';
+
+  @override
+  String get adminTaxiCollectifs => 'Admin Taxi Collectifs';
+
+  @override
+  String get adminLouage => 'Admin Louage';
+
+  @override
+  String get accessDenied => 'Access denied';
+
+  @override
+  String get confirmDelete => 'Are you sure you want to delete?';
+
+  @override
+  String get rolesTab => 'Roles Management';
+
+  @override
+  String get supervisionTab => 'Supervision';
+
+  @override
+  String get totalRoutes => 'Total routes';
+
+  @override
+  String get activeRoutes => 'Active routes';
+
+  @override
+  String get totalUsers => 'Total users';
+
+  @override
+  String get totalAdmins => 'Total admins';
 
   @override
   String get switchToUserMode => 'Switch to user mode';

@@ -19,6 +19,37 @@ class ManageJourneysScreen extends StatefulWidget {
 }
 
 class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
+  static const List<String> _allTypeOptions = [
+    'bus',
+    'metro',
+    'train',
+    'taxi_collectif',
+    'louage',
+  ];
+
+  static const List<String> _allOperatorOptions = [
+    'TRANSTU',
+    'STS',
+    'TRANSTU_METRO',
+    'SNCFT',
+    'TAXI_COLLECTIF',
+    'LOUAGE',
+  ];
+
+  static const Map<String, List<String>> _operatorOptionsByAdminType = {
+    'bus': ['TRANSTU', 'STS'],
+    'metro_train': ['TRANSTU_METRO', 'SNCFT'],
+    'taxicollectifs': ['TAXI_COLLECTIF'],
+    'louage': ['LOUAGE'],
+  };
+
+  static const Map<String, String> _lockedOperatorByAdminType = {
+    'bus': 'TRANSTU',
+    'metro_train': 'TRANSTU_METRO',
+    'taxicollectifs': 'TAXI_COLLECTIF',
+    'louage': 'LOUAGE',
+  };
+
   final CollectionReference<Map<String, dynamic>> _routesRef =
       FirebaseFirestore.instance.collection('routes');
   final TextEditingController _departureController = TextEditingController();
@@ -79,6 +110,250 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
     });
   }
 
+  List<String> _operatorOptionsForCurrentAdmin() {
+    if (_isSuperAdmin) {
+      return _allOperatorOptions;
+    }
+    final adminType = _adminType;
+    if (adminType == null) return const [];
+    return _operatorOptionsByAdminType[adminType] ?? const [];
+  }
+
+  String? _lockedOperatorForCurrentAdmin() {
+    if (_isSuperAdmin) return null;
+    final adminType = _adminType;
+    if (adminType == null) return null;
+    return _lockedOperatorByAdminType[adminType];
+  }
+
+  Future<void> _showCreateRouteSheet(BuildContext context) async {
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController();
+    final lineNumberController = TextEditingController();
+    final originController = TextEditingController();
+    final destinationController = TextEditingController();
+
+    final operatorOptions = _operatorOptionsForCurrentAdmin();
+    final lockedOperator = _lockedOperatorForCurrentAdmin();
+
+    String? selectedOperator =
+        lockedOperator ?? (operatorOptions.isNotEmpty ? operatorOptions.first : null);
+    String selectedType = _allTypeOptions.first;
+    bool isActive = true;
+    bool isSubmitting = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            Future<void> submit() async {
+              if (isSubmitting) return;
+              final isValid = formKey.currentState?.validate() ?? false;
+              if (!isValid) return;
+              if (selectedOperator == null || selectedOperator!.trim().isEmpty) {
+                ScaffoldMessenger.of(sheetContext).showSnackBar(
+                  const SnackBar(
+                    content: Text('Veuillez sélectionner un opérateur.'),
+                  ),
+                );
+                return;
+              }
+
+              setSheetState(() => isSubmitting = true);
+              try {
+                await _routesRef.add({
+                  'name': nameController.text.trim(),
+                  'lineNumber': lineNumberController.text.trim(),
+                  'originStationId': originController.text.trim(),
+                  'destinationStationId': destinationController.text.trim(),
+                  'operatorId': selectedOperator,
+                  'typeId': selectedType,
+                  'isActive': isActive,
+                  'createdAt': FieldValue.serverTimestamp(),
+                  'updatedAt': FieldValue.serverTimestamp(),
+                });
+
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Trajet ajouté avec succès')),
+                );
+                Navigator.of(sheetContext).pop();
+              } finally {
+                if (sheetContext.mounted) {
+                  setSheetState(() => isSubmitting = false);
+                }
+              }
+            }
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                12,
+                16,
+                MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+              ),
+              child: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Ajouter un trajet',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nom du trajet',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Le nom est requis.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: lineNumberController,
+                        decoration: const InputDecoration(
+                          labelText: 'Numéro de ligne',
+                          hintText: 'Ex: Bus 35',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Le numéro de ligne est requis.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: originController,
+                        decoration: const InputDecoration(
+                          labelText: 'originStationId',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Le point de départ est requis.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: destinationController,
+                        decoration: const InputDecoration(
+                          labelText: 'destinationStationId',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Le point d\'arrivée est requis.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        value: selectedOperator,
+                        decoration: const InputDecoration(
+                          labelText: 'operatorId',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: operatorOptions
+                            .map(
+                              (value) => DropdownMenuItem<String>(
+                                value: value,
+                                child: Text(value),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: lockedOperator != null
+                            ? null
+                            : (value) {
+                                setSheetState(() => selectedOperator = value);
+                              },
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'L\'opérateur est requis.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        value: selectedType,
+                        decoration: const InputDecoration(
+                          labelText: 'typeId',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: _allTypeOptions
+                            .map(
+                              (value) => DropdownMenuItem<String>(
+                                value: value,
+                                child: Text(value),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setSheetState(() => selectedType = value);
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        title: const Text('Actif'),
+                        contentPadding: EdgeInsets.zero,
+                        value: isActive,
+                        onChanged: (value) {
+                          setSheetState(() => isActive = value);
+                        },
+                      ),
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryTeal,
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: isSubmitting ? null : submit,
+                          child: Text(
+                            isSubmitting
+                                ? 'Ajout en cours...'
+                                : 'Ajouter le trajet',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    nameController.dispose();
+    lineNumberController.dispose();
+    originController.dispose();
+    destinationController.dispose();
+  }
+
   String _normalizeForSearch(String value) {
     return value
         .toLowerCase()
@@ -93,7 +368,21 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
     QueryDocumentSnapshot<Map<String, dynamic>> routeDoc,
   ) async {
     final data = routeDoc.data();
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController(
+      text: (data['name'] ?? '').toString(),
+    );
+    final lineNumberController = TextEditingController(
+      text: (data['lineNumber'] ?? '').toString(),
+    );
+    final originController = TextEditingController(
+      text: (data['originStationId'] ?? '').toString(),
+    );
+    final destinationController = TextEditingController(
+      text: (data['destinationStationId'] ?? '').toString(),
+    );
     bool isActive = (data['isActive'] ?? true) == true;
+    bool isSaving = false;
 
     await showDialog<void>(
       context: context,
@@ -101,14 +390,80 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
             return AlertDialog(
-              title: const Text('Modifier le statut du trajet'),
-              content: SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Trajet actif'),
-                value: isActive,
-                onChanged: (value) {
-                  setDialogState(() => isActive = value);
-                },
+              title: const Text('Modifier le trajet'),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Trajet actif / inactif'),
+                        value: isActive,
+                        onChanged: (value) {
+                          setDialogState(() => isActive = value);
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nom du trajet',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Le nom est requis.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: lineNumberController,
+                        decoration: const InputDecoration(
+                          labelText: 'Numéro de ligne',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Le numéro de ligne est requis.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: originController,
+                        decoration: const InputDecoration(
+                          labelText: 'originStationId',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Le point de départ est requis.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: destinationController,
+                        decoration: const InputDecoration(
+                          labelText: 'destinationStationId',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Le point d\'arrivée est requis.';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               ),
               actions: [
                 TextButton(
@@ -116,15 +471,40 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                   child: const Text('Annuler'),
                 ),
                 ElevatedButton(
-                  onPressed: () async {
-                    await _routesRef.doc(routeDoc.id).update({
-                      'isActive': isActive,
-                      'updatedAt': FieldValue.serverTimestamp(),
-                    });
-                    if (!dialogContext.mounted) return;
-                    Navigator.of(dialogContext).pop();
-                  },
-                  child: const Text('Enregistrer'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryTeal,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          final isValid = formKey.currentState?.validate() ?? false;
+                          if (!isValid) return;
+                          setDialogState(() => isSaving = true);
+                          try {
+                            // Admin isActive toggles are consumed by user search filtering
+                            // in JourneyRepository (inactive routes are excluded there).
+                            await _routesRef.doc(routeDoc.id).update({
+                              'name': nameController.text.trim(),
+                              'lineNumber': lineNumberController.text.trim(),
+                              'originStationId': originController.text.trim(),
+                              'destinationStationId': destinationController.text.trim(),
+                              'isActive': isActive,
+                              'updatedAt': FieldValue.serverTimestamp(),
+                            });
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Trajet mis à jour')),
+                            );
+                            if (!dialogContext.mounted) return;
+                            Navigator.of(dialogContext).pop();
+                          } finally {
+                            if (dialogContext.mounted) {
+                              setDialogState(() => isSaving = false);
+                            }
+                          }
+                        },
+                  child: Text(isSaving ? 'Enregistrement...' : 'Enregistrer'),
                 ),
               ],
             );
@@ -132,6 +512,11 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
         );
       },
     );
+
+    nameController.dispose();
+    lineNumberController.dispose();
+    originController.dispose();
+    destinationController.dispose();
   }
 
   bool _matchesSearch(Map<String, dynamic> data) {
@@ -424,6 +809,13 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
             ],
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppTheme.primaryTeal,
+        foregroundColor: Colors.white,
+        onPressed: _isResolvingScope ? null : () => _showCreateRouteSheet(context),
+        icon: const Icon(Icons.add),
+        label: const Text('Ajouter un trajet'),
       ),
     );
   }

@@ -281,8 +281,8 @@ class AppRouter {
         GoRoute(
           path: '/super-admin/dashboard',
           builder: (context, state) {
-            final tabParam = int.tryParse(state.uri.queryParameters['tab'] ?? '0');
-            return SuperAdminDashboard(initialTab: tabParam ?? 0);
+            final tab = state.uri.queryParameters['tab'] ?? 'roles';
+            return SuperAdminDashboard(initialTab: tab);
           },
         ),
       ],

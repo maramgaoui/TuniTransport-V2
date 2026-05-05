@@ -74,6 +74,73 @@ class JourneyRepository {
 
   JourneyRepository(this._firestore, this._routeRepository);
 
+  // Tariff lookup flow:
+  // ManageTariffsScreen edits Firestore documents in the `tariffs` collection.
+  // Journey search reads tariff values from `tariffs` at query time so users see
+  // updated prices on the next render without relying on route-cached prices.
+  Future<double?> _lookupTariffPrice({
+    required String operatorId,
+    required String fromStationId,
+    required String toStationId,
+    required DateTime referenceDate,
+  }) async {
+    final normalizedOperator = operatorId.trim().toLowerCase();
+    final snapshot = await _firestore
+        .collection('tariffs')
+        .where('fromStationId', isEqualTo: fromStationId)
+        .where('toStationId', isEqualTo: toStationId)
+        .get();
+
+    QueryDocumentSnapshot<Map<String, dynamic>>? bestDoc;
+    DateTime? bestValidFrom;
+    DateTime? bestTieBreaker;
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final tariffOperator = (data['operatorId'] ?? '').toString().trim().toLowerCase();
+      if (normalizedOperator.isNotEmpty && tariffOperator != normalizedOperator) {
+        continue;
+      }
+
+      final validFromRaw = data['validFrom'];
+      final validToRaw = data['validTo'];
+      final validFrom = validFromRaw is Timestamp ? validFromRaw.toDate() : null;
+      final validTo = validToRaw is Timestamp ? validToRaw.toDate() : null;
+      if (validFrom == null) continue;
+
+      final startsBeforeOrOn = !referenceDate.isBefore(validFrom);
+      final endsAfterOrOn =
+          validTo == null || !referenceDate.isAfter(validTo.add(const Duration(days: 1)));
+      if (!startsBeforeOrOn || !endsAfterOrOn) continue;
+
+      final updatedAtRaw = data['updatedAt'];
+      final createdAtRaw = data['createdAt'];
+      final tieBreaker = updatedAtRaw is Timestamp
+          ? updatedAtRaw.toDate()
+          : (createdAtRaw is Timestamp ? createdAtRaw.toDate() : validFrom);
+
+      if (bestDoc == null) {
+        bestDoc = doc;
+        bestValidFrom = validFrom;
+        bestTieBreaker = tieBreaker;
+        continue;
+      }
+
+      final hasLaterValidity = validFrom.isAfter(bestValidFrom!);
+      final sameValidity = validFrom.isAtSameMomentAs(bestValidFrom);
+      final hasLaterTieBreaker = tieBreaker.isAfter(bestTieBreaker!);
+      if (hasLaterValidity || (sameValidity && hasLaterTieBreaker)) {
+        bestDoc = doc;
+        bestValidFrom = validFrom;
+        bestTieBreaker = tieBreaker;
+      }
+    }
+
+    if (bestDoc == null) return null;
+    final rawPrice = bestDoc.data()['price'];
+    return (rawPrice as num?)?.toDouble();
+  }
+
   // ── Public API — one thin wrapper per line type ───────────────────────────
 
   Future<MetroSahelResult?> findNextMetroSahelTrip({
@@ -290,6 +357,12 @@ class JourneyRepository {
     final routeDoc =
         await _firestore.collection('routes').doc(routeId).get();
     final routeIsActive = (routeDoc.data()?['isActive'] ?? true) == true;
+    // isActive is managed by admin via ManageJourneysScreen.
+    // Inactive routes are hidden from users until an admin re-activates them.
+    if (!routeIsActive) return null;
+    final routeData = routeDoc.data() ?? <String, dynamic>{};
+    final routeOperatorId = (routeData['operatorId'] ?? '').toString();
+    // Price should be read from tariffs collection — see ManageTariffsScreen.
 
     final fromDoc =
         await _firestore.collection('stations').doc(fromStationId).get();
@@ -305,7 +378,13 @@ class JourneyRepository {
     final numberOfStops = (toOrder - fromOrder).abs();
     if (numberOfStops == 0) return null;
 
-    final price = Tariff.calculateMetroSahelPrice(numberOfStops);
+    final tariffPrice = await _lookupTariffPrice(
+      operatorId: routeOperatorId,
+      fromStationId: fromStationId,
+      toStationId: toStationId,
+      referenceDate: searchDateTime,
+    );
+    final price = tariffPrice ?? Tariff.calculateMetroSahelPrice(numberOfStops);
     final durationMinutes = numberOfStops * 4;
     final routeName = '$fromName → $toName';
 
@@ -408,6 +487,12 @@ class JourneyRepository {
     final routeDoc =
         await _firestore.collection('routes').doc(routeId).get();
     final routeIsActive = (routeDoc.data()?['isActive'] ?? true) == true;
+    // isActive is managed by admin via ManageJourneysScreen.
+    // Inactive routes are hidden from users until an admin re-activates them.
+    if (!routeIsActive) return null;
+    final routeData = routeDoc.data() ?? <String, dynamic>{};
+    final routeOperatorId = (routeData['operatorId'] ?? '').toString();
+    // Price should be read from tariffs collection — see ManageTariffsScreen.
 
     // ── 1. Station names ────────────────────────────────────────────────────
     final fromDoc =
@@ -465,7 +550,13 @@ class JourneyRepository {
     if (numberOfStops == 0) return null;
 
     final durationMinutes = (fromMeta.offset - toMeta.offset).abs();
-    final price = config.calculateFare(fromMeta, toMeta);
+    final tariffPrice = await _lookupTariffPrice(
+      operatorId: routeOperatorId,
+      fromStationId: fromStationId,
+      toStationId: toStationId,
+      referenceDate: searchDateTime,
+    );
+    final price = tariffPrice ?? config.calculateFare(fromMeta!, toMeta!);
     final routeName = '$fromName → $toName';
 
     // ── 3. Query trips for today's day-of-week ──────────────────────────────

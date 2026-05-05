@@ -167,8 +167,10 @@ class _DashboardTab extends StatelessWidget {
   String _roleChipLabel(String role) {
     return switch (role) {
       'super_admin' => 'Super Admin',
-      'admin' => 'Admin',
-      'moderator' => 'Modérateur',
+      'bus' => 'Admin Bus',
+      'metro_train' => 'Admin Métro / Train',
+      'taxicollectifs' => 'Admin Taxi Collectifs',
+      'louage' => 'Admin Louage',
       _ => role,
     };
   }
@@ -279,13 +281,13 @@ class _DashboardTab extends StatelessWidget {
         labelKey: (l) => l.manageAdminRolesPermissions,
         icon: Icons.manage_accounts_outlined,
         isSuperAdminOnly: true,
-        onTap: (ctx) => ctx.push('/super-admin/dashboard?tab=1'),
+        onTap: (ctx) => ctx.push('/super-admin/dashboard?tab=roles'),
       ),
       _AdminAction(
         labelKey: (l) => l.globalPlatformSupervision,
         icon: Icons.monitor_outlined,
         isSuperAdminOnly: true,
-        onTap: (ctx) => ctx.push('/super-admin/dashboard?tab=2'),
+        onTap: (ctx) => ctx.push('/super-admin/dashboard?tab=supervision'),
       ),
     ];
 

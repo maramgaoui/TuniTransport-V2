@@ -244,14 +244,128 @@ abstract class AppLocalizations {
   /// No description provided for @manageAdminRolesPermissions.
   ///
   /// In en, this message translates to:
-  /// **'Manage admin roles & permissions'**
+  /// **'Manage Roles and Permissions'**
   String get manageAdminRolesPermissions;
 
   /// No description provided for @globalPlatformSupervision.
   ///
   /// In en, this message translates to:
-  /// **'Global platform supervision'**
+  /// **'Global Supervision'**
   String get globalPlatformSupervision;
+
+  /// No description provided for @addRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Route'**
+  String get addRoute;
+
+  /// No description provided for @editRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Route'**
+  String get editRoute;
+
+  /// No description provided for @routeAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Route added successfully'**
+  String get routeAdded;
+
+  /// No description provided for @routeUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Route updated'**
+  String get routeUpdated;
+
+  /// No description provided for @addTariff.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Tariff'**
+  String get addTariff;
+
+  /// No description provided for @editTariff.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Tariff'**
+  String get editTariff;
+
+  /// No description provided for @tariffUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Tariff updated. The new price is visible to users.'**
+  String get tariffUpdated;
+
+  /// No description provided for @adminBus.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin Bus'**
+  String get adminBus;
+
+  /// No description provided for @adminMetroTrain.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin Metro / Train'**
+  String get adminMetroTrain;
+
+  /// No description provided for @adminTaxiCollectifs.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin Taxi Collectifs'**
+  String get adminTaxiCollectifs;
+
+  /// No description provided for @adminLouage.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin Louage'**
+  String get adminLouage;
+
+  /// No description provided for @accessDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Access denied'**
+  String get accessDenied;
+
+  /// No description provided for @confirmDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete?'**
+  String get confirmDelete;
+
+  /// No description provided for @rolesTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Roles Management'**
+  String get rolesTab;
+
+  /// No description provided for @supervisionTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Supervision'**
+  String get supervisionTab;
+
+  /// No description provided for @totalRoutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Total routes'**
+  String get totalRoutes;
+
+  /// No description provided for @activeRoutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Active routes'**
+  String get activeRoutes;
+
+  /// No description provided for @totalUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Total users'**
+  String get totalUsers;
+
+  /// No description provided for @totalAdmins.
+  ///
+  /// In en, this message translates to:
+  /// **'Total admins'**
+  String get totalAdmins;
 
   /// No description provided for @switchToUserMode.
   ///
