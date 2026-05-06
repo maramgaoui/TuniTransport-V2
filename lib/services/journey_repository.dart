@@ -43,6 +43,9 @@ class _LineConfig {
   /// Whether trips may have partial-origin / partial-destination overrides
   /// (only needed for SNCFT mainline long-distance trains).
   final bool supportsPartialTrips;
+  /// When true, never infer that a train stops at a station unless the trip
+  /// carries explicit stop metadata (override times or skipped-station rules).
+  final bool requiresExplicitStopMetadata;
 
   const _LineConfig({
     required this.lineType,
@@ -52,6 +55,7 @@ class _LineConfig {
     required this.resolveRouteId,
     required this.calculateFare,
     this.supportsPartialTrips = false,
+    this.requiresExplicitStopMetadata = false,
   });
 
   _LineConfig copyWith({RouteIdResolver? resolveRouteId}) => _LineConfig(
@@ -62,6 +66,7 @@ class _LineConfig {
         resolveRouteId: resolveRouteId ?? this.resolveRouteId,
         calculateFare: calculateFare,
         supportsPartialTrips: supportsPartialTrips,
+        requiresExplicitStopMetadata: requiresExplicitStopMetadata,
       );
 }
 
@@ -254,6 +259,7 @@ class JourneyRepository {
             final sectionsTraveled = (from.section - to.section).abs() + 1;
             return _bsFare(sectionsTraveled);
           },
+          requiresExplicitStopMetadata: true,
         ),
       );
 
@@ -315,6 +321,7 @@ class JourneyRepository {
               _routeRepository.findBanlieueNabeulRouteId(f, t),
           calculateFare: (from, to) =>
               _bnFare((from.order - to.order).abs()),
+          supportsPartialTrips: true,
         ),
       );
 
@@ -421,6 +428,33 @@ class JourneyRepository {
     return h * 60 + m;
   }
 
+  static int? _extractDepartureMinutes(dynamic rawDepartureTime) {
+    if (rawDepartureTime is Timestamp) {
+      final dt = rawDepartureTime.toDate();
+      return dt.hour * 60 + dt.minute;
+    }
+    if (rawDepartureTime is DateTime) {
+      return rawDepartureTime.hour * 60 + rawDepartureTime.minute;
+    }
+    if (rawDepartureTime is String) {
+      final clean = rawDepartureTime.trim();
+      final m = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(clean);
+      if (m == null) return null;
+      final h = int.tryParse(m.group(1)!);
+      final mm = int.tryParse(m.group(2)!);
+      if (h == null || mm == null || h < 0 || h > 23 || mm < 0 || mm > 59) {
+        return null;
+      }
+      return h * 60 + mm;
+    }
+    if (rawDepartureTime is num) {
+      final minutes = rawDepartureTime.toInt();
+      if (minutes < 0) return null;
+      return minutes % 1440;
+    }
+    return null;
+  }
+
   // ── Metro Sahel — kept separate due to its unique stop-order lookup ────────
   //
   // Metro Sahel uses RouteRepository.getStopOrder() rather than route_stops
@@ -455,6 +489,23 @@ class JourneyRepository {
     final toOrder = await _routeRepository.getStopOrder(toStationId);
     if (fromOrder == -1 || toOrder == -1) return null;
 
+    final routeStopsSnap = await _firestore
+        .collection('route_stops')
+        .where('routeId', isEqualTo: routeId)
+        .get();
+    int fromOffset = 0;
+    int toOffset = 0;
+    for (final doc in routeStopsSnap.docs) {
+      final data = doc.data();
+      final sid = data['stationId'] as String?;
+      if (sid == fromStationId) {
+        fromOffset = (data['estimatedArrivalTimeMinutes'] ?? 0) as int;
+      }
+      if (sid == toStationId) {
+        toOffset = (data['estimatedArrivalTimeMinutes'] ?? 0) as int;
+      }
+    }
+
     final numberOfStops = (toOrder - fromOrder).abs();
     if (numberOfStops == 0) return null;
 
@@ -469,11 +520,20 @@ class JourneyRepository {
     final routeName = '$fromName → $toName';
 
     final dayOfWeek = searchDateTime.weekday % 7;
-    final tripsSnapshot = await _firestore
+    var tripsSnapshot = await _firestore
         .collection('trips')
         .where('routeId', isEqualTo: routeId)
         .where('daysOfWeek', arrayContains: dayOfWeek)
         .get();
+
+    if (tripsSnapshot.docs.isEmpty) {
+      // Legacy seed compatibility: older scripts wrote operatingDays only.
+      tripsSnapshot = await _firestore
+          .collection('trips')
+          .where('routeId', isEqualTo: routeId)
+          .where('operatingDays', arrayContains: dayOfWeek)
+          .get();
+    }
 
     if (tripsSnapshot.docs.isEmpty) return null;
 
@@ -484,20 +544,30 @@ class JourneyRepository {
 
     for (final doc in tripsSnapshot.docs) {
       final data = doc.data();
-      final depTimestamp = data['departureTime'] as Timestamp?;
-      if (depTimestamp == null) continue;
+      final originMinutes = _extractDepartureMinutes(data['departureTime']);
+      if (originMinutes == null) continue;
+      final hasFromOverride = _hasStationOverride(data, fromStationId);
+      final hasToOverride = _hasStationOverride(data, toStationId);
+      final useExplicitTimes = hasFromOverride && hasToOverride;
+      final depAtFrom = useExplicitTimes
+          ? _resolveStationMinute(data, fromStationId, originMinutes, fromOffset)
+          : originMinutes + fromOffset;
+      final arrAtTo = useExplicitTimes
+          ? _resolveStationMinute(data, toStationId, originMinutes, toOffset)
+          : originMinutes + toOffset;
+      final timeStr = _minutesToTime(depAtFrom % 1440);
 
-      final depDate = depTimestamp.toDate();
-      final tripMinutes = depDate.hour * 60 + depDate.minute;
-      final timeStr =
-          '${depDate.hour.toString().padLeft(2, '0')}:${depDate.minute.toString().padLeft(2, '0')}';
-
-      if (tripMinutes < firstDepartureMinutes) {
-        firstDepartureMinutes = tripMinutes;
+      if (depAtFrom < firstDepartureMinutes) {
+        firstDepartureMinutes = depAtFrom;
         firstDepartureOfDay = timeStr;
       }
-      if (tripMinutes >= searchMinutes) {
-        candidates.add({...data, '_minutes': tripMinutes, '_timeStr': timeStr});
+      if (depAtFrom >= searchMinutes) {
+        candidates.add({
+          ...data,
+          '_minutes': depAtFrom,
+          '_timeStr': timeStr,
+          '_arrMinutes': arrAtTo,
+        });
       }
     }
 
@@ -523,21 +593,24 @@ class JourneyRepository {
         (a, b) => (a['_minutes'] as int).compareTo(b['_minutes'] as int));
     final next = candidates.first;
     final dep = next['_timeStr'] as String;
-    final depMin = _parseMinutes(dep);
-    final rawArr = depMin + durationMinutes;
+    final depMin = next['_minutes'] as int;
+    final rawArr = next['_arrMinutes'] as int;
+    final actualDuration = rawArr >= depMin
+      ? rawArr - depMin
+      : rawArr - depMin + 1440;
     final arrStr =
         '${_minutesToTime(rawArr % 1440)}${rawArr >= 1440 ? ' (+1)' : ''}';
 
     return _assembleResult(
       departureTime: dep,
       arrivalTime: arrStr,
-      tripNumber: next['tripNumber'] as int? ?? 0,
+      tripNumber: _normalizeTripNumberInt(next['tripNumber']),
       routeName: routeName,
       fromStationId: fromStationId,
       toStationId: toStationId,
       fromStationName: fromName,
       toStationName: toName,
-      durationMinutes: durationMinutes,
+      durationMinutes: actualDuration,
       price: price,
       numberOfStops: numberOfStops,
       isActive: routeIsActive,
@@ -601,7 +674,7 @@ class JourneyRepository {
       stationOrderMap[sid] = order;
 
       final offset = (data['estimatedArrivalTimeMinutes'] ?? 0) as int;
-      final section = (data['section'] as int?) ??
+        final section = _parseIntLike(data['section']) ??
           _sectionFromOrder(order);
 
       if (sid == fromStationId) {
@@ -614,9 +687,9 @@ class JourneyRepository {
 
     // Also pick up sections from the station docs themselves (Banlieue Sud).
     final fromSection =
-        (fromDoc.data()?['section'] as int?) ?? fromMeta?.section ?? 1;
+      _parseIntLike(fromDoc.data()?['section']) ?? fromMeta?.section ?? 1;
     final toSection =
-        (toDoc.data()?['section'] as int?) ?? toMeta?.section ?? 1;
+      _parseIntLike(toDoc.data()?['section']) ?? toMeta?.section ?? 1;
     if (fromMeta != null) {
       fromMeta = _StopMeta(
           offset: fromMeta.offset, order: fromMeta.order, section: fromSection);
@@ -653,11 +726,20 @@ class JourneyRepository {
 
     // ── 3. Query trips for today's day-of-week ──────────────────────────────
     final dayOfWeek = searchDateTime.weekday % 7;
-    final tripsSnapshot = await _firestore
+    var tripsSnapshot = await _firestore
         .collection('trips')
         .where('routeId', isEqualTo: routeId)
         .where('daysOfWeek', arrayContains: dayOfWeek)
         .get();
+
+    if (tripsSnapshot.docs.isEmpty) {
+      // Legacy seed compatibility: older scripts wrote operatingDays only.
+      tripsSnapshot = await _firestore
+          .collection('trips')
+          .where('routeId', isEqualTo: routeId)
+          .where('operatingDays', arrayContains: dayOfWeek)
+          .get();
+    }
 
     if (tripsSnapshot.docs.isEmpty) return null;
 
@@ -668,12 +750,49 @@ class JourneyRepository {
     // ── 4. Filter candidates ────────────────────────────────────────────────
     for (final doc in tripsSnapshot.docs) {
       final data = doc.data();
-      final depTimestamp = data['departureTime'] as Timestamp?;
-      if (depTimestamp == null) continue;
+      final originMinutes = _extractDepartureMinutes(data['departureTime']);
+      if (originMinutes == null) continue;
+
+      final overrides =
+          data['stationTimeOverridesMinutes'] ?? data['stationTimeOverrides'];
+      final hasOverridesMap = overrides is Map && overrides.isNotEmpty;
+        final hasFromOverride = hasOverridesMap && _hasStationOverride(data, fromStationId);
+        final hasToOverride = hasOverridesMap && _hasStationOverride(data, toStationId);
+        final useExplicitTimes = hasFromOverride && hasToOverride;
+      final hasSkippedList = data['skippedStationIds'] is List;
+
+      if (config.requiresExplicitStopMetadata &&
+          !hasOverridesMap &&
+          !hasSkippedList) {
+        continue;
+      }
+
+      if (config.requiresExplicitStopMetadata && hasOverridesMap && !useExplicitTimes) {
+        continue;
+      }
+
+      // Apply explicit per-trip skipped stations for all train lines.
+      final skippedRaw = data['skippedStationIds'];
+      if (skippedRaw is List) {
+        final skipped = skippedRaw.map((e) => e.toString()).toSet();
+        if (skipped.contains(fromStationId) || skipped.contains(toStationId)) {
+          continue;
+        }
+      }
 
       if (config.supportsPartialTrips) {
+        if (overrides is Map && overrides.isNotEmpty) {
+          // For partial-trip train lines, if a trip has explicit stop-time
+          // overrides, treat them as the source of truth for served stops.
+          if (!_hasStationOverride(data, fromStationId) ||
+              !_hasStationOverride(data, toStationId)) {
+            continue;
+          }
+        }
+
         // Skip trips that terminate before destination.
-        final terminatesAt = data['terminatesAtStationId'] as String?;
+        final terminatesAt =
+            (data['terminatesAtStationId'] ?? data['terminatesAt']) as String?;
         if (terminatesAt != null) {
           final terminateOrder = stationOrderMap[terminatesAt];
           if (terminateOrder != null && toMeta.order > terminateOrder) {
@@ -688,10 +807,11 @@ class JourneyRepository {
         }
       }
 
-      final depDate = depTimestamp.toDate();
-      final originMinutes = depDate.hour * 60 + depDate.minute;
       final actualDep = config.supportsPartialTrips
           ? _resolveStationMinute(data, fromStationId, originMinutes, fromMeta.offset)
+          : useExplicitTimes
+            ? _resolveStationMinute(
+              data, fromStationId, originMinutes, fromMeta.offset)
           : originMinutes + fromMeta.offset;
 
       if (actualDep < firstDepAtFrom) firstDepAtFrom = actualDep;
@@ -701,6 +821,7 @@ class JourneyRepository {
           ...data,
           '_actualDep': actualDep,
           '_originMin': originMinutes,
+          '_useExplicitTimes': useExplicitTimes,
         });
       }
     }
@@ -736,20 +857,68 @@ class JourneyRepository {
 
     final next = candidates.first;
     final actualDep = next['_actualDep'] as int;
+    final useExplicitTimes = next['_useExplicitTimes'] == true;
 
-    int rawActualArr;
-    if (config.supportsPartialTrips) {
-      final originMin = next['_originMin'] as int;
-      rawActualArr = _resolveStationMinute(
-          next, toStationId, originMin, toMeta.offset);
-    } else {
+    if (kDebugMode && config.lineType == 'sncft_mainline') {
+      debugPrint(
+        '[JourneyRepo] Selected trip: tripNumber=${next['tripNumber']} '
+        'actualDep=${_minutesToTime(actualDep)} '
+        'originStationId=${next['originStationId']} '
+        'terminatesAtStationId=${next['terminatesAtStationId']} '
+        'hasOverrides=${next['stationTimeOverridesMinutes'] != null}',
+      );
+    }
+
+    int rawActualArr = 0;
+    if (kDebugMode && config.lineType == 'sncft_mainline') {
+      debugPrint(
+        '[JourneyRepo] BEFORE arrival: supportsPartialTrips=${config.supportsPartialTrips}',
+      );
+    }
+    
+    try {
+      if (config.supportsPartialTrips || useExplicitTimes) {
+        final originMin = next['_originMin'] as int;
+        final overrides = next['stationTimeOverridesMinutes'] as Map<String, dynamic>?;
+        if (kDebugMode && config.lineType == 'sncft_mainline') {
+          debugPrint(
+            '[JourneyRepo] Computing arrival for toStationId=$toStationId '
+            'originMin=$originMin toMeta.offset=${toMeta.offset} '
+            'lookingForKeys=${_overrideStationIdCandidates(toStationId).toList()}',
+          );
+          if (overrides != null) {
+            debugPrint('[JourneyRepo] Available overrides: ${overrides.keys.toList()}');
+          } else {
+            debugPrint('[JourneyRepo] NO OVERRIDES FOUND in trip data');
+          }
+        }
+        rawActualArr = _resolveStationMinute(
+            next, toStationId, originMin, toMeta.offset);
+        if (kDebugMode && config.lineType == 'sncft_mainline') {
+          debugPrint(
+            '[JourneyRepo] Computed arrival: rawMin=$rawActualArr '
+            '(${_minutesToTime(rawActualArr % 1440)})',
+          );
+        }
+      } else {
+        rawActualArr = actualDep + durationMinutes;
+        if (kDebugMode && config.lineType == 'sncft_mainline') {
+          debugPrint(
+            '[JourneyRepo] Using offset-based arrival: actualDep=$actualDep + durationMinutes=$durationMinutes = $rawActualArr',
+          );
+        }
+      }
+    } catch (e, st) {
+      if (kDebugMode && config.lineType == 'sncft_mainline') {
+        debugPrint('[JourneyRepo] EXCEPTION in arrival computation: $e\n$st');
+      }
       rawActualArr = actualDep + durationMinutes;
     }
 
     final actualArr = rawActualArr % 1440;
     final crossesMidnight = rawActualArr >= 1440;
     final depCrossesMidnight = actualDep >= 1440;
-    final actualDuration = config.supportsPartialTrips
+    final actualDuration = (config.supportsPartialTrips || useExplicitTimes)
         ? (rawActualArr >= actualDep
             ? rawActualArr - actualDep
             : rawActualArr - actualDep + 1440)
@@ -762,7 +931,7 @@ class JourneyRepository {
           '${_minutesToTime(actualArr)}${crossesMidnight ? ' (+1)' : ''}',
       tripNumber: config.supportsPartialTrips
           ? 0
-          : (next['tripNumber'] as int? ?? 0),
+        : _normalizeTripNumberInt(next['tripNumber']),
       tripNumberStr: config.supportsPartialTrips
           ? _normalizeTripNumberStr(next['tripNumber'])
           : null,
@@ -831,13 +1000,99 @@ class JourneyRepository {
     int originMinutes,
     int routeOffset,
   ) {
-    final overrides = tripData['stationTimeOverridesMinutes'];
-    if (overrides is Map<String, dynamic>) {
-      final raw = overrides[stationId];
-      if (raw is int) return raw;
-      if (raw is num) return raw.toInt();
+    final overrides =
+        tripData['stationTimeOverridesMinutes'] ?? tripData['stationTimeOverrides'];
+    if (overrides is Map) {
+      for (final candidate in _overrideStationIdCandidates(stationId)) {
+        final raw = overrides[candidate];
+        if (raw is int) {
+          if (kDebugMode) {
+            debugPrint(
+              '[JourneyRepo._resolveStationMinute] Found override for $candidate: $raw min',
+            );
+          }
+          return raw;
+        }
+        if (raw is num) {
+          if (kDebugMode) {
+            debugPrint(
+              '[JourneyRepo._resolveStationMinute] Found override (num) for $candidate: ${raw.toInt()} min',
+            );
+          }
+          return raw.toInt();
+        }
+        if (raw is String) {
+          final parts = raw.split(':');
+          if (parts.length == 2) {
+            final hh = int.tryParse(parts[0]);
+            final mm = int.tryParse(parts[1]);
+            if (hh != null && mm != null) {
+              final result = hh * 60 + mm;
+              if (kDebugMode) {
+                debugPrint(
+                  '[JourneyRepo._resolveStationMinute] Parsed override string for $candidate: $raw → $result min',
+                );
+              }
+              return result;
+            }
+          }
+        }
+      }
+      if (kDebugMode) {
+        debugPrint(
+          '[JourneyRepo._resolveStationMinute] No override found for candidates '
+          '${_overrideStationIdCandidates(stationId).toList()}; using offset fallback',
+        );
+      }
     }
     return originMinutes + routeOffset;
+  }
+
+  /// Returns true when a trip has an explicit timetable entry for stationId.
+  static bool _hasStationOverride(Map<String, dynamic> tripData, String stationId) {
+    final overrides =
+        tripData['stationTimeOverridesMinutes'] ?? tripData['stationTimeOverrides'];
+    if (overrides is! Map) return false;
+    for (final candidate in _overrideStationIdCandidates(stationId)) {
+      final raw = overrides[candidate];
+      if (raw is int || raw is num) return true;
+      if (raw is String) {
+        final parts = raw.split(':');
+        if (parts.length == 2 &&
+            int.tryParse(parts[0]) != null &&
+            int.tryParse(parts[1]) != null) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /// Returns alias candidates used when looking up per-station overrides.
+  /// This avoids fallback-to-offset when the UI picks a synonymous station ID.
+  static Iterable<String> _overrideStationIdCandidates(String stationId) {
+    switch (stationId) {
+      case 'sncft_tunis_barcelone':
+      case 'sncft_tunis':
+      case 'bn_tunis':
+      case 'bs_tunis_ville':
+      case 'tunis':
+        return const [
+          'sncft_tunis_barcelone',
+          'sncft_tunis',
+          'bn_tunis',
+          'bs_tunis_ville',
+          'tunis',
+        ];
+      case 'ms_sfax':
+      case 'sncft_sfax':
+        return const ['sncft_sfax', 'ms_sfax'];
+      case 'ms_gabes':
+      case 'sncft_gabes':
+        return const ['sncft_gabes', 'ms_gabes'];
+      default:
+        return [stationId];
+    }
   }
 
   // ── Time utilities ────────────────────────────────────────────────────────
@@ -849,6 +1104,27 @@ class JourneyRepository {
     final s = raw.toString().trim();
     if (s.isEmpty || s == '0') return '–';
     return s;
+  }
+
+  static int _normalizeTripNumberInt(dynamic raw) {
+    if (raw == null) return 0;
+    if (raw is int) return raw;
+    if (raw is num) return raw.toInt();
+    final s = raw.toString().trim();
+    if (s.isEmpty) return 0;
+    return int.tryParse(s) ?? 0;
+  }
+
+  static int? _parseIntLike(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is int) return raw;
+    if (raw is num) return raw.toInt();
+    if (raw is String) {
+      final s = raw.trim();
+      if (s.isEmpty) return null;
+      return int.tryParse(s);
+    }
+    return null;
   }
 
   int _parseMinutes(String timeStr) {

@@ -16,6 +16,9 @@
     "seed-metro-sahel": "node seeds/seed_metrosahel.js",
     "seed-sncft-grands-line": "node seeds/seed_snftgrandsline.js",
     "seed-sncft-grandsline": "node seeds/seed_snftgrandsline.js",
+    "seed-sncft-grandsline-file": "node seeds/seed_sncftgrandsline.js",
+    "seed-sncft-grandes-lignes": "node seeds/seed_snftgrandsline.js",
+    "seed-snft-grandes-lignes": "node seeds/seed_snftgrandsline.js",
     "seed-sncft-kef": "node seeds/seed_snftkef.js",
     "seed-sts-sahel": "node seeds/seed_sts_sahel.js",
     "seed-new-hubs": "node seeds/seed_new_hubs.js",
@@ -45,6 +48,7 @@
   "dependencies": {
     "dotenv": "^16.5.0",
     "firebase-admin": "^11.11.1",
-    "nodemailer": "^6.10.1"
+    "nodemailer": "^6.10.1",
+    "xlsx": "^0.18.5"
   }
 }

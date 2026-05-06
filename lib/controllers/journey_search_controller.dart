@@ -56,10 +56,9 @@ class JourneySearchController extends ChangeNotifier {
     'sncft_bir_bou_regba': 'bn_bir_bou_regba',
     'bs_bir_el_bey': 'bn_bir_bou_regba',
     'bs_boukornine': 'bn_grombalia',
-    'bs_hammam_lif': 'bn_hammamet',
-    'bs_hammam_echatt': 'bn_hammamet',
+    // NOTE: bs_hammam_lif / bs_hammam_echatt are Banlieue Sud stations south
+    // of Tunis — they must NOT be mapped to bn_hammamet (Hammamet, Nabeul).
     'bs_ezzahra': 'bn_grombalia',
-    'bs_tunis_ville': 'bn_tunis',
   };
 
   static const Set<String> _bnDeprecatedStationIds = {
@@ -118,8 +117,17 @@ class JourneySearchController extends ChangeNotifier {
         _bnCanonicalStationIds.contains(toStationId);
   }
 
-  /// Maps a legacy station ID to its canonical BN equivalent, if any.
-  String _normalizeBnLegacyStationId(String stationId) {
+  bool _isBnLikeStationId(String stationId) {
+    return _bnCanonicalStationIds.contains(stationId) ||
+        _bnLegacyIdMap.containsKey(stationId);
+  }
+
+  /// Maps a legacy station ID to its canonical BN equivalent, when relevant.
+  /// Shared Tunis hub is only remapped to BN when paired with a BN station.
+  String _normalizeBnLegacyStationId(String stationId, String peerStationId) {
+    if (stationId == 'bs_tunis_ville' && _isBnLikeStationId(peerStationId)) {
+      return 'bn_tunis';
+    }
     return _bnLegacyIdMap[stationId] ?? stationId;
   }
 
@@ -157,8 +165,10 @@ class JourneySearchController extends ChangeNotifier {
     }
 
     // Step 1 — map legacy IDs to canonical BN IDs, independently for each.
-    final rawFromNormalized = _normalizeBnLegacyStationId(fromStationId);
-    final rawToNormalized = _normalizeBnLegacyStationId(toStationId);
+    final rawFromNormalized =
+      _normalizeBnLegacyStationId(fromStationId, toStationId);
+    final rawToNormalized =
+      _normalizeBnLegacyStationId(toStationId, fromStationId);
 
     // Step 1b — remap redundant sts_* duplicates to their ms_* metro hub.
     final bnFromNormalized = _normalizeStsToMetroHub(rawFromNormalized);
@@ -478,7 +488,7 @@ class JourneySearchController extends ChangeNotifier {
           clearTaxi: taxiResult == null,
         ));
       }
-    } catch (e) {
+    } catch (e, st) {
       // Map exceptions to user-friendly French messages.
       // Raw exception text is only visible in debug logs, never shown in the UI.
       final userMessage = switch (e) {
@@ -493,7 +503,10 @@ class JourneySearchController extends ChangeNotifier {
         _ => 'Une erreur inattendue est survenue. Veuillez réessayer.',
       };
 
-      if (kDebugMode) debugPrint('[JourneySearch] error=$e');
+      if (kDebugMode) {
+        debugPrint('[JourneySearch] error=$e');
+        debugPrintStack(label: '[JourneySearch] stack', stackTrace: st);
+      }
       _emit(_state.copyWith(isLoading: false, error: userMessage));
     }
   }

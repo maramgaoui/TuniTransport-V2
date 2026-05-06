@@ -224,15 +224,21 @@ class StationRepository {
   }
 
   bool isBanlieueSudStation(Station station) {
-    return station.operatorsHere.contains('sncft_banlieue_sud');
+    return station.operatorsHere.contains('sncft_banlieue_sud') ||
+        station.id.startsWith('bs_');
   }
 
   bool isBanlieueDStation(Station station) {
-    return station.operatorsHere.contains('sncft_banlieue_d');
+    return station.operatorsHere.contains('sncft_banlieue_d') ||
+        station.id.startsWith('rd_') ||
+        station.id == 'bs_tunis_ville';
   }
 
   bool isBanlieueEStation(Station station) {
-    return station.operatorsHere.contains('sncft_banlieue_e');
+    return station.operatorsHere.contains('sncft_banlieue_e') ||
+        station.id.startsWith('be_') ||
+        station.id == 'bs_tunis_ville' ||
+        station.id == 'rd_saida_manoubia';
   }
 
   bool isTranstuStation(Station station) {

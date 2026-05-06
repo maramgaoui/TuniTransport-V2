@@ -137,6 +137,50 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
           db.collection('stations').doc(orderToStationId[o]!).get());
       final stationDocs = await Future.wait(stationFutures);
 
+      // For train lines with explicit per-trip stop metadata, fetch the trip
+      // document so blank timetable cells are treated as non-stops.
+      Map<String, dynamic>? tripOverrides;
+      Set<String> skippedStations = const <String>{};
+      if (metro.lineType == 'sncft_mainline' ||
+          metro.lineType == 'banlieue_nabeul' ||
+          metro.lineType == 'banlieue_sud' ||
+          metro.lineType == 'metro_sahel') {
+        final tripNumber = metro.tripNumberStr ?? metro.tripNumber.toString();
+        if (tripNumber.isNotEmpty && tripNumber != '0' && tripNumber != '–') {
+          var tripSnap = await db
+              .collection('trips')
+              .where('routeId', isEqualTo: routeId)
+              .where('tripNumber', isEqualTo: tripNumber)
+              .limit(1)
+              .get();
+
+          // Compatibility fallback for older docs where tripNumber was numeric.
+          if (tripSnap.docs.isEmpty) {
+            final tripNumberInt = int.tryParse(tripNumber);
+            if (tripNumberInt != null) {
+              tripSnap = await db
+                  .collection('trips')
+                  .where('routeId', isEqualTo: routeId)
+                  .where('tripNumber', isEqualTo: tripNumberInt)
+                  .limit(1)
+                  .get();
+            }
+          }
+
+          if (tripSnap.docs.isNotEmpty) {
+            final td = tripSnap.docs.first.data();
+            tripOverrides = (td['stationTimeOverridesMinutes'] as Map?)
+                    ?.cast<String, dynamic>() ??
+                (td['stationTimeOverrides'] as Map?)?.cast<String, dynamic>();
+
+            final skippedRaw = td['skippedStationIds'];
+            if (skippedRaw is List) {
+              skippedStations = skippedRaw.map((e) => e.toString()).toSet();
+            }
+          }
+        }
+      }
+
       final stops = <_StopInfo>[];
       final depMinutes = _parseMinutes(metro.departureTime);
       final baseOffset = orderToMinutes[fromOrder] ?? 0;
@@ -145,13 +189,27 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
         final data = stationDocs[i].data();
         if (data == null) continue;
 
-        final offset = (orderToMinutes[orderedKeys[i]] ?? 0) - baseOffset;
-        final arrMinutes = depMinutes + offset;
+        final stationId = orderToStationId[orderedKeys[i]]!;
+        if (skippedStations.contains(stationId)) continue;
+
+        int arrMinutes;
+        if (tripOverrides != null) {
+          // Only show stops that have an actual timetable entry — skip estimated ones.
+          final resolved = _resolveOverrideMinutes(tripOverrides, stationId);
+          if (resolved == null) continue; // train doesn't stop here — skip it
+          arrMinutes = resolved;
+        } else {
+          final offset = (orderToMinutes[orderedKeys[i]] ?? 0) - baseOffset;
+          arrMinutes = depMinutes + offset;
+        }
+        // Handle next-day wrap-around
+        final displayMin = arrMinutes % 1440;
+        final overflow = arrMinutes >= 1440 ? ' (+1)' : '';
         final timeStr =
-            '${(arrMinutes ~/ 60).toString().padLeft(2, '0')}:${(arrMinutes % 60).toString().padLeft(2, '0')}';
+            '${(displayMin ~/ 60).toString().padLeft(2, '0')}:${(displayMin % 60).toString().padLeft(2, '0')}$overflow';
 
         stops.add(_StopInfo(
-          name: data['name'] ?? orderToStationId[orderedKeys[i]]!,
+          name: data['name'] ?? stationId,
           time: timeStr,
           lat: (data['latitude'] ?? 0.0).toDouble(),
           lng: (data['longitude'] ?? 0.0).toDouble(),
@@ -248,6 +306,37 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     final parts = timeStr.split(':');
     if (parts.length != 2) return 0;
     return int.parse(parts[0]) * 60 + int.parse(parts[1]);
+  }
+
+  /// Resolves a station's arrival time in minutes from a trip's
+  /// stationTimeOverridesMinutes map, checking known station ID aliases.
+  int? _resolveOverrideMinutes(Map<String, dynamic> overrides, String stationId) {
+    // Alias groups for stations with multiple IDs
+    const aliases = <String, List<String>>{
+      'bs_tunis_ville': ['bs_tunis_ville', 'sncft_tunis_barcelone', 'sncft_tunis', 'bn_tunis', 'tunis'],
+      'sncft_tunis_barcelone': ['bs_tunis_ville', 'sncft_tunis_barcelone', 'sncft_tunis', 'bn_tunis', 'tunis'],
+      'sncft_tunis': ['bs_tunis_ville', 'sncft_tunis_barcelone', 'sncft_tunis', 'bn_tunis', 'tunis'],
+      'bn_tunis': ['bs_tunis_ville', 'sncft_tunis_barcelone', 'sncft_tunis', 'bn_tunis', 'tunis'],
+      'sncft_sfax': ['sncft_sfax', 'ms_sfax'],
+      'ms_sfax': ['sncft_sfax', 'ms_sfax'],
+      'sncft_gabes': ['sncft_gabes', 'ms_gabes'],
+      'ms_gabes': ['sncft_gabes', 'ms_gabes'],
+    };
+    final candidates = aliases[stationId] ?? [stationId];
+    for (final c in candidates) {
+      final raw = overrides[c];
+      if (raw is int) return raw;
+      if (raw is num) return raw.toInt();
+      if (raw is String) {
+        final parts = raw.split(':');
+        if (parts.length == 2) {
+          final hh = int.tryParse(parts[0]);
+          final mm = int.tryParse(parts[1]);
+          if (hh != null && mm != null) return hh * 60 + mm;
+        }
+      }
+    }
+    return null;
   }
 
   LatLng _getCoordinates() {
@@ -932,10 +1021,10 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                             _buildInfoCard(
                               icon: Icons.place_outlined,
                               title: 'Arrêts',
-                              value: isMetro
-                                  ? '${metro.numberOfStops} arrêts (Direct)'
-                                  : _intermediateStops.isNotEmpty
-                                      ? '${_intermediateStops.length} arrêts'
+                              value: _intermediateStops.isNotEmpty
+                                  ? '${_intermediateStops.length} arrêts'
+                                  : isMetro
+                                      ? '${metro.numberOfStops} arrêts'
                                       : _journey.transfers == 0
                                           ? 'Direct'
                                           : '${_journey.transfers} correspondance(s)',
