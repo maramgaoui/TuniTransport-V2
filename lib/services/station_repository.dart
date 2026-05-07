@@ -42,7 +42,7 @@ class StationRepository {
     'bs_arret_stade': ['arret stade', 'stade hammam lif'],
     'ms_aeroport': ['aeroport', 'airport', 'aeroport skanes monastir', 'l aeroport'],
     'ms_sousse_bab_jedid': ['sousse', 'sousse bab jedid', 'gare sousse', 'sousse centre'],
-    'ms_monastir': ['monastir', 'monastir centre'],
+    'ms_monastir': ['monastir', 'monastir centre', 'gare monastir'],
     'ms_sousse_zi': ['sousse zi', 'sousse zone industrielle'],
     'ms_monastir_zi': ['monastir zi', 'monastir zone industrielle'],
     'ms_teboulba_zi': ['teboulba zi', 'teboulba zone industrielle'],
@@ -66,6 +66,7 @@ class StationRepository {
     'sncft_kef_le_kef':       ['le kef', 'kef', 'gare du kef'],
     'sncft_kef_dahmani':      ['dahmani'],
     'sncft_kef_gaafour':      ['gaafour', 'gafour'],
+    'sncft_kef_oudna':        ['oudna', 'oudhna', 'أوذنة'],
     'sncft_kef_kalaa_khasba': ['kalaa khasba', 'kalaa khesba', 'ksar'],
     // Banlieue de Nabeul (official SNCFT timetable - 13 stations)
     'bn_tunis':               ['tunis', 'tunis banlieue', 'gare de tunis'],
@@ -85,6 +86,7 @@ class StationRepository {
     'transtu_hub_tunis_marine':  ['tunis marine', 'marine', 'bus tunis'],
     'transtu_hub_barcelone':     ['barcelone', 'place barcelone'],
     'transtu_hub_jardin_thameur':['jardin thameur', 'thameur', 'hadika thameur', 'جنينة ثامر'],
+    'transtu_hub_hadiqat_thamer':['hadiqat thamer', 'hadiqat thameur', 'jardin thameur', 'thameur', 'حديقة ثامر', 'جنينة ثامر'],
     'transtu_hub_bab_alioua':    ['bab alioua', 'bab aliwa'],
     'transtu_hub_ariana':        ['ariana', 'ariana bus'],
     'transtu_hub_carthage':      ['carthage', 'carthage bus'],
@@ -119,6 +121,7 @@ class StationRepository {
     'transtu_dest_medina_jdida':        ['medina jdida', 'madina jdida', 'المدينة الجديدة'],
     'transtu_dest_hay_thameur':         ['hay thameur', 'cité thameur', 'cite thameur', 'حي ثامر'],
     'transtu_dest_mornag':              ['mornag', 'مرناق', 'mrornag'],
+    'transtu_dest_oudhna':              ['oudhna', 'oudna', 'أوذنة'],
     'transtu_dest_ben_arous':           ['ben arous', 'benarous', 'بن عروس'],
     'transtu_dest_yasminettes':         ['yasminettes', 'les yasminettes', 'الياسمينات', 'jasminate'],
     'transtu_dest_ibn_sina':            ['ibn sina', 'ibnsina', 'ابن سينا'],
@@ -135,19 +138,29 @@ class StationRepository {
     'transtu_dest_belvedere':           ['belvedere', 'belvédère', 'بلفي'],
     // 10 Décembre hub destinations
     'transtu_dest_sidi_sofiane':   ['sidi sofiane', 'سيدي سفيان'],
+    'transtu_dest_cite_mellaha':   ['cite mellaha', 'cité mellaha', 'mellaha', 'حي الملاحة'],
     'transtu_dest_cité_mellaha':   ['cite mellaha', 'cité mellaha', 'mellaha', 'حي الملاحة'],
+    'transtu_dest_cite_ghazala':   ['ghazala', 'cité ghazala', 'el ghazala', 'غزالة', 'حي الغزالة'],
     'transtu_dest_ghazala':        ['ghazala', 'cité ghazala', 'el ghazala', 'غزالة', 'حي الغزالة'],
+    'transtu_dest_raoued_plage':   ['raoued', 'raoued plage', 'رواد', 'رواد الشاطئ'],
     'transtu_dest_raoued':         ['raoued', 'raoued plage', 'رواد', 'رواد الشاطئ'],
+    'transtu_dest_kalaat_alandalous':['kalaat el andalous', 'kalaat andalous', 'qalaat andalous', 'قلعة الأندلس'],
     'transtu_dest_kalaat_andalous':['kalaat el andalous', 'kalaat andalous', 'qalaat andalous', 'قلعة الأندلس'],
-    'transtu_dest_sidi_omar':      ['sidi omar', 'سيدي عمر'],
-    'transtu_dest_el_brarjia':     ['el brarjia', 'brarjia', 'البرارجة'],
-    'transtu_dest_ariana_brarjia': ['ariana brarjia', 'ariana el brarjia', 'أريانة البرارجة'],
+    'transtu_dest_sidi_amor':      ['sidi amor', 'sidi omar', 'سيدي عمر'],
+    'transtu_dest_sidi_omar':      ['sidi amor', 'sidi omar', 'سيدي عمر'],
+    'transtu_dest_el_bhararja':    ['el bhararja', 'el brarjia', 'bhararja', 'brarjia', 'البرارجة'],
+    'transtu_dest_el_brarjia':     ['el bhararja', 'el brarjia', 'bhararja', 'brarjia', 'البرارجة'],
+    'transtu_dest_ariana_bhararja':['ariana bhararja', 'ariana el bhararja', 'ariana brarjia', 'ariana el brarjia', 'أريانة البرارجة'],
+    'transtu_dest_ariana_brarjia': ['ariana bhararja', 'ariana el bhararja', 'ariana brarjia', 'ariana el brarjia', 'أريانة البرارجة'],
     'transtu_dest_la_goulette':    ['la goulette', 'goulette', 'halq el oued', 'حلق الوادي'],
-    'transtu_dest_cité_bakri':     ['cite bakri', 'cité bakri', 'bakri', 'حي البكري'],
-    'transtu_dest_nour_jafar':     ['nour jafar', 'jafar', 'نور جعفر'],
+    'transtu_dest_cite_bekri':     ['cite bekri', 'cite bakri', 'cité bakri', 'bekri', 'bakri', 'حي البكري'],
+    'transtu_dest_cité_bakri':     ['cite bekri', 'cite bakri', 'cité bakri', 'bekri', 'bakri', 'حي البكري'],
+    'transtu_dest_nour_jaafar':    ['nour jaafar', 'nour jaafer', 'nour jafar', 'jafar', 'jaafar', 'نور جعفر'],
+    'transtu_dest_nour_jafar':     ['nour jaafar', 'nour jaafer', 'nour jafar', 'jafar', 'jaafar', 'نور جعفر'],
     
     // Ariana hub destinations  
-    'transtu_dest_manji_salim':    ['manji salim', 'cité manji salim', 'cite manji', 'حي منجي سليم', 'mongi slim', 'cite mongi slim', 'cité mongi slim'],
+    'transtu_dest_hay_manji_salim': ['manji salim', 'hay manji salim', 'cité manji salim', 'cite manji', 'حي منجي سليم', 'mongi slim', 'cite mongi slim', 'cité mongi slim'],
+    'transtu_dest_cite_mongi_slim': ['cite mongi slim', 'cité mongi slim', 'mongi slim', 'hay mongi slim', 'حي منجي سليم', 'منجي سليم'],
     'transtu_dest_sidi_salah':     ['sidi salah', 'سيدي صالح'],
     'transtu_dest_menzah9':        ['menzah 9', 'menzah9', 'منزه 9', 'المنتزه 9', 'el menzah 9'],
     'transtu_dest_manouba':        ['manouba', 'mannouba', 'منوبة', 'la manouba'],
@@ -455,19 +468,156 @@ class StationRepository {
       if (byScore != 0) return byScore;
       final byHub = (b.station.isMainHub ? 1 : 0).compareTo(a.station.isMainHub ? 1 : 0);
       if (byHub != 0) return byHub;
+      final byPreferred =
+          _stationSuggestionPriority(a.station).compareTo(_stationSuggestionPriority(b.station));
+      if (byPreferred != 0) return byPreferred;
       return a.station.name.compareTo(b.station.name);
     });
 
-    // Deduplicate by (name, cityId) — same physical station can exist under
-    // multiple network IDs (e.g. ms_bekalta and sts_bekalta). Keep highest score.
+    // Deduplicate by canonical hub key when relevant, otherwise (name, cityId).
+    // This collapses shared city hubs like Sousse/Monastir across metro/STS/SNCFT.
     final seen = <String>{};
     final deduped = <StationMatch>[];
     for (final m in matches) {
-      final key = '${m.station.name.toLowerCase()}|${m.station.cityId}';
+      final key = _stationDedupKey(m.station);
       if (seen.add(key)) deduped.add(m);
     }
 
     return deduped.take(limit).toList();
+  }
+
+  static String _stationDedupKey(Station station) {
+    const canonical = <String, String>{
+      'ms_sousse_bab_jedid': 'hub_sousse',
+      'sncft_sousse_voyageurs': 'hub_sousse',
+      'sts_sousse': 'hub_sousse',
+      'ms_monastir': 'hub_monastir',
+      'sncft_monastir': 'hub_monastir',
+      'sts_monastir': 'hub_monastir',
+      // Collapse same physical area labels that are represented by multiple
+      // operational station IDs across different TRANSTU route files.
+      'transtu_hub_charguia': 'hub_charguia',
+      'transtu_dest_charguia': 'hub_charguia',
+      'transtu_dest_charguia_tb': 'hub_charguia',
+      'transtu_dest_marsa_gammarth': 'dest_marsa_gammarth',
+      'transtu_dest_gamarth': 'dest_marsa_gammarth',
+      'transtu_dest_cite_mellaha': 'dest_cite_mellaha',
+      'transtu_dest_cité_mellaha': 'dest_cite_mellaha',
+      'transtu_dest_cite_ghazala': 'dest_cite_ghazala',
+      'transtu_dest_ghazala': 'dest_cite_ghazala',
+      'transtu_dest_raoued_plage': 'dest_raoued_plage',
+      'transtu_dest_raoued': 'dest_raoued_plage',
+      'transtu_dest_kalaat_alandalous': 'dest_kalaat_alandalous',
+      'transtu_dest_kalaat_andalous': 'dest_kalaat_alandalous',
+      'transtu_dest_sidi_amor': 'dest_sidi_amor',
+      'transtu_dest_sidi_omar': 'dest_sidi_amor',
+      'transtu_dest_el_bhararja': 'dest_el_bhararja',
+      'transtu_dest_el_brarjia': 'dest_el_bhararja',
+      'transtu_dest_ariana_bhararja': 'dest_ariana_bhararja',
+      'transtu_dest_ariana_brarjia': 'dest_ariana_bhararja',
+      'transtu_dest_cite_bekri': 'dest_cite_bekri',
+      'transtu_dest_cité_bakri': 'dest_cite_bekri',
+      'transtu_dest_nour_jaafar': 'dest_nour_jaafar',
+      'transtu_dest_nour_jafar': 'dest_nour_jaafar',
+      'transtu_dest_cite_ezzouhour5': 'dest_cite_ezzouhour5',
+      'transtu_dest_cite_ezzouhour5_charguia': 'dest_cite_ezzouhour5',
+      'transtu_dest_cite_zahour5': 'dest_cite_ezzouhour5',
+      'transtu_dest_jelou': 'dest_jallou',
+      'transtu_dest_jellou': 'dest_jallou',
+      'transtu_dest_jallou': 'dest_jallou',
+      'transtu_dest_jellou_kh': 'dest_jallou',
+      'transtu_dest_khaled_ben_walid': 'dest_khaled_ibn_walid',
+      'transtu_dest_cite_khaled_ibn_walid': 'dest_khaled_ibn_walid',
+      'transtu_dest_khaled_bn_walid': 'dest_khaled_ibn_walid',
+      'transtu_dest_oudhna': 'dest_oudhna',
+      'sncft_kef_oudna': 'dest_oudhna',
+      'transtu_hub_intileka': 'hub_intilaka',
+      'transtu_hub_intilaka': 'hub_intilaka',
+      'transtu_dest_intilaka': 'hub_intilaka',
+      'transtu_dest_hay_manji_salim': 'dest_mongi_slim',
+      'transtu_dest_cite_mongi_slim': 'dest_mongi_slim',
+      'transtu_hub_10_decembre': 'hub_10_decembre',
+      'transtu_dest_10_decembre': 'hub_10_decembre',
+      'transtu_hub_hadiqat_thamer': 'hub_hadiqat_thamer',
+      'transtu_hub_jardin_thameur': 'hub_hadiqat_thamer',
+      'transtu_hub_carthage': 'hub_carthage',
+      'transtu_dest_carthage': 'hub_carthage',
+      'transtu_dest_el_hararia': 'dest_el_hararia',
+      // Legacy spelling variants seen in older seeded docs.
+      'transtu_dest_hararia': 'dest_el_hararia',
+      'transtu_dest_hrairia': 'dest_el_hararia',
+      'transtu_dest_el_mghira': 'dest_el_mghira',
+      'transtu_dest_mghira_slimane': 'dest_el_mghira',
+    };
+
+    final c = canonical[station.id];
+    if (c != null) return c;
+    final normalizedName = _normalizeStationName(station.name);
+    return '$normalizedName|${station.cityId.toLowerCase()}';
+  }
+
+  static String _normalizeStationName(String raw) {
+    var name = raw.toLowerCase().trim();
+    if (name.startsWith('el ')) name = name.substring(3);
+    if (name.startsWith('al ')) name = name.substring(3);
+    if (name.startsWith('la ')) name = name.substring(3);
+    return name.replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  static int _stationSuggestionPriority(Station station) {
+    const preferred = <String, int>{
+      // Prefer canonical labels requested by users in search suggestions.
+      'transtu_dest_marsa_gammarth': 0,
+      'transtu_dest_cite_mellaha': 0,
+      'transtu_dest_cite_ghazala': 0,
+      'transtu_dest_raoued_plage': 0,
+      'transtu_dest_kalaat_alandalous': 0,
+      'transtu_dest_sidi_amor': 0,
+      'transtu_dest_el_bhararja': 0,
+      'transtu_dest_ariana_bhararja': 0,
+      'transtu_dest_cite_bekri': 0,
+      'transtu_dest_nour_jaafar': 0,
+      'transtu_dest_cite_ezzouhour5': 0,
+      'transtu_dest_cite_ezzouhour5_charguia': 0,
+      'transtu_dest_jelou': 0,
+      'transtu_dest_khaled_ben_walid': 0,
+      'transtu_dest_oudhna': 0,
+      'transtu_hub_intileka': 0,
+      'transtu_dest_cite_mongi_slim': 0,
+      'transtu_hub_10_decembre': 0,
+      'transtu_hub_hadiqat_thamer': 0,
+      'transtu_hub_carthage': 0,
+      'transtu_dest_el_hararia': 0,
+      'transtu_dest_el_mghira': 0,
+      // Keep legacy labels lower priority when dedup key collides.
+      'transtu_dest_gamarth': 2,
+      'transtu_dest_cité_mellaha': 2,
+      'transtu_dest_ghazala': 2,
+      'transtu_dest_raoued': 2,
+      'transtu_dest_kalaat_andalous': 2,
+      'transtu_dest_sidi_omar': 2,
+      'transtu_dest_el_brarjia': 2,
+      'transtu_dest_ariana_brarjia': 2,
+      'transtu_dest_cité_bakri': 2,
+      'transtu_dest_nour_jafar': 2,
+      'transtu_dest_cite_zahour5': 2,
+      'transtu_dest_jellou': 2,
+      'transtu_dest_jallou': 2,
+      'transtu_dest_jellou_kh': 2,
+      'transtu_dest_cite_khaled_ibn_walid': 2,
+      'transtu_dest_khaled_bn_walid': 2,
+      'sncft_kef_oudna': 2,
+      'transtu_hub_intilaka': 2,
+      'transtu_dest_intilaka': 2,
+      'transtu_dest_hay_manji_salim': 2,
+      'transtu_dest_10_decembre': 2,
+      'transtu_hub_jardin_thameur': 2,
+      'transtu_dest_carthage': 2,
+      'transtu_dest_hararia': 2,
+      'transtu_dest_hrairia': 2,
+      'transtu_dest_mghira_slimane': 2,
+    };
+    return preferred[station.id] ?? 1;
   }
 
   Future<List<StationDistance>> findNearestStations({

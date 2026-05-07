@@ -43,6 +43,10 @@ class BusService {
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final d = doc.data()!;
+    final firstHub = _normalizeTimeValue(d['firstDepartureFromHub'] as String?);
+    final firstSuburb = _normalizeTimeValue(d['firstDepartureFromSuburb'] as String?);
+    final lastHub = _normalizeTimeValue(d['lastDepartureFromHub'] as String?);
+    final lastSuburb = _normalizeTimeValue(d['lastDepartureFromSuburb'] as String?);
     return BusService(
       id: doc.id,
       routeId: d['routeId'] ?? '',
@@ -50,10 +54,10 @@ class BusService {
       destinationStationId: d['destinationStationId'],
       lineNumber: d['lineNumber'] ?? '',
       directionAr: d['directionAr'] ?? '',
-      firstDepartureFromHub: d['firstDepartureFromHub'],
-      firstDepartureFromSuburb: d['firstDepartureFromSuburb'],
-      lastDepartureFromHub: d['lastDepartureFromHub'],
-      lastDepartureFromSuburb: d['lastDepartureFromSuburb'],
+      firstDepartureFromHub: firstHub,
+      firstDepartureFromSuburb: firstSuburb,
+      lastDepartureFromHub: lastHub,
+      lastDepartureFromSuburb: lastSuburb,
       peakFrequencyMinutes: d['peakFrequencyMinutes'],
       operatingDays: List<int>.from(d['operatingDays'] ?? [0, 1, 2, 3, 4, 5, 6]),
       season: d['season'] ?? '',
@@ -178,6 +182,25 @@ class BusService {
 
   /// Public wrapper so the controller can use it without duplicating logic.
   int? parseTimePublic(String? timeStr) => _parseTime(timeStr);
+
+  /// Normalizes timetable values to strict HH:MM where possible.
+  /// Accepts common separators such as ';', '.', or extra spaces.
+  static String? _normalizeTimeValue(String? raw) {
+    if (raw == null) return null;
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return null;
+
+    final normalized = trimmed.replaceAll(RegExp(r'[^0-9]'), ':');
+    final parts = normalized.split(':').where((p) => p.isNotEmpty).toList();
+    if (parts.length != 2) return trimmed;
+
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null) return trimmed;
+    if (h < 0 || h > 23 || m < 0 || m > 59) return trimmed;
+
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
+  }
 
   /// Official TRANSTU fares by zone (2024 tariff grid).
   static double? _defaultPriceForZone(String? zone) {

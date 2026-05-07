@@ -87,6 +87,12 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
       operator: 'TRANSTU',
       line: 'Ligne ${service.lineNumber}',
       estimatedTripDurationMinutes: service.estimatedTripDurationMinutes,
+      timetableFirstDepartureTime: isReverseDirection
+          ? service.firstDepartureFromSuburb
+          : service.firstDepartureFromHub,
+      timetableLastDepartureTime: isReverseDirection
+          ? service.lastDepartureFromSuburb
+          : service.lastDepartureFromHub,
     );
   }
 
@@ -179,6 +185,7 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
                                     bestBus,
                                     hubName: busHubName,
                                     nextDeparture: bestTime,
+                                    isReverseDirection: _searchController.state.busIsReverse,
                                   );
                                   context.push('/home/journey-details',
                                       extra: journey);

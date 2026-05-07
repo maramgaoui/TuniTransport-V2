@@ -379,6 +379,15 @@ class JourneyRepository {
         searchDateTime: searchDateTime,
         config: baseConfig.copyWith(
           resolveRouteId: (f, t) =>
+              _routeRepository.findStsSahelBasicRouteId(f, t),
+        ),
+      ),
+      _findNextOffsetBasedTrip(
+        fromStationId: fromStationId,
+        toStationId: toStationId,
+        searchDateTime: searchDateTime,
+        config: baseConfig.copyWith(
+          resolveRouteId: (f, t) =>
               _routeRepository.findStsSahelViaSayadaRouteId(f, t),
         ),
       ),
@@ -393,14 +402,26 @@ class JourneyRepository {
       ),
     ]);
 
-    final sayadaResult = results[0];
-    final monastirResult = results[1];
+    final valid = results.whereType<MetroSahelResult>().toList();
+    if (valid.isEmpty) return null;
+    if (valid.length == 1) return valid.first;
 
-    if (sayadaResult == null) return monastirResult;
-    if (monastirResult == null) return sayadaResult;
+    valid.sort((a, b) {
+      final aTomorrow = a.arrivalTime == 'TOMORROW';
+      final bTomorrow = b.arrivalTime == 'TOMORROW';
+      if (aTomorrow != bTomorrow) return aTomorrow ? 1 : -1;
 
-    // Both routes serve this pair — return whichever departs sooner.
-    return _pickEarlierStsResult(sayadaResult, monastirResult);
+      int toMin(String hhmm) {
+        final parts = hhmm.split(':');
+        if (parts.length != 2) return 99999;
+        final h = int.tryParse(parts[0]) ?? 0;
+        final m = int.tryParse(parts[1]) ?? 0;
+        return h * 60 + m;
+      }
+
+      return toMin(a.departureTime).compareTo(toMin(b.departureTime));
+    });
+    return valid.first;
   }
 
   /// Returns the result with the earlier departure. Results scheduled for

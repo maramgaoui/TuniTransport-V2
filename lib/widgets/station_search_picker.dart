@@ -93,12 +93,10 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
   void initState() {
     super.initState();
     _firestore = widget.firestore ?? FirebaseFirestore.instance;
-    // Show the localized name in the text field for the initial value.
+    // Keep a stable primary label across locales.
     _controller = TextEditingController(
       text: widget.initialValue != null
-          ? widget.initialValue!.localizedName(
-              WidgetsBinding.instance.platformDispatcher.locale.languageCode,
-            )
+          ? _primaryStationName(widget.initialValue!)
           : '',
     );
     _focusNode = FocusNode();
@@ -383,6 +381,18 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
     return text.trim();
   }
 
+  String _normalizeLabel(String value) {
+    return value.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  String _primaryStationName(Station station) {
+    final frenchName = station.name.trim();
+    if (frenchName.isNotEmpty) return frenchName;
+    final arabicName = (station.nameAr ?? '').trim();
+    if (arabicName.isNotEmpty) return arabicName;
+    return station.cityId;
+  }
+
   Color _lineColor(Station station) {
     final operators = station.operatorsHere;
     final isMetroSahel = operators.contains('sncft_sahel');
@@ -399,23 +409,8 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
     return AppTheme.mediumGrey;
   }
 
-  String _lineLabel(Station station) {
-    final operators = station.operatorsHere;
-    if (operators.contains('sncft_sahel')) return 'Metro Sahel';
-    if (operators.any((op) => op.startsWith('sncft_banlieue_'))) {
-      return 'Banlieue';
-    }
-    if (operators.contains('sncft_grandes_lignes') ||
-        station.id.startsWith('sncft_')) {
-      return 'Grandes Lignes';
-    }
-    if (operators.contains('taxi_collectif')) return 'Taxi collectif';
-    return 'Transport';
-  }
-
   void _selectStation(_StationSearchItem item) {
-    final lang = Localizations.localeOf(context).languageCode;
-    _controller.text = item.station.localizedName(lang);
+    _controller.text = _primaryStationName(item.station);
     widget.onSelected(item.station);
     _focusNode.unfocus();
   }
@@ -423,7 +418,10 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
   Widget _buildResultTile(_StationSearchItem item) {
     final color = _lineColor(item.station);
     final cityLabel = item.cityLabel.isNotEmpty ? item.cityLabel : '-';
-    final lang = Localizations.localeOf(context).languageCode;
+    final frenchName = _primaryStationName(item.station);
+    final arabicName = (item.nameAr ?? item.station.nameAr ?? '').trim();
+    final showArabic = arabicName.isNotEmpty &&
+        _normalizeLabel(arabicName) != _normalizeLabel(frenchName);
 
     return ListTile(
       onTap: () => _selectStation(item),
@@ -433,31 +431,24 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
         decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       ),
       title: Text(
-        item.station.localizedName(lang),
+        frenchName,
         style: const TextStyle(fontWeight: FontWeight.w700),
       ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if ((item.nameAr ?? '').trim().isNotEmpty)
+          if (showArabic)
             Text(
-              item.nameAr!,
+              arabicName,
               textDirection: TextDirection.rtl,
             ),
           const SizedBox(height: 2),
           Text(
-            _lineLabel(item.station),
+            cityLabel,
             style: const TextStyle(fontSize: 12, color: AppTheme.mediumGrey),
           ),
         ],
-      ),
-      trailing: Directionality(
-        textDirection: TextDirection.ltr,
-        child: Text(
-          cityLabel,
-          style: const TextStyle(fontSize: 12, color: AppTheme.mediumGrey),
-        ),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 8),
       dense: true,
@@ -579,10 +570,21 @@ class _StationSearchItem {
     final latitude = (data['latitude'] ?? data['lat'] ?? 0.0) as num;
     final longitude = (data['longitude'] ?? data['lng'] ?? 0.0) as num;
 
+    // Support two Firestore schemas:
+    //   old (FirestoreInitializationService): name=Arabic, nameFr=French
+    //   new (seed_transtu.js): name=French, nameAr=Arabic
+    final nameFr = (data['nameFr'] ?? '').toString().trim();
+    final nameField = (data['name'] ?? '').toString().trim();
+    final nameArField = (data['nameAr'] ?? '').toString().trim();
+    final frenchName = nameFr.isNotEmpty ? nameFr : nameField;
+    final arabicName = nameFr.isNotEmpty
+        ? (nameArField.isNotEmpty ? nameArField : nameField)
+        : nameArField;
+
     final station = Station(
       id: doc.id,
-      name: (data['name'] ?? '').toString(),
-      nameAr: data['nameAr']?.toString(),
+      name: frenchName,
+      nameAr: arabicName.isNotEmpty ? arabicName : null,
       nameEn: data['nameEn']?.toString(),
       cityId: cityId,
       latitude: latitude.toDouble(),
@@ -603,7 +605,7 @@ class _StationSearchItem {
 
     return _StationSearchItem(
       station: station,
-      nameAr: data['nameAr']?.toString(),
+      nameAr: arabicName.isNotEmpty ? arabicName : null,
       nameEn: data['nameEn']?.toString(),
       cityLabel: cityLabel,
     );

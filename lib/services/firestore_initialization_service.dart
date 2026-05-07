@@ -95,8 +95,8 @@ class FirestoreInitializationService {
   Map<String, Map<String, dynamic>> _getHubStations() {
     return {
       'transtu_hub_tunis_marine': {
-        'name': 'محطة تونس البحرية',
-        'nameFr': 'Tunis Marine',
+        'name': 'Tunis Marine',
+        'nameAr': 'محطة تونس البحرية',
         'cityId': 'tunis',
         'latitude': 36.8065,
         'longitude': 10.1630,
@@ -107,8 +107,8 @@ class FirestoreInitializationService {
         'createdAt': FieldValue.serverTimestamp(),
       },
       'transtu_hub_barcelone': {
-        'name': 'برشلونة',
-        'nameFr': 'Barcelone',
+        'name': 'Station de Bus Barcelone',
+        'nameAr': 'محطة برشلونة',
         'cityId': 'tunis',
         'latitude': 36.8045,
         'longitude': 10.1910,
@@ -119,8 +119,8 @@ class FirestoreInitializationService {
         'createdAt': FieldValue.serverTimestamp(),
       },
       'transtu_hub_bab_alioua': {
-        'name': 'باب البحرية',
-        'nameFr': 'Bab Alioua',
+        'name': 'Bab Alioua',
+        'nameAr': 'باب البحرية',
         'cityId': 'tunis',
         'latitude': 36.7955,
         'longitude': 10.1865,
@@ -131,8 +131,8 @@ class FirestoreInitializationService {
         'createdAt': FieldValue.serverTimestamp(),
       },
       'transtu_hub_10_decembre': {
-        'name': '10 ديسمبر',
-        'nameFr': '10 Décembre',
+        'name': '10 Décembre',
+        'nameAr': '10 ديسمبر',
         'cityId': 'tunis',
         'latitude': 36.8230,
         'longitude': 10.1560,
@@ -148,8 +148,8 @@ class FirestoreInitializationService {
   Map<String, Map<String, dynamic>> _getDestinationStations() {
     return {
       'transtu_dest_qasr_al_andalus': {
-        'name': 'قلعة الأندلس',
-        'nameFr': 'Qasr Al-Andalus',
+        'name': 'Qasr Al-Andalus',
+        'nameAr': 'قلعة الأندلس',
         'cityId': 'tunis',
         'latitude': 36.8420,
         'longitude': 10.1890,
@@ -160,8 +160,8 @@ class FirestoreInitializationService {
         'createdAt': FieldValue.serverTimestamp(),
       },
       'transtu_dest_sidi_sofiane': {
-        'name': 'سيدي سفيان',
-        'nameFr': 'Sidi Sofiane',
+        'name': 'Sidi Sofiane',
+        'nameAr': 'سيدي سفيان',
         'cityId': 'tunis',
         'latitude': 36.8680,
         'longitude': 10.1230,
@@ -172,8 +172,8 @@ class FirestoreInitializationService {
         'createdAt': FieldValue.serverTimestamp(),
       },
       'transtu_dest_cité_mellaha': {
-        'name': 'حي الملاحة',
-        'nameFr': 'Cité Mellaha',
+        'name': 'Cité Mellaha',
+        'nameAr': 'حي الملاحة',
         'cityId': 'tunis',
         'latitude': 36.8710,
         'longitude': 10.0950,
@@ -184,8 +184,8 @@ class FirestoreInitializationService {
         'createdAt': FieldValue.serverTimestamp(),
       },
       'transtu_dest_ghazala': {
-        'name': 'غزالة',
-        'nameFr': 'Ghazala',
+        'name': 'Ghazala',
+        'nameAr': 'غزالة',
         'cityId': 'ariana',
         'latitude': 36.9020,
         'longitude': 10.1450,
@@ -196,8 +196,8 @@ class FirestoreInitializationService {
         'createdAt': FieldValue.serverTimestamp(),
       },
       'transtu_dest_raoued': {
-        'name': 'رواد',
-        'nameFr': 'Raoued',
+        'name': 'Raoued',
+        'nameAr': 'رواد',
         'cityId': 'ariana',
         'latitude': 36.8890,
         'longitude': 10.0790,
@@ -208,8 +208,8 @@ class FirestoreInitializationService {
         'createdAt': FieldValue.serverTimestamp(),
       },
       'transtu_dest_la_goulette': {
-        'name': 'حلق الوادي',
-        'nameFr': 'La Goulette',
+        'name': 'La Goulette',
+        'nameAr': 'حلق الوادي',
         'cityId': 'tunis',
         'latitude': 36.8210,
         'longitude': 10.3210,
@@ -220,8 +220,8 @@ class FirestoreInitializationService {
         'createdAt': FieldValue.serverTimestamp(),
       },
       'transtu_dest_cite_bakri': {
-        'name': 'حي البكري',
-        'nameFr': 'Cité Bakri',
+        'name': 'Cité Bakri',
+        'nameAr': 'حي البكري',
         'cityId': 'tunis',
         'latitude': 36.8480,
         'longitude': 10.1340,
@@ -232,8 +232,8 @@ class FirestoreInitializationService {
         'createdAt': FieldValue.serverTimestamp(),
       },
       'transtu_dest_el_brarjia': {
-        'name': 'البرارجة',
-        'nameFr': 'El Brarjia',
+        'name': 'El Brarjia',
+        'nameAr': 'البرارجة',
         'cityId': 'tunis',
         'latitude': 36.8550,
         'longitude': 10.0890,
@@ -244,8 +244,8 @@ class FirestoreInitializationService {
         'createdAt': FieldValue.serverTimestamp(),
       },
       'transtu_dest_sidi_omar': {
-        'name': 'سيدي عمر',
-        'nameFr': 'Sidi Omar',
+        'name': 'Sidi Omar',
+        'nameAr': 'سيدي عمر',
         'cityId': 'tunis',
         'latitude': 36.8320,
         'longitude': 10.0680,
@@ -256,8 +256,8 @@ class FirestoreInitializationService {
         'createdAt': FieldValue.serverTimestamp(),
       },
       'transtu_dest_medina_jdida': {
-        'name': 'المدينة الجديدة',
-        'nameFr': 'Medina Jdida',
+        'name': 'Medina Jdida',
+        'nameAr': 'المدينة الجديدة',
         'cityId': 'tunis',
         'latitude': 36.8015,
         'longitude': 10.1560,
@@ -268,8 +268,8 @@ class FirestoreInitializationService {
         'createdAt': FieldValue.serverTimestamp(),
       },
       'transtu_dest_mornag': {
-        'name': 'مرناق',
-        'nameFr': 'Mornag',
+        'name': 'Mornag',
+        'nameAr': 'مرناق',
         'cityId': 'mornag',
         'latitude': 36.7510,
         'longitude': 10.3420,
@@ -280,8 +280,8 @@ class FirestoreInitializationService {
         'createdAt': FieldValue.serverTimestamp(),
       },
       'transtu_dest_ben_arous': {
-        'name': 'بن عروس',
-        'nameFr': 'Ben Arous',
+        'name': 'Ben Arous',
+        'nameAr': 'بن عروس',
         'cityId': 'ben_arous',
         'latitude': 36.7650,
         'longitude': 10.2340,

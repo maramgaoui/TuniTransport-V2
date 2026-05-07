@@ -63,6 +63,23 @@ void main() {
       expect(journey.isFavorite, isTrue);
     });
 
+    test('Journey.fromJson: conserve les horaires de grille bus', () {
+      final journey = Journey.fromJson({
+        'id': 'bus1',
+        'departureStation': 'Montazah',
+        'arrivalStation': 'Cité Essâada',
+        'departureTime': '05:20',
+        'arrivalTime': '23:30',
+        'timetableFirstDepartureTime': '05:00',
+        'timetableLastDepartureTime': '23:30',
+        'price': '0.500',
+      });
+
+      expect(journey.departureTime, '05:20');
+      expect(journey.timetableFirstDepartureTime, '05:00');
+      expect(journey.timetableLastDepartureTime, '23:30');
+    });
+
     test('User fullName: fallback coherent quand infos partielles', () {
       final userWithName = User(
         uid: 'u1',

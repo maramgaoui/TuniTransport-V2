@@ -104,12 +104,45 @@ class JourneySearchController extends ChangeNotifier {
     'sts_ksar_hellal': 'ms_ksar_hellal',
     'sts_jem':      'ms_el_jem',
     'sts_sahline':  'ms_sahline',
+    // SNCFT shared-hub variants: normalize to ms_* so the STS branch fires
+    // when the user picks the SNCFT representation of a shared city hub.
+    'sncft_monastir':        'ms_monastir',
+    'sncft_sousse_voyageurs': 'ms_sousse_bab_jedid',
   };
 
   /// Emits a new state and notifies listeners in one call.
   void _emit(JourneySearchState newState) {
     _state = newState;
     notifyListeners();
+  }
+
+  static int _parseDepartureMinutes(String departureTime) {
+    final cleanDeparture = departureTime
+        .replaceAll(RegExp(r'\s*\(\+\d+\)'), '')
+        .trim();
+    final parts = cleanDeparture.split(':');
+    if (parts.length != 2) return 99999;
+
+    final hours = int.tryParse(parts[0]);
+    final minutes = int.tryParse(parts[1]);
+    if (hours == null || minutes == null) return 99999;
+
+    return hours * 60 + minutes;
+  }
+
+  static void _sortTrainResultsByDeparture(
+    List<MetroSahelResult> trainResults,
+  ) {
+    trainResults.sort((a, b) {
+      final aTomorrow = a.noTrainToday;
+      final bTomorrow = b.noTrainToday;
+      if (aTomorrow != bTomorrow) {
+        return aTomorrow ? 1 : -1;
+      }
+
+      return _parseDepartureMinutes(a.departureTime)
+          .compareTo(_parseDepartureMinutes(b.departureTime));
+    });
   }
 
   bool _isBnStationSet(String fromStationId, String toStationId) {
@@ -358,6 +391,7 @@ class JourneySearchController extends ChangeNotifier {
       String? bestBusDepartureTime;
       String? busHubName;
       String? busError;
+      bool busIsReverse = false;
 
       if (_stationRepository.isTranstuStation(fromStation)) {
         if (kDebugMode) {
@@ -378,14 +412,20 @@ class JourneySearchController extends ChangeNotifier {
             final hubIsDestination =
               _busServiceRepository.isTranstuHub(toStation.id) &&
               !_busServiceRepository.isTranstuHub(fromStation.id);
+            // servicesRunFromDest: true when all returned services originate at a
+            // hub that is NOT the fromStation — meaning we got reverse-mode results.
+            // Compare hubStationId (not destinationStationId) to fromStation.id;
+            // using destinationStationId was wrong because destination ≠ departure
+            // is always true for any forward search too.
             final servicesRunFromDest =
               busServices.isNotEmpty &&
               busServices.every(
-              (s) => s.destinationStationId != fromStation.id,
+              (s) => s.hubStationId != fromStation.id,
               );
             final isReverse = hubIsDestination ||
               (servicesRunFromDest &&
                 _busServiceRepository.isTranstuHub(toStation.id));
+            busIsReverse = isReverse;
 
           for (final svc in busServices) {
             final nextDep = isReverse
@@ -477,12 +517,14 @@ class JourneySearchController extends ChangeNotifier {
           error: busError ?? 'Ces stations n\'appartiennent pas à la même ligne.',
         ));
       } else {
+        _sortTrainResultsByDeparture(collectedTrainResults);
         _emit(_state.copyWith(
           isLoading: false,
           trainResults: collectedTrainResults,
           bestBusService: bestBusService,
           bestBusDepartureTime: bestBusDepartureTime,
           busHubName: busHubName,
+          busIsReverse: busIsReverse,
           error: busError,
           taxiCollectifResult: taxiResult,
           clearTaxi: taxiResult == null,

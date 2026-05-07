@@ -16,12 +16,14 @@ class BusServiceRepository {
     'transtu_hub_khaireddine',
     'transtu_hub_tunis_marine',
     'transtu_hub_intilaka',
+    'transtu_hub_intileka',
     'transtu_hub_morneg',
     'transtu_hub_tbourba',
     'transtu_hub_slimlen_kahia',
     'transtu_hub_bellevue',
     'transtu_hub_carthage',
     'transtu_hub_jardin_thameur',
+    'transtu_hub_hadiqat_thamer',
     'transtu_hub_montazah',
     'transtu_hub_bel_houan',
     'transtu_hub_kabaa',
@@ -137,11 +139,16 @@ class BusServiceRepository {
       'transtu_dest_la_goulette':         'transtu_hub_10_decembre',
       'transtu_dest_cite_bakri':          'transtu_hub_10_decembre',
       'transtu_dest_nour_jafar':          'transtu_hub_10_decembre',
+      'transtu_dest_nour_jaafar':         'transtu_hub_10_decembre',
       // legacy / alternate IDs kept for backwards compat
       'transtu_dest_cité_mellaha':        'transtu_hub_10_decembre',
       'transtu_dest_ghazala':             'transtu_hub_10_decembre',
       'transtu_dest_raoued':              'transtu_hub_10_decembre',
       'transtu_dest_kalaat_andalous':     'transtu_hub_10_decembre',
+      'transtu_dest_sidi_amor':           'transtu_hub_10_decembre',
+      'transtu_dest_el_bhararja':         'transtu_hub_10_decembre',
+      'transtu_dest_ariana_bhararja':     'transtu_hub_10_decembre',
+      'transtu_dest_cite_bekri':          'transtu_hub_10_decembre',
       'transtu_dest_ariana_brarjia':      'transtu_hub_10_decembre',
       'transtu_dest_cité_bakri':          'transtu_hub_10_decembre',
 
@@ -167,14 +174,37 @@ class BusServiceRepository {
 
       // ── Ariana hub ────────────────────────────────────────────────────────
       'transtu_dest_manji_salim':         'transtu_hub_ariana',
+      'transtu_dest_hay_manji_salim':     'transtu_hub_ariana',
+      'transtu_dest_cite_mongi_slim':     'transtu_hub_ariana',
       'transtu_dest_sidi_salah':          'transtu_hub_ariana',
+      'transtu_dest_sidi_salah_ariana':   'transtu_hub_ariana',
       'transtu_dest_menzah9':             'transtu_hub_ariana',
       'transtu_dest_manouba':             'transtu_hub_ariana',
+      'transtu_dest_manouba_ar':          'transtu_hub_ariana',
+      'transtu_dest_kalaat_ar':           'transtu_hub_ariana',
 
       // ── Bellevue hub ──────────────────────────────────────────────────────
       'transtu_dest_centre_capitale_moh5':   'transtu_hub_bellevue',
       'transtu_dest_centre_capitale_9avril': 'transtu_hub_bellevue',
       'transtu_dest_salambo':                'transtu_hub_bellevue',
+
+      // ── Bab Alioua hub ───────────────────────────────────────────────────
+      'transtu_dest_sidi_hassine':           'transtu_hub_bab_alioua',
+      'transtu_dest_sidi_hassine_thamer':    'transtu_hub_hadiqat_thamer',
+      'transtu_dest_cite_ezzouhour5':        'transtu_hub_bab_alioua',
+      'transtu_dest_cite_khaled_ibn_walid':  'transtu_hub_bab_alioua',
+      'transtu_dest_cite_el_machtel':        'transtu_hub_bab_alioua',
+      'transtu_dest_tebourba':               'transtu_hub_bab_alioua',
+      // Hub alias for searches that select hub_tbourba directly.
+      'transtu_hub_tbourba':                 'transtu_hub_bab_alioua',
+
+      // ── Hadiqat Thamer hub ───────────────────────────────────────────────
+      'transtu_dest_el_hararia':             'transtu_hub_hadiqat_thamer',
+      'transtu_dest_hararia':                'transtu_hub_hadiqat_thamer',
+      'transtu_dest_hrairia':                'transtu_hub_hadiqat_thamer',
+      'transtu_dest_cite_20mars_thamer':     'transtu_hub_hadiqat_thamer',
+      // Legacy hub alias for the same place.
+      'transtu_hub_jardin_thameur':          'transtu_hub_hadiqat_thamer',
 
       // ── Carthage hub ──────────────────────────────────────────────────────
       'transtu_dest_souk_merkezi':        'transtu_hub_carthage',
@@ -216,6 +246,10 @@ class BusServiceRepository {
       'transtu_dest_zone_industrielle': 'transtu_hub_tbourba',
       'transtu_dest_borj_toumi':        'transtu_hub_tbourba',
       'transtu_dest_edkhila':           'transtu_hub_tbourba',
+      'transtu_dest_charguia_tb':       'transtu_hub_tbourba',
+      'transtu_dest_kabaa_tb':          'transtu_hub_tbourba',
+      'transtu_dest_khaireddine_tb':    'transtu_hub_tbourba',
+      'transtu_dest_zi_manouba':        'transtu_hub_tbourba',
       // Note: charguia also appears under marine — tbourba takes precedence
       // for routes originating from tbourba
       'transtu_hub_khaireddine':        'transtu_hub_tbourba',
@@ -227,6 +261,7 @@ class BusServiceRepository {
       'transtu_dest_habibiya2':         'transtu_hub_bel_houan',
       'transtu_dest_cite_wouroud2':     'transtu_hub_bel_houan',
       'transtu_dest_jelou':             'transtu_hub_bel_houan',
+      'transtu_dest_jellou_kh':         'transtu_hub_bel_houan',
       'transtu_dest_cite_tahrir':       'transtu_hub_bel_houan',
       'transtu_dest_qantarat_bizert':   'transtu_hub_bel_houan',
       'transtu_dest_bach_hambia':       'transtu_hub_bel_houan',
@@ -272,7 +307,13 @@ class BusServiceRepository {
 
     // Case 3: Hub to Hub (direct connection between two hubs)
     if (fromIsHub && toIsHub) {
-      return _findDirectHubServices(fromStationId, toStationId);
+      // Try direct: hub1 originates services to hub2.
+      final direct = await _findDirectHubServices(fromStationId, toStationId);
+      if (direct.isNotEmpty) return direct;
+      // Fallback: hub2 is actually the main hub and hub1 is treated as a
+      // destination of hub2 (e.g. Mornag → Barcelone where only the
+      // Barcelone→Mornag forward service exists in bus_services).
+      return _findServicesFromDestinationToHub(fromStationId, toStationId, isReverse: true);
     }
 
     // Case 4: Destination to Destination - need to find a hub that serves both
@@ -299,9 +340,117 @@ class BusServiceRepository {
     // First, get all services from this hub
     final allServices = await getServicesForHub(hubId);
 
-    // 1. Try exact destination station ID match (reliable, no string fragility).
+    // 1. Try destination station ID match first, with legacy/shared aliases.
+    final destinationAliases = <String>{destinationId};
+    if (destinationId == 'transtu_dest_cite_ezzouhour5') {
+      destinationAliases.add('transtu_dest_cite_ezzouhour5_charguia');
+      destinationAliases.add('transtu_dest_cite_zahour5');
+    }
+    if (destinationId == 'transtu_dest_cite_ezzouhour5_charguia') {
+      destinationAliases.add('transtu_dest_cite_ezzouhour5');
+      destinationAliases.add('transtu_dest_cite_zahour5');
+    }
+    if (destinationId == 'transtu_dest_cite_zahour5') {
+      destinationAliases.add('transtu_dest_cite_ezzouhour5');
+      destinationAliases.add('transtu_dest_cite_ezzouhour5_charguia');
+    }
+    if (destinationId == 'transtu_dest_gamarth') {
+      destinationAliases.add('transtu_dest_marsa_gammarth');
+    }
+    if (destinationId == 'transtu_dest_marsa_gammarth') {
+      destinationAliases.add('transtu_dest_gamarth');
+    }
+    if (destinationId == 'transtu_hub_tbourba') {
+      destinationAliases.add('transtu_dest_tebourba');
+      destinationAliases.add('transtu_dest_bach_hambia');
+      destinationAliases.add('transtu_dest_tabria');
+    }
+    if (destinationId == 'transtu_hub_10_decembre') {
+      destinationAliases.add('transtu_dest_10_decembre');
+    }
+    if (destinationId == 'transtu_hub_morneg') {
+      destinationAliases.add('transtu_dest_mornag');
+    }
+    if (destinationId == 'transtu_hub_charguia') {
+      destinationAliases.add('transtu_dest_charguia');
+    }
+    if (destinationId == 'transtu_dest_jelou' ||
+        destinationId == 'transtu_dest_jellou' ||
+        destinationId == 'transtu_dest_jallou' ||
+        destinationId == 'transtu_dest_jellou_kh') {
+      destinationAliases.add('transtu_dest_jelou');
+      destinationAliases.add('transtu_dest_jellou');
+      destinationAliases.add('transtu_dest_jallou');
+      destinationAliases.add('transtu_dest_jellou_kh');
+    }
+    if (destinationId == 'transtu_dest_khaled_ben_walid' ||
+        destinationId == 'transtu_dest_cite_khaled_ibn_walid' ||
+        destinationId == 'transtu_dest_khaled_bn_walid') {
+      destinationAliases.add('transtu_dest_khaled_ben_walid');
+      destinationAliases.add('transtu_dest_cite_khaled_ibn_walid');
+      destinationAliases.add('transtu_dest_khaled_bn_walid');
+    }
+    if (destinationId == 'transtu_hub_carthage') {
+      destinationAliases.add('transtu_dest_carthage');
+    }
+    if (destinationId == 'transtu_dest_carthage') {
+      destinationAliases.add('transtu_hub_carthage');
+    }
+    if (destinationId == 'transtu_hub_jardin_thameur') {
+      destinationAliases.add('transtu_hub_hadiqat_thamer');
+    }
+    if (destinationId == 'transtu_hub_hadiqat_thamer') {
+      destinationAliases.add('transtu_hub_jardin_thameur');
+    }
+    if (destinationId == 'transtu_hub_intilaka' ||
+        destinationId == 'transtu_hub_intileka') {
+      destinationAliases.add('transtu_dest_intilaka');
+    }
+    if (destinationId == 'transtu_dest_el_hararia') {
+      destinationAliases.add('transtu_dest_hararia');
+      destinationAliases.add('transtu_dest_hrairia');
+    }
+    if (destinationId == 'transtu_dest_hararia' ||
+        destinationId == 'transtu_dest_hrairia') {
+      destinationAliases.add('transtu_dest_el_hararia');
+    }
+    if (destinationId == 'transtu_dest_hay_manji_salim' ||
+        destinationId == 'transtu_dest_cite_mongi_slim' ||
+        destinationId == 'transtu_dest_manji_salim') {
+      destinationAliases.add('transtu_dest_hay_manji_salim');
+      destinationAliases.add('transtu_dest_cite_mongi_slim');
+      destinationAliases.add('transtu_dest_manji_salim');
+    }
+    if (destinationId == 'transtu_dest_sidi_salah_ariana' ||
+        destinationId == 'transtu_dest_sidi_salah') {
+      destinationAliases.add('transtu_dest_sidi_salah_ariana');
+      destinationAliases.add('transtu_dest_sidi_salah');
+    }
+    if (destinationId == 'transtu_dest_manouba_ar' ||
+        destinationId == 'transtu_dest_manouba') {
+      destinationAliases.add('transtu_dest_manouba_ar');
+      destinationAliases.add('transtu_dest_manouba');
+    }
+    if (destinationId == 'transtu_dest_kalaat_ar' ||
+        destinationId == 'transtu_dest_kalaat_alandalous' ||
+        destinationId == 'transtu_dest_kalaat_andalous') {
+      destinationAliases.add('transtu_dest_kalaat_ar');
+      destinationAliases.add('transtu_dest_kalaat_alandalous');
+      destinationAliases.add('transtu_dest_kalaat_andalous');
+    }
+    if (destinationId == 'transtu_dest_cite_mellaha' ||
+        destinationId == 'transtu_dest_cité_mellaha') {
+      destinationAliases.add('transtu_dest_cite_mellaha');
+      destinationAliases.add('transtu_dest_cité_mellaha');
+    }
+    if (destinationId == 'transtu_dest_nour_jaafar' ||
+        destinationId == 'transtu_dest_nour_jafar') {
+      destinationAliases.add('transtu_dest_nour_jaafar');
+      destinationAliases.add('transtu_dest_nour_jafar');
+    }
+
     final byId = allServices
-        .where((s) => s.destinationStationId == destinationId)
+        .where((s) => destinationAliases.contains(s.destinationStationId))
         .toList();
     if (byId.isNotEmpty) {
       if (kDebugMode) {
@@ -350,22 +499,173 @@ class BusServiceRepository {
       debugPrint('[BusServiceRepo] Looking for destination→hub: $destinationId → $hubId');
     }
 
-    // For reverse direction, we need the hub that serves this destination
-    final actualHubId = getHubForDestination(destinationId) ?? hubId;
-
-    // Get all services from that hub
-    final allServices = await getServicesForHub(actualHubId);
-
-    // 1. Try exact destination station ID match first.
-    final byId = allServices
-        .where((s) => s.destinationStationId == destinationId)
-        .toList();
-    if (byId.isNotEmpty) {
-      if (kDebugMode) {
-        debugPrint('[BusServiceRepo] Matched ${byId.length} reverse services by destinationStationId');
+    // When isReverse=true and destinationId is actually a hub (hub→hub case),
+    // find services from hubId that go TO that hub (as a destination variant)
+    if (isReverse && isTranstuHub(destinationId)) {
+      final destHubVariants = <String>{};
+      // Map hub IDs to their destination variants
+      if (destinationId == 'transtu_hub_charguia') {
+        destHubVariants.add('transtu_dest_charguia');
+        destHubVariants.add('transtu_dest_charguia_tb');
+      } else if (destinationId == 'transtu_hub_tbourba') {
+        destHubVariants.add('transtu_dest_charguia_tb');
+        destHubVariants.add('transtu_dest_tebourba');
+        destHubVariants.add('transtu_dest_bach_hambia');
+        destHubVariants.add('transtu_dest_tabria');
+      } else if (destinationId == 'transtu_hub_morneg') {
+        destHubVariants.add('transtu_dest_mornag');
       }
-      return byId;
+      
+      if (destHubVariants.isNotEmpty) {
+        final servicesFromHub = await getServicesForHub(hubId);
+        final matched = servicesFromHub
+            .where((s) => destHubVariants.contains(s.destinationStationId))
+            .toList();
+        if (matched.isNotEmpty) {
+          if (kDebugMode) {
+            debugPrint('[BusServiceRepo] Found ${matched.length} reverse hub→hub services by destination variant');
+          }
+          return matched;
+        }
+      }
     }
+
+    // Shared destinations can belong to multiple hubs (e.g., Charguia,
+    // Omrane Superieur). Always try the requested hub first, then fallback
+    // to the static destination→hub map.
+    final candidateHubs = <String>[hubId];
+    final mappedHubId = getHubForDestination(destinationId);
+    if (mappedHubId != null && mappedHubId != hubId) {
+      candidateHubs.add(mappedHubId);
+    }
+
+    final destinationAliases = <String>{destinationId};
+    if (destinationId == 'transtu_dest_cite_ezzouhour5') {
+      destinationAliases.add('transtu_dest_cite_ezzouhour5_charguia');
+      destinationAliases.add('transtu_dest_cite_zahour5');
+    }
+    if (destinationId == 'transtu_dest_cite_ezzouhour5_charguia') {
+      destinationAliases.add('transtu_dest_cite_ezzouhour5');
+      destinationAliases.add('transtu_dest_cite_zahour5');
+    }
+    if (destinationId == 'transtu_dest_cite_zahour5') {
+      destinationAliases.add('transtu_dest_cite_ezzouhour5');
+      destinationAliases.add('transtu_dest_cite_ezzouhour5_charguia');
+    }
+    if (destinationId == 'transtu_dest_gamarth') {
+      destinationAliases.add('transtu_dest_marsa_gammarth');
+    }
+    if (destinationId == 'transtu_dest_marsa_gammarth') {
+      destinationAliases.add('transtu_dest_gamarth');
+    }
+    if (destinationId == 'transtu_hub_tbourba') {
+      destinationAliases.add('transtu_dest_tebourba');
+      destinationAliases.add('transtu_dest_bach_hambia');
+      destinationAliases.add('transtu_dest_tabria');
+    }
+    if (destinationId == 'transtu_hub_10_decembre') {
+      destinationAliases.add('transtu_dest_10_decembre');
+    }
+    if (destinationId == 'transtu_hub_charguia') {
+      destinationAliases.add('transtu_dest_charguia');
+    }
+    if (destinationId == 'transtu_dest_jelou' ||
+        destinationId == 'transtu_dest_jellou' ||
+        destinationId == 'transtu_dest_jallou' ||
+        destinationId == 'transtu_dest_jellou_kh') {
+      destinationAliases.add('transtu_dest_jelou');
+      destinationAliases.add('transtu_dest_jellou');
+      destinationAliases.add('transtu_dest_jallou');
+      destinationAliases.add('transtu_dest_jellou_kh');
+    }
+    if (destinationId == 'transtu_dest_khaled_ben_walid' ||
+        destinationId == 'transtu_dest_cite_khaled_ibn_walid' ||
+        destinationId == 'transtu_dest_khaled_bn_walid') {
+      destinationAliases.add('transtu_dest_khaled_ben_walid');
+      destinationAliases.add('transtu_dest_cite_khaled_ibn_walid');
+      destinationAliases.add('transtu_dest_khaled_bn_walid');
+    }
+    if (destinationId == 'transtu_hub_morneg') {
+      destinationAliases.add('transtu_dest_mornag');
+    }
+    if (destinationId == 'transtu_hub_carthage') {
+      destinationAliases.add('transtu_dest_carthage');
+    }
+    if (destinationId == 'transtu_dest_carthage') {
+      destinationAliases.add('transtu_hub_carthage');
+    }
+    if (destinationId == 'transtu_hub_jardin_thameur') {
+      destinationAliases.add('transtu_hub_hadiqat_thamer');
+    }
+    if (destinationId == 'transtu_hub_hadiqat_thamer') {
+      destinationAliases.add('transtu_hub_jardin_thameur');
+    }
+    if (destinationId == 'transtu_hub_intilaka' ||
+        destinationId == 'transtu_hub_intileka') {
+      destinationAliases.add('transtu_dest_intilaka');
+    }
+    if (destinationId == 'transtu_dest_el_hararia') {
+      destinationAliases.add('transtu_dest_hararia');
+      destinationAliases.add('transtu_dest_hrairia');
+    }
+    if (destinationId == 'transtu_dest_hararia' ||
+        destinationId == 'transtu_dest_hrairia') {
+      destinationAliases.add('transtu_dest_el_hararia');
+    }
+    if (destinationId == 'transtu_dest_hay_manji_salim' ||
+        destinationId == 'transtu_dest_cite_mongi_slim' ||
+        destinationId == 'transtu_dest_manji_salim') {
+      destinationAliases.add('transtu_dest_hay_manji_salim');
+      destinationAliases.add('transtu_dest_cite_mongi_slim');
+      destinationAliases.add('transtu_dest_manji_salim');
+    }
+    if (destinationId == 'transtu_dest_sidi_salah_ariana' ||
+        destinationId == 'transtu_dest_sidi_salah') {
+      destinationAliases.add('transtu_dest_sidi_salah_ariana');
+      destinationAliases.add('transtu_dest_sidi_salah');
+    }
+    if (destinationId == 'transtu_dest_manouba_ar' ||
+        destinationId == 'transtu_dest_manouba') {
+      destinationAliases.add('transtu_dest_manouba_ar');
+      destinationAliases.add('transtu_dest_manouba');
+    }
+    if (destinationId == 'transtu_dest_kalaat_ar' ||
+        destinationId == 'transtu_dest_kalaat_alandalous' ||
+        destinationId == 'transtu_dest_kalaat_andalous') {
+      destinationAliases.add('transtu_dest_kalaat_ar');
+      destinationAliases.add('transtu_dest_kalaat_alandalous');
+      destinationAliases.add('transtu_dest_kalaat_andalous');
+    }
+    if (destinationId == 'transtu_dest_cite_mellaha' ||
+        destinationId == 'transtu_dest_cité_mellaha') {
+      destinationAliases.add('transtu_dest_cite_mellaha');
+      destinationAliases.add('transtu_dest_cité_mellaha');
+    }
+    if (destinationId == 'transtu_dest_nour_jaafar' ||
+        destinationId == 'transtu_dest_nour_jafar') {
+      destinationAliases.add('transtu_dest_nour_jaafar');
+      destinationAliases.add('transtu_dest_nour_jafar');
+    }
+
+    for (final candidateHubId in candidateHubs) {
+      final candidateServices = await getServicesForHub(candidateHubId);
+      final byId = candidateServices
+          .where((s) => destinationAliases.contains(s.destinationStationId))
+          .toList();
+      if (byId.isNotEmpty) {
+        if (kDebugMode) {
+          debugPrint(
+            '[BusServiceRepo] Matched ${byId.length} reverse services '
+            'by destinationStationId via hub=$candidateHubId',
+          );
+        }
+        return byId;
+      }
+    }
+
+    // For fallback text matching, use mapped hub if available.
+    final actualHubId = mappedHubId ?? hubId;
+    final allServices = await getServicesForHub(actualHubId);
 
     // 2. Fallback: name-based match.
     final destinationName = _getDestinationName(destinationId);
@@ -399,9 +699,26 @@ class BusServiceRepository {
     // Get services from first hub
     final services = await getServicesForHub(hub1Id);
 
-    // 1. Try exact destination station ID match first (handles hubs like transtu_hub_morneg).
+    // 1. Try exact destination station ID match first (with known legacy aliases).
+    final destinationAliases = <String>{hub2Id};
+    if (hub2Id == 'transtu_hub_tbourba') {
+      destinationAliases.add('transtu_dest_tebourba');
+      destinationAliases.add('transtu_dest_bach_hambia');
+      destinationAliases.add('transtu_dest_tabria');
+    }
+    if (hub2Id == 'transtu_hub_10_decembre') {
+      destinationAliases.add('transtu_dest_10_decembre');
+    }
+    if (hub2Id == 'transtu_hub_morneg') {
+      destinationAliases.add('transtu_dest_mornag');
+    }
+    if (hub2Id == 'transtu_hub_charguia') {
+      destinationAliases.add('transtu_dest_charguia');
+      destinationAliases.add('transtu_dest_charguia_tb');
+    }
+
     final byId = services
-        .where((s) => s.destinationStationId == hub2Id)
+        .where((s) => destinationAliases.contains(s.destinationStationId))
         .toList();
     if (byId.isNotEmpty) {
       if (kDebugMode) {

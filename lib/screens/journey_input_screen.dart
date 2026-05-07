@@ -51,8 +51,17 @@ class _JourneyInputScreenState extends State<JourneyInputScreen> {
   }
 
   String _displayStationName(Station station) {
-    final languageCode = Localizations.localeOf(context).languageCode;
-    return station.localizedName(languageCode);
+    final frenchName = station.name.trim();
+    if (frenchName.isNotEmpty) return frenchName;
+
+    final arabicName = (station.nameAr ?? '').trim();
+    if (arabicName.isNotEmpty) return arabicName;
+
+    return station.cityId;
+  }
+
+  String _normalizeLabel(String value) {
+    return value.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
   }
 
   bool _isCurrentLocationText(String value, AppLocalizations l10n) {
@@ -313,15 +322,23 @@ class _JourneyInputScreenState extends State<JourneyInputScreen> {
                 separatorBuilder: (_, index) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final station = optionsList[index];
+                  final stationNameFr = station.name.trim();
                   final stationNameAr = (station.nameAr ?? '').trim();
+                  final showArabic = stationNameAr.isNotEmpty &&
+                      _normalizeLabel(stationNameAr) !=
+                          _normalizeLabel(stationNameFr);
                   return ListTile(
                     dense: true,
-                    title: Text(_displayStationName(station)),
+                    title: Text(
+                      stationNameFr.isNotEmpty
+                          ? stationNameFr
+                          : _displayStationName(station),
+                    ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (stationNameAr.isNotEmpty)
+                        if (showArabic)
                           Text(
                             stationNameAr,
                             textDirection: TextDirection.rtl,

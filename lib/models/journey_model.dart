@@ -18,6 +18,8 @@ class Journey {
   final String operator;
   final String line;
   final int? estimatedTripDurationMinutes;
+  final String? timetableFirstDepartureTime;
+  final String? timetableLastDepartureTime;
 
   Journey({
     required this.id,
@@ -37,6 +39,8 @@ class Journey {
     required this.operator,
     required this.line,
     this.estimatedTripDurationMinutes,
+    this.timetableFirstDepartureTime,
+    this.timetableLastDepartureTime,
   });
 
   // Backward-compatible aliases used by existing screens.
@@ -61,6 +65,8 @@ class Journey {
     String? operator,
     String? line,
     int? estimatedTripDurationMinutes,
+    String? timetableFirstDepartureTime,
+    String? timetableLastDepartureTime,
   }) {
     return Journey(
       id: id ?? this.id,
@@ -80,6 +86,10 @@ class Journey {
       operator: operator ?? this.operator,
       line: line ?? this.line,
       estimatedTripDurationMinutes: estimatedTripDurationMinutes ?? this.estimatedTripDurationMinutes,
+      timetableFirstDepartureTime:
+          timetableFirstDepartureTime ?? this.timetableFirstDepartureTime,
+      timetableLastDepartureTime:
+          timetableLastDepartureTime ?? this.timetableLastDepartureTime,
     );
   }
 
@@ -104,6 +114,10 @@ class Journey {
       operator: (json['operator'] ?? '').toString(),
       line: (json['line'] ?? '').toString(),
       estimatedTripDurationMinutes: (json['estimatedTripDurationMinutes'] as num?)?.toInt(),
+      timetableFirstDepartureTime:
+          json['timetableFirstDepartureTime']?.toString(),
+      timetableLastDepartureTime:
+          json['timetableLastDepartureTime']?.toString(),
     );
   }
 
@@ -126,6 +140,8 @@ class Journey {
       'operator': operator,
       'line': line,
       'estimatedTripDurationMinutes': estimatedTripDurationMinutes,
+      'timetableFirstDepartureTime': timetableFirstDepartureTime,
+      'timetableLastDepartureTime': timetableLastDepartureTime,
     };
   }
 }

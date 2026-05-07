@@ -182,6 +182,61 @@ void main() {
       expect(gobaa.map((station) => station.id), contains('rd_gobaa'));
     });
 
+    test('deduplicates Oudhna and prefers the TRANSTU station', () async {
+      await _seedStation(
+        firestore,
+        id: 'transtu_dest_oudhna',
+        name: 'Oudhna',
+        cityId: 'mornag',
+        operatorsHere: const ['transtu'],
+        latitude: 36.56,
+        longitude: 9.93,
+      );
+      await _seedStation(
+        firestore,
+        id: 'sncft_kef_oudna',
+        name: 'Oudna',
+        cityId: 'ben_arous',
+        operatorsHere: const ['sncft', 'sncft_grandes_lignes'],
+        latitude: 36.56,
+        longitude: 9.93,
+      );
+      StationRepository.invalidateCache();
+
+      final oudhna = await repository.searchStationsByName('Oudhna');
+
+      expect(oudhna, isNotEmpty);
+      expect(oudhna.first.id, 'transtu_dest_oudhna');
+      expect(oudhna.where((station) => station.id == 'sncft_kef_oudna'), isEmpty);
+    });
+
+    test('deduplicates Cite Mellaha old and new TRANSTU ids', () async {
+      await _seedStation(
+        firestore,
+        id: 'transtu_dest_cite_mellaha',
+        name: 'Cite El Mellaha',
+        cityId: 'tunis',
+        operatorsHere: const ['transtu'],
+      );
+      await _seedStation(
+        firestore,
+        id: 'transtu_dest_cité_mellaha',
+        name: 'Cité El Mellaha',
+        cityId: 'tunis',
+        operatorsHere: const ['transtu'],
+      );
+      StationRepository.invalidateCache();
+
+      final mellaha = await repository.searchStationsByName('Cite Mellaha');
+
+      expect(mellaha, isNotEmpty);
+      expect(mellaha.first.id, 'transtu_dest_cite_mellaha');
+      expect(
+        mellaha.where((station) => station.id == 'transtu_dest_cité_mellaha'),
+        isEmpty,
+      );
+    });
+
     test('returns nearest supported rail stations in distance order', () async {
       final nearest = await repository.findNearestStations(
         latitude: 36.7991,

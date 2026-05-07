@@ -19,6 +19,8 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   int _selectedIndex = 0;
   SessionResult? _session;
+  final GlobalKey<ProfileScreenState> _profileScreenKey =
+      GlobalKey<ProfileScreenState>();
 
   @override
   void initState() {
@@ -75,8 +77,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
         adminRole: trustedRole,
       ),
       const _AdminNotificationsTab(),
-      const ProfileScreen(),
+      ProfileScreen(
+        key: _profileScreenKey,
+        showAppBar: false,
+        showInlineActions: false,
+        onActionStateChanged: () {
+          if (mounted) setState(() {});
+        },
+      ),
     ];
+
+    final profileState = _profileScreenKey.currentState;
+    final canShowProfileActions =
+        _selectedIndex == 3 && (profileState?.canShowHeaderActions ?? false);
 
     return Scaffold(
       key: const Key('admin_dashboard_screen'),
@@ -91,6 +104,36 @@ class _AdminDashboardState extends State<AdminDashboard> {
         backgroundColor: AppTheme.primaryTeal,
         foregroundColor: Colors.white,
         actions: [
+          if (canShowProfileActions && !(profileState?.isEditing ?? false))
+            IconButton(
+              tooltip: l10n.edit,
+              icon: const Icon(Icons.edit),
+              onPressed: () => profileState?.startEditingFromParent(),
+            ),
+          if (canShowProfileActions && (profileState?.isEditing ?? false))
+            IconButton(
+              tooltip: l10n.save,
+              icon: (profileState?.isLoading ?? false)
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.check),
+              onPressed: (profileState?.isLoading ?? false)
+                  ? null
+                  : () => profileState?.submitEditsFromParent(),
+            ),
+          if (canShowProfileActions)
+            IconButton(
+              tooltip: l10n.settings,
+              icon: const Icon(Icons.settings),
+              onPressed: () => profileState?.openSettingsFromParent(),
+            ),
           if (_selectedIndex != 3)
             IconButton(
               tooltip: l10n.profile,

@@ -80,7 +80,7 @@ class MetroSahelCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      'Train ${result.tripNumberStr ?? result.tripNumber}',
+                      '${_isBus ? 'Bus' : 'Train'} ${result.tripNumberStr ?? result.tripNumber}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,

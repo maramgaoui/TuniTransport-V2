@@ -193,6 +193,15 @@ class RouteRepository {
     String fromStationId,
     String toStationId,
   ) async {
+    final basic = await _findDirectionalRouteId(
+      fromStationId: fromStationId,
+      toStationId: toStationId,
+      referenceRouteId: 'route_sts_mahdia_sousse_basic',
+      forwardRouteId: 'route_sts_mahdia_sousse_basic',
+      reverseRouteId: 'route_sts_sousse_mahdia_basic',
+    );
+    if (basic != null) return basic;
+
     // Try main forward route (via Sayada) first — covers most city pairs.
     final viaSayada = await _findDirectionalRouteId(
       fromStationId: fromStationId,
@@ -225,6 +234,18 @@ class RouteRepository {
         referenceRouteId: 'route_sts_mahdia_sousse',
         forwardRouteId: 'route_sts_mahdia_sousse',
         reverseRouteId: 'route_sts_sousse_mahdia',
+      );
+
+  Future<String?> findStsSahelBasicRouteId(
+    String fromStationId,
+    String toStationId,
+  ) =>
+      _findDirectionalRouteId(
+        fromStationId: fromStationId,
+        toStationId: toStationId,
+        referenceRouteId: 'route_sts_mahdia_sousse_basic',
+        forwardRouteId: 'route_sts_mahdia_sousse_basic',
+        reverseRouteId: 'route_sts_sousse_mahdia_basic',
       );
 
   /// Returns the via-Monastir route ID for the given station pair, or null if

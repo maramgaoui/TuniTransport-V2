@@ -32,10 +32,20 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
   late Journey _journey;
   List<_StopInfo> _intermediateStops = [];
   bool _stopsLoading = true;
+  int? _resolvedBusFrequencyMinutes;
 
   /// True when this details screen is showing a TRANSTU bus journey.
   bool get _isTranstuBus =>
       widget.journey != null && widget.journey!.type == 'Bus TRANSTU';
+
+  String get _displayFirstDeparture =>
+      _journey.timetableFirstDepartureTime ?? _journey.departureTime;
+
+  String? get _displayLastDeparture {
+    final value = _journey.timetableLastDepartureTime ?? _journey.arrivalTime;
+    if (value == null || value.isEmpty) return null;
+    return value;
+  }
 
   @override
   void initState() {
@@ -232,17 +242,28 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     try {
       final db = FirebaseFirestore.instance;
       // Derive routeId: Journey.id is 'bus_svc_route_transtu_...' → 'route_transtu_...'
-      final String routeId;
+      String routeId;
       if (_journey.id.startsWith('bus_svc_')) {
         routeId = _journey.id.substring('bus_svc_'.length);
       } else {
         final svcDoc =
             await db.collection('bus_services').doc(_journey.id).get();
         if (!svcDoc.exists) {
-          if (mounted) setState(() => _stopsLoading = false);
-          return;
+          routeId = '';
+        } else {
+          final svcData = svcDoc.data()!;
+          routeId = (svcData['routeId'] as String?) ?? '';
+          _resolvedBusFrequencyMinutes =
+              (svcData['peakFrequencyMinutes'] as num?)?.toInt();
         }
-        routeId = (svcDoc.data()!['routeId'] as String?) ?? '';
+      }
+
+      // Favorites / legacy entries may not carry a bus service document id.
+      // In that case, infer the matching service from line + station labels.
+      if (routeId.isEmpty) {
+        final inferred = await _inferTranstuServiceFromJourney(db);
+        routeId = inferred.$1;
+        _resolvedBusFrequencyMinutes ??= inferred.$2;
       }
 
       if (routeId.isEmpty) {
@@ -300,6 +321,81 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     } catch (_) {
       if (mounted) setState(() => _stopsLoading = false);
     }
+  }
+
+  Future<(String, int?)> _inferTranstuServiceFromJourney(
+    FirebaseFirestore db,
+  ) async {
+    final line = _extractLineNumber(_journey.line);
+    if (line.isEmpty) return ('', null);
+
+    final servicesSnap = await db
+        .collection('bus_services')
+        .where('lineNumber', isEqualTo: line)
+        .get();
+
+    if (servicesSnap.docs.isEmpty) return ('', null);
+
+    final departure = _normalizeText(_journey.departureStation);
+    final arrival = _normalizeText(_journey.arrivalStation);
+
+    int bestScore = -1;
+    String bestRouteId = '';
+    int? bestFreq;
+
+    for (final doc in servicesSnap.docs) {
+      final data = doc.data();
+      final hubId = (data['hubStationId'] as String?) ?? '';
+      final destId = (data['destinationStationId'] as String?) ?? '';
+      final destinationNameFr =
+          _normalizeText((data['destinationNameFr'] as String?) ?? '');
+
+      final ids = <String>{hubId, destId}.where((id) => id.isNotEmpty).toList();
+      final stationSnapshots = await Future.wait(
+        ids.map((id) => db.collection('stations').doc(id).get()),
+      );
+
+      String hubName = '';
+      String destName = '';
+      for (int i = 0; i < ids.length; i++) {
+        final stationData = stationSnapshots[i].data();
+        final name = _normalizeText((stationData?['name'] as String?) ?? '');
+        if (ids[i] == hubId) hubName = name;
+        if (ids[i] == destId) destName = name;
+      }
+
+      var score = 0;
+      if (_textMatches(hubName, departure)) score += 2;
+      if (_textMatches(destName, arrival)) score += 2;
+      if (_textMatches(destinationNameFr, arrival)) score += 1;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestRouteId = (data['routeId'] as String?) ?? '';
+        bestFreq = (data['peakFrequencyMinutes'] as num?)?.toInt();
+      }
+    }
+
+    return (bestRouteId, bestFreq);
+  }
+
+  String _extractLineNumber(String rawLine) {
+    final cleaned = rawLine.replaceAll('Ligne', '').trim();
+    if (cleaned.isEmpty) return '';
+    return cleaned;
+  }
+
+  String _normalizeText(String input) {
+    return input
+        .toLowerCase()
+        .replaceAll(RegExp(r"[^a-z0-9\u0600-\u06FF\s]"), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  bool _textMatches(String a, String b) {
+    if (a.isEmpty || b.isEmpty) return false;
+    return a == b || a.contains(b) || b.contains(a);
   }
 
   int _parseMinutes(String timeStr) {
@@ -464,9 +560,12 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       shareText
         ..writeln('🚌 Bus TRANSTU – ${j.line}')
         ..writeln('${j.departureStation} → ${j.arrivalStation}')
-        ..writeln('Premier départ: ${j.departureTime}')
-        ..writeln(
-            j.duration.isNotEmpty ? j.duration : '')
+        ..writeln('Premier départ: $_displayFirstDeparture');
+      if (_displayLastDeparture != null) {
+        shareText.writeln('Dernier départ: $_displayLastDeparture');
+      }
+      shareText
+        ..writeln(j.duration.isNotEmpty ? j.duration : '')
         ..writeln('Prix: ${j.price} TND');
     }
 
@@ -535,12 +634,16 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
   Future<String?> _resolveStsSahelRouteId(MetroSahelResult metro) async {
     final db = FirebaseFirestore.instance;
     const candidateRoutes = [
+      'route_sts_mahdia_sousse_basic',
+      'route_sts_sousse_mahdia_basic',
       'route_sts_mahdia_sousse',
       'route_sts_sousse_mahdia',
       'route_sts_mahdia_sousse_monastir',
+      'route_sts_sousse_mahdia_monastir',
     ];
 
     String? fallbackRouteId;
+    final tripNumber = (metro.tripNumberStr ?? '').trim();
     for (final candidateRouteId in candidateRoutes) {
       final routeStops = await db
           .collection('route_stops')
@@ -558,7 +661,21 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       }
 
       if (fromOrder != null && toOrder != null) {
-        if (fromOrder < toOrder) return candidateRouteId;
+        if (fromOrder < toOrder) {
+          if (tripNumber.isNotEmpty && tripNumber != '0' && tripNumber != '–') {
+            final tripSnap = await db
+                .collection('trips')
+                .where('routeId', isEqualTo: candidateRouteId)
+                .where('tripNumber', isEqualTo: tripNumber)
+                .limit(1)
+                .get();
+            if (tripSnap.docs.isNotEmpty) {
+              return candidateRouteId;
+            }
+          } else {
+            return candidateRouteId;
+          }
+        }
         fallbackRouteId ??= candidateRouteId;
       }
     }
@@ -569,6 +686,11 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
 
   Widget _buildBusDetailsPanel() {
     final j = _journey;
+    final frequencyValue = j.duration.isNotEmpty
+        ? j.duration
+        : (_resolvedBusFrequencyMinutes != null
+            ? 'Fréquence: $_resolvedBusFrequencyMinutes min'
+            : '');
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -600,21 +722,21 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
           _buildInfoCard(
             icon: Icons.access_time,
             title: 'Premier départ',
-            value: j.departureTime,
+            value: _displayFirstDeparture,
           ),
           const SizedBox(height: 12),
-          if ((j.arrivalTime ?? '').isNotEmpty)
+          if (_displayLastDeparture != null)
             _buildInfoCard(
               icon: Icons.access_time_filled,
               title: 'Dernier départ',
-              value: j.arrivalTime!,
+              value: _displayLastDeparture!,
             ),
           const SizedBox(height: 12),
-          if (j.duration.isNotEmpty)
+          if (frequencyValue.isNotEmpty)
             _buildInfoCard(
               icon: Icons.schedule,
               title: 'Fréquence',
-              value: j.duration,
+              value: frequencyValue,
             ),
           const SizedBox(height: 12),
           _buildInfoCard(
@@ -646,7 +768,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                 const Expanded(
                   child: Text(
                     'Les bus TRANSTU opèrent à fréquence régulière. '
-                    'Le premier et le dernier départ sont indiqués depuis le hub.',
+                    'Le premier et le dernier départ sont indiqués depuis le point de départ du trajet.',
                     style:
                         TextStyle(fontSize: 13, color: Color(0xFF1B5E20)),
                   ),
@@ -925,15 +1047,15 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                             children: [
                               _timeBadge(
                                   'Premier départ',
-                                  _journey.departureTime),
+                                  _displayFirstDeparture),
                               const Spacer(),
                               const Icon(Icons.directions_bus,
                                   color: Colors.white54, size: 22),
                               const Spacer(),
-                              if ((_journey.arrivalTime ?? '').isNotEmpty)
+                              if (_displayLastDeparture != null)
                                 _timeBadge(
                                     'Dernier départ',
-                                    _journey.arrivalTime!),
+                                    _displayLastDeparture!),
                             ],
                           ),
                         ),

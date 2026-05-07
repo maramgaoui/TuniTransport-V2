@@ -11,13 +11,22 @@ import '../theme/app_theme.dart';
 import '../widgets/app_settings.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({
+    super.key,
+    this.showAppBar = true,
+    this.showInlineActions = true,
+    this.onActionStateChanged,
+  });
+
+  final bool showAppBar;
+  final bool showInlineActions;
+  final VoidCallback? onActionStateChanged;
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  State<ProfileScreen> createState() => ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class ProfileScreenState extends State<ProfileScreen> {
   late ProfileController _profileController;
   late AuthController _authController;
   bool _isEditing = false;
@@ -37,6 +46,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool get _isPrivilegedReadOnlyMode {
     return _authController.isActingAsUser &&
         (_authController.cachedSession?.isPrivileged ?? false);
+  }
+
+  bool get canShowHeaderActions => !_isPrivilegedReadOnlyMode;
+  bool get isEditing => _isEditing;
+  bool get isLoading => _isLoading;
+
+  void startEditingFromParent() {
+    if (!_isPrivilegedReadOnlyMode && mounted) {
+      setState(() => _isEditing = true);
+      widget.onActionStateChanged?.call();
+    }
+  }
+
+  Future<void> submitEditsFromParent() async {
+    if (_isPrivilegedReadOnlyMode || _isLoading || !mounted) return;
+    final profile = await _profileController.getCurrentProfile();
+    if (profile != null && mounted) {
+      await _saveProfile(profile);
+    }
+    widget.onActionStateChanged?.call();
+  }
+
+  void openSettingsFromParent() {
+    if (_isPrivilegedReadOnlyMode || !mounted) return;
+    _showSettingsDialog();
   }
 
   @override
@@ -102,6 +136,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final l10n = AppLocalizations.of(context)!;
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
+      widget.onActionStateChanged?.call();
 
       final firstName = _firstNameController.text.trim();
       final lastName = _lastNameController.text.trim();
@@ -120,9 +155,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   if (!mounted) return;
 
       setState(() => _isLoading = false);
+      widget.onActionStateChanged?.call();
 
       if (success) {
         setState(() => _isEditing = false);
+        widget.onActionStateChanged?.call();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(l10n.profileUpdatedSuccessfully),
@@ -549,44 +586,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.profile),
-        actions: [
-          if (!_isEditing && !_isPrivilegedReadOnlyMode)
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => setState(() => _isEditing = true),
-            ),
-          if (_isEditing && !_isPrivilegedReadOnlyMode)
-            IconButton(
-              icon: _isLoading
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Icon(Icons.check),
-              onPressed: _isLoading
-                  ? null
-                  : () async {
-                      final profile =
-                          await _profileController.getCurrentProfile();
-                      if (profile != null && mounted) {
-                        await _saveProfile(profile);
-                      }
+      appBar: widget.showAppBar
+          ? AppBar(
+              title: Text(l10n.profile),
+              actions: [
+                if (!_isEditing && !_isPrivilegedReadOnlyMode)
+                  IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: () {
+                      setState(() => _isEditing = true);
+                      widget.onActionStateChanged?.call();
                     },
-            ),
-          if (!_isPrivilegedReadOnlyMode)
-            IconButton(
-              icon: const Icon(Icons.settings),
-              onPressed: _showSettingsDialog,
-            ),
-        ],
-      ),
+                  ),
+                if (_isEditing && !_isPrivilegedReadOnlyMode)
+                  IconButton(
+                    icon: _isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Icon(Icons.check),
+                    onPressed: _isLoading
+                        ? null
+                        : () async {
+                            final profile =
+                                await _profileController.getCurrentProfile();
+                            if (profile != null && mounted) {
+                              await _saveProfile(profile);
+                            }
+                          },
+                  ),
+                if (!_isPrivilegedReadOnlyMode)
+                  IconButton(
+                    icon: const Icon(Icons.settings),
+                    onPressed: _showSettingsDialog,
+                  ),
+              ],
+            )
+          : null,
       body: StreamBuilder<User?>(
         stream: _profileController.profileStream,
         builder: (context, snapshot) {
@@ -619,6 +661,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
+                if (!widget.showAppBar)
+                if (!widget.showAppBar && widget.showInlineActions)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Wrap(
+                      spacing: 8,
+                      children: [
+                        if (!_isEditing && !_isPrivilegedReadOnlyMode)
+                          IconButton(
+                            icon: const Icon(Icons.edit),
+                            tooltip: l10n.edit,
+                            onPressed: () {
+                              setState(() => _isEditing = true);
+                              widget.onActionStateChanged?.call();
+                            },
+                          ),
+                        if (_isEditing && !_isPrivilegedReadOnlyMode)
+                          IconButton(
+                            icon: _isLoading
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.check),
+                            tooltip: l10n.save,
+                            onPressed: _isLoading
+                                ? null
+                                : () async {
+                                    final profile =
+                                        await _profileController.getCurrentProfile();
+                                    if (profile != null && mounted) {
+                                      await _saveProfile(profile);
+                                    }
+                                  },
+                          ),
+                        if (!_isPrivilegedReadOnlyMode)
+                          IconButton(
+                            icon: const Icon(Icons.settings),
+                            tooltip: l10n.settings,
+                            onPressed: _showSettingsDialog,
+                          ),
+                      ],
+                    ),
+                  ),
                 // Profile Header
                 Center(
                   child: Column(

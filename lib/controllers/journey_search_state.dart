@@ -11,6 +11,7 @@ class JourneySearchState extends Equatable {
   final BusService? bestBusService;            // single "next bus" result
   final String? bestBusDepartureTime;          // computed next departure "HH:MM"
   final String? busHubName;                    // display name for best bus result
+  final bool busIsReverse;                     // true when direction is suburb→hub
   final TaxiCollectifResult? taxiCollectifResult; // taxi collectif route if available
 
   const JourneySearchState({
@@ -21,6 +22,7 @@ class JourneySearchState extends Equatable {
     this.bestBusService,
     this.bestBusDepartureTime,
     this.busHubName,
+    this.busIsReverse = false,
     this.taxiCollectifResult,
   });
 
@@ -54,6 +56,7 @@ class JourneySearchState extends Equatable {
         bestBusService,
         bestBusDepartureTime,
         busHubName,
+        busIsReverse,
         taxiCollectifResult,
       ];
 
@@ -84,6 +87,7 @@ class JourneySearchState extends Equatable {
     String? bestBusDepartureTime,
     bool clearBestBus = false,
     String? busHubName,
+    bool? busIsReverse,
     TaxiCollectifResult? taxiCollectifResult,
     bool clearTaxi = false,
   }) {
@@ -98,6 +102,7 @@ class JourneySearchState extends Equatable {
           ? null
           : (bestBusDepartureTime ?? this.bestBusDepartureTime),
       busHubName: clearBestBus ? null : (busHubName ?? this.busHubName),
+      busIsReverse: clearBestBus ? false : (busIsReverse ?? this.busIsReverse),
       taxiCollectifResult:
           clearTaxi ? null : (taxiCollectifResult ?? this.taxiCollectifResult),
     );
