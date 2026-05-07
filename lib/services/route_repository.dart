@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../constants/firestore_collections.dart';
 
 class RouteRepository {
   final FirebaseFirestore _firestore;
@@ -25,7 +26,7 @@ class RouteRepository {
     }
 
     final snapshot = await _firestore
-        .collection('route_stops')
+        .collection(Col.routeStops)
         .where('routeId', isEqualTo: referenceRouteId)
         .get();
 

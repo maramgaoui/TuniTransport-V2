@@ -10,6 +10,7 @@ import 'package:tuni_transport/l10n/app_localizations.dart';
 import '../controllers/auth_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_header.dart';
+import '../constants/firestore_collections.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({
@@ -81,8 +82,8 @@ class _ChatScreenState extends State<ChatScreen>
     super.initState();
     final firestore = widget.firestore ?? FirebaseFirestore.instance;
     _authController = widget.authController ?? AuthController.instance;
-    _messagesRef = firestore.collection('community_messages');
-    _usersRef = firestore.collection('users');
+    _messagesRef = firestore.collection(Col.communityMessages);
+    _usersRef = firestore.collection(Col.users);
     _startMessagesListener();
     _scrollController.addListener(_handleScrollForPagination);
     _messageFocusNode.addListener(() {

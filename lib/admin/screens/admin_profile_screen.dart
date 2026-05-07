@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../../constants/firestore_collections.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/admin/controllers/admin_auth_controller.dart';
 import 'package:tuni_transport/controllers/auth_controller.dart';
@@ -80,7 +81,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       DocumentSnapshot<Map<String, dynamic>>? directDoc;
 
       if (currentUid != null) {
-        final doc = await _firestore.collection('users').doc(currentUid).get();
+        final doc = await _firestore.collection(Col.users).doc(currentUid).get();
         if (doc.exists && doc.data()?['role'] == 'admin') {
           directDoc = doc;
         }
@@ -96,7 +97,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
 
         // Check unified users collection first.
         final usersSnap = await _firestore
-            .collection('users')
+            .collection(Col.users)
             .where('matricule', isEqualTo: matricule)
             .where('role', isEqualTo: 'admin')
             .limit(1)
@@ -107,7 +108,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         } else {
           // Legacy admins collection.
           final adminsSnap = await _firestore
-              .collection('admins')
+              .collection(Col.admins)
               .where('matricule', isEqualTo: matricule)
               .limit(1)
               .get();

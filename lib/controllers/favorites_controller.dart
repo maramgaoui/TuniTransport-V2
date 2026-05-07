@@ -60,7 +60,8 @@ class FavoritesController extends ChangeNotifier {
         ..clear()
         ..addAll(items.map((journey) => journey.copyWith(isFavorite: true)));
       _loadedForUid = uid;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[FavoritesController] loadFavorites failed: $e');
       _favorites.clear();
       _loadedForUid = null;
     } finally {

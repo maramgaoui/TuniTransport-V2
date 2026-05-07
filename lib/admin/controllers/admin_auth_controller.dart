@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../constants/firestore_collections.dart';
 
 class AdminAuthResult {
   final bool isAuthenticated;
@@ -154,7 +155,7 @@ class AdminAuthController {
         if ((e.code == 'user-not-found' || e.code == 'invalid-credential') &&
             !sanitizedInput.contains('@')) {
           final lookupDoc = await _firestore
-              .collection('admin_login_lookup')
+              .collection(Col.adminLoginLookup)
               .doc(sanitizedInput.toLowerCase())
               .get();
           final resolvedEmail =
@@ -186,11 +187,11 @@ class AdminAuthController {
       // then fall back to legacy admins collection.
       Map<String, dynamic>? adminData;
 
-      final userDoc = await _firestore.collection('users').doc(uid).get();
+      final userDoc = await _firestore.collection(Col.users).doc(uid).get();
       if (userDoc.exists && userDoc.data()?['role'] == 'admin') {
         adminData = userDoc.data();
       } else {
-        final adminDoc = await _firestore.collection('admins').doc(uid).get();
+        final adminDoc = await _firestore.collection(Col.admins).doc(uid).get();
         if (adminDoc.exists) {
           adminData = adminDoc.data();
         }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../constants/firestore_collections.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/controllers/auth_controller.dart';
@@ -53,7 +54,7 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
   };
 
   final CollectionReference<Map<String, dynamic>> _routesRef =
-      FirebaseFirestore.instance.collection('routes');
+      FirebaseFirestore.instance.collection(Col.routes);
   final TextEditingController _departureController = TextEditingController();
   final TextEditingController _arrivalController = TextEditingController();
 

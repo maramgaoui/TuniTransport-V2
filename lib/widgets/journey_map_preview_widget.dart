@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/station_model.dart';
+import '../services/map_routing_service.dart';
 
 /// A compact map preview widget for displaying a journey route
 class JourneyMapPreviewWidget extends StatefulWidget {
@@ -37,6 +38,7 @@ class JourneyMapPreviewWidget extends StatefulWidget {
 class _JourneyMapPreviewWidgetState extends State<JourneyMapPreviewWidget> {
   late MapController _mapController;
   late List<LatLng> _routePoints;
+  List<LatLng> _displayRoutePoints = const <LatLng>[];
   late LatLng _centerPoint;
 
   @override
@@ -44,6 +46,18 @@ class _JourneyMapPreviewWidgetState extends State<JourneyMapPreviewWidget> {
     super.initState();
     _mapController = MapController();
     _buildRoutePoints();
+    _loadRoadGeometry();
+  }
+
+  @override
+  void didUpdateWidget(covariant JourneyMapPreviewWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.fromStation?.id != widget.fromStation?.id ||
+        oldWidget.toStation?.id != widget.toStation?.id ||
+        oldWidget.intermediateStations != widget.intermediateStations) {
+      _buildRoutePoints();
+      _loadRoadGeometry();
+    }
   }
 
   void _buildRoutePoints() {
@@ -81,6 +95,22 @@ class _JourneyMapPreviewWidgetState extends State<JourneyMapPreviewWidget> {
     } else {
       _centerPoint = LatLng(36.8, 10.2); // Default Tunisia center
     }
+    _displayRoutePoints = List<LatLng>.from(_routePoints);
+  }
+
+  Future<void> _loadRoadGeometry() async {
+    if (_routePoints.length < 2) return;
+    final routed = await MapRoutingService.buildRoadPath(_routePoints);
+    if (!mounted || routed.length < 2) return;
+    setState(() {
+      _displayRoutePoints = routed;
+      double lat = 0, lng = 0;
+      for (final point in routed) {
+        lat += point.latitude;
+        lng += point.longitude;
+      }
+      _centerPoint = LatLng(lat / routed.length, lng / routed.length);
+    });
   }
 
   @override
@@ -112,11 +142,11 @@ class _JourneyMapPreviewWidgetState extends State<JourneyMapPreviewWidget> {
                       'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'com.tunitransport.app',
                 ),
-                if (_routePoints.length > 1)
+                if (_displayRoutePoints.length > 1)
                   PolylineLayer(
                     polylines: [
                       Polyline(
-                        points: _routePoints,
+                        points: _displayRoutePoints,
                         color: Colors.blue.shade600,
                         strokeWidth: 3.0,
                       ),

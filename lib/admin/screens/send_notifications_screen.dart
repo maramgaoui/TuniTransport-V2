@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../constants/firestore_collections.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/theme/app_theme.dart';
@@ -16,9 +17,9 @@ class SendNotificationsScreen extends StatefulWidget {
 
 class _SendNotificationsScreenState extends State<SendNotificationsScreen> {
   final CollectionReference<Map<String, dynamic>> _notificationsRef =
-      FirebaseFirestore.instance.collection('notifications');
+      FirebaseFirestore.instance.collection(Col.notifications);
   final CollectionReference<Map<String, dynamic>> _usersRef =
-      FirebaseFirestore.instance.collection('users');
+      FirebaseFirestore.instance.collection(Col.users);
 
   final titleCtrl = TextEditingController();
   final messageCtrl = TextEditingController();

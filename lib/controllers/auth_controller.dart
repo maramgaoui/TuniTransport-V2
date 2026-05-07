@@ -9,6 +9,7 @@ import 'dart:developer' as developer;
 import '../models/user_model.dart';
 import '../models/session_result.dart';
 import '../utils/validation_utils.dart';
+import '../constants/firestore_collections.dart';
 
 class AuthController {
   AuthController({
@@ -216,7 +217,7 @@ class AuthController {
 
     _userStatusListenerUid = uid;
     _userStatusSubscription = _firestore
-        .collection('users')
+        .collection(Col.users)
         .doc(uid)
         .snapshots()
         .listen(
@@ -306,12 +307,25 @@ class AuthController {
         );
       }
 
+      // Guard: another auth event (e.g. sign-out) may have fired while we were
+      // awaiting Firestore above. If the current user changed, bail out to
+      // prevent creating an orphaned status listener for a stale UID.
+      if (_firebaseAuth.currentUser?.uid != user.uid) {
+        await _cancelUserStatusListener();
+        return null;
+      }
+
       // Fetch user data from Firestore
       try {
         final userDoc = await _firestore
-            .collection('users')
+            .collection(Col.users)
             .doc(user.uid)
             .get();
+        // Guard again after the second Firestore round-trip.
+        if (_firebaseAuth.currentUser?.uid != user.uid) {
+          await _cancelUserStatusListener();
+          return null;
+        }
         await _setUserStatusListener(user.uid);
         if (userDoc.exists) {
           final resolvedUser = User.fromMap(userDoc.data() ?? {});
@@ -353,7 +367,7 @@ class AuthController {
 
     try {
       final userDoc = await _firestore
-          .collection('users')
+          .collection(Col.users)
           .doc(firebaseUser.uid)
           .get();
       if (userDoc.exists) {
@@ -426,7 +440,7 @@ class AuthController {
       // while this account awaits email verification.
       if (effectiveUsername != null) {
         try {
-          await _firestore.collection('usernames').doc(effectiveUsername).set({
+          await _firestore.collection(Col.usernames).doc(effectiveUsername).set({
             'uid': firebaseUser.uid,
             'reservedAt': FieldValue.serverTimestamp(),
           });
@@ -476,7 +490,7 @@ class AuthController {
 
       try {
         await _firestore
-            .collection('users')
+            .collection(Col.users)
             .doc(firebaseUser.uid)
           .set(firestoreProfile, SetOptions(merge: true));
       } catch (e) {
@@ -485,7 +499,7 @@ class AuthController {
         // Roll back reservation and auth user to avoid partially created accounts.
         if (effectiveUsername != null) {
           await _firestore
-              .collection('usernames')
+              .collection(Col.usernames)
               .doc(effectiveUsername)
               .delete()
               .catchError((_) {});
@@ -542,7 +556,7 @@ class AuthController {
     // (backfilled on first login). The `users` collection query is forbidden
     // before the user is authenticated.
     final reservationDoc = await _firestore
-        .collection('usernames')
+        .collection(Col.usernames)
         .doc(username)
         .get();
     if (!reservationDoc.exists) return false;
@@ -590,7 +604,7 @@ class AuthController {
       // Fetch (or create) user data in Firestore.
       // If no document exists yet, this is the first login after email
       // verification — restore the pending profile saved during signup.
-      final userDocRef = _firestore.collection('users').doc(firebaseUser.uid);
+      final userDocRef = _firestore.collection(Col.users).doc(firebaseUser.uid);
       final userDoc = await userDocRef.get();
 
       if (userDoc.exists) {
@@ -599,7 +613,7 @@ class AuthController {
         // Backfill usernames/{username} for confirmed users who pre-date the
         // reservation system so username uniqueness checks stay accurate.
         if (user.username != null && user.username!.isNotEmpty) {
-          final usernameRef = _firestore.collection('usernames').doc(user.username);
+          final usernameRef = _firestore.collection(Col.usernames).doc(user.username);
           final usernameDoc = await usernameRef.get();
           if (!usernameDoc.exists) {
             await usernameRef.set({'uid': firebaseUser.uid}).catchError((_) {});
@@ -622,7 +636,7 @@ class AuthController {
           // permanently confirmed (won't expire on the 24-hour TTL check).
           final confirmedUsername = pendingData['username'] as String?;
           if (confirmedUsername != null && confirmedUsername.isNotEmpty) {
-            await _firestore.collection('usernames').doc(confirmedUsername)
+            await _firestore.collection(Col.usernames).doc(confirmedUsername)
                 .set({'uid': firebaseUser.uid})
                 .catchError((_) {});
           }
@@ -741,7 +755,7 @@ class AuthController {
 
       // Check if user already exists in Firestore
       final userDoc = await _firestore
-          .collection('users')
+          .collection(Col.users)
           .doc(firebaseUser.uid)
           .get();
 
@@ -771,7 +785,7 @@ class AuthController {
         userData['status'] = 'active';
         userData['banUntil'] = null;
         await _firestore
-            .collection('users')
+            .collection(Col.users)
             .doc(firebaseUser.uid)
             .set(userData);
 
@@ -809,7 +823,7 @@ class AuthController {
     try {
       // ── Primary lookup: users/{uid} (single read, no index) ──────────────
       final userDoc = await _firestore
-          .collection('users')
+          .collection(Col.users)
           .doc(current.uid)
           .get();
 
@@ -853,7 +867,7 @@ class AuthController {
             banUntil != null &&
             DateTime.now().isAfter(banUntil)) {
           unawaited(
-            _firestore.collection('users').doc(current.uid).update({
+            _firestore.collection(Col.users).doc(current.uid).update({
               'status': 'active',
               'banUntil': null,
             }).catchError((error) {
@@ -877,7 +891,7 @@ class AuthController {
 
       // ── Fallback: legacy admins collection (pre-migration accounts) ───────
       final adminDoc = await _firestore
-          .collection('admins')
+          .collection(Col.admins)
           .doc(current.uid)
           .get();
 
@@ -886,7 +900,7 @@ class AuthController {
         // Auto-migrate: stamp role='admin' onto the users document so future
         // lookups hit the fast path above.
         unawaited(
-          _firestore.collection('users').doc(current.uid).set(
+          _firestore.collection(Col.users).doc(current.uid).set(
             {
               'uid': current.uid,
               'email': current.email,
@@ -978,7 +992,7 @@ class AuthController {
       if (avatarId != null) updateData['avatarId'] = avatarId;
       if (city != null) updateData['city'] = city;
 
-      await _firestore.collection('users').doc(uid).update(updateData);
+      await _firestore.collection(Col.users).doc(uid).update(updateData);
     } catch (e) {
       developer.log('Update profile error: $e', name: 'AuthController');
       throw Exception('Failed to update profile');
@@ -992,7 +1006,7 @@ class AuthController {
       await _firebaseAuth.currentUser?.delete();
 
       // Delete user data from Firestore only after auth deletion succeeds.
-      await _firestore.collection('users').doc(uid).delete();
+      await _firestore.collection(Col.users).doc(uid).delete();
     } on firebase_auth.FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
         rethrow;
@@ -1039,7 +1053,7 @@ class AuthController {
     required String uid,
     required bool enforceRestriction,
   }) async {
-    final userDoc = await _firestore.collection('users').doc(uid).get();
+    final userDoc = await _firestore.collection(Col.users).doc(uid).get();
     if (!userDoc.exists) {
       return null;
     }
@@ -1058,7 +1072,7 @@ class AuthController {
     if (status == 'banned' &&
         banUntil != null &&
         DateTime.now().isAfter(banUntil)) {
-      await _firestore.collection('users').doc(uid).update({
+      await _firestore.collection(Col.users).doc(uid).update({
         'status': 'active',
         'banUntil': null,
       });

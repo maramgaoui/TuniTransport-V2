@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import '../constants/firestore_collections.dart';
 
 /// Service to initialize and seed Firestore with TRANSTU data
 class FirestoreInitializationService {
@@ -21,7 +22,7 @@ class FirestoreInitializationService {
     if (_isInitialized) return true;
     
     try {
-      final stationCount = await _firestore.collection('stations').count().get();
+      final stationCount = await _firestore.collection(Col.stations).count().get();
       _isInitialized = stationCount.count! > 0;
       return _isInitialized;
     } catch (e) {
@@ -55,12 +56,12 @@ class FirestoreInitializationService {
     
     debugPrint('[FirestoreInit] Adding ${hubs.length} hub stations...');
     for (final entry in hubs.entries) {
-      await _firestore.collection('stations').doc(entry.key).set(entry.value);
+      await _firestore.collection(Col.stations).doc(entry.key).set(entry.value);
     }
 
     debugPrint('[FirestoreInit] Adding ${destinations.length} destination stations...');
     for (final entry in destinations.entries) {
-      await _firestore.collection('stations').doc(entry.key).set(entry.value);
+      await _firestore.collection(Col.stations).doc(entry.key).set(entry.value);
     }
 
     // Add bus services and routes
@@ -73,13 +74,13 @@ class FirestoreInitializationService {
       
       final serviceDocId = 'transtu_line_$lineNumber';
       await _firestore
-          .collection('bus_services')
+          .collection(Col.busServices)
           .doc(serviceDocId)
           .set(routeData['service']);
       
       // Add route stops
       for (int i = 0; i < routeData['stops'].length; i++) {
-        await _firestore.collection('route_stops').add({
+        await _firestore.collection(Col.routeStops).add({
           'routeId': 'route_line_$lineNumber',
           'stationId': routeData['stops'][i],
           'stopOrder': i,

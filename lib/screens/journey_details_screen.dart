@@ -7,11 +7,13 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/widgets/time_text.dart';
+import '../services/map_routing_service.dart';
 import '../controllers/favorites_controller.dart';
 import '../services/active_journey_service.dart';
 import '../theme/app_theme.dart';
 import '../models/journey_model.dart';
 import '../models/metro_sahel_result.dart';
+import '../constants/firestore_collections.dart';
 
 class JourneyDetailsScreen extends StatefulWidget {
   final Journey? journey;
@@ -31,6 +33,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
   late MapController _mapController;
   late Journey _journey;
   List<_StopInfo> _intermediateStops = [];
+  List<LatLng> _routePolylinePoints = const <LatLng>[];
   bool _stopsLoading = true;
   int? _resolvedBusFrequencyMinutes;
 
@@ -108,7 +111,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       }
 
       final routeStops = await db
-          .collection('route_stops')
+          .collection(Col.routeStops)
           .where('routeId', isEqualTo: routeId)
           .get();
 
@@ -144,7 +147,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       }
 
       final stationFutures = orderedKeys.map((o) =>
-          db.collection('stations').doc(orderToStationId[o]!).get());
+          db.collection(Col.stations).doc(orderToStationId[o]!).get());
       final stationDocs = await Future.wait(stationFutures);
 
       // For train lines with explicit per-trip stop metadata, fetch the trip
@@ -158,7 +161,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
         final tripNumber = metro.tripNumberStr ?? metro.tripNumber.toString();
         if (tripNumber.isNotEmpty && tripNumber != '0' && tripNumber != '–') {
           var tripSnap = await db
-              .collection('trips')
+              .collection(Col.trips)
               .where('routeId', isEqualTo: routeId)
               .where('tripNumber', isEqualTo: tripNumber)
               .limit(1)
@@ -169,7 +172,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
             final tripNumberInt = int.tryParse(tripNumber);
             if (tripNumberInt != null) {
               tripSnap = await db
-                  .collection('trips')
+                  .collection(Col.trips)
                   .where('routeId', isEqualTo: routeId)
                   .where('tripNumber', isEqualTo: tripNumberInt)
                   .limit(1)
@@ -229,8 +232,11 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       if (mounted) {
         setState(() {
           _intermediateStops = stops;
+          _routePolylinePoints =
+              stops.map((s) => LatLng(s.lat, s.lng)).toList(growable: false);
           _stopsLoading = false;
         });
+        _loadRoutedPolyline();
       }
     } catch (_) {
       if (mounted) setState(() => _stopsLoading = false);
@@ -247,7 +253,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
         routeId = _journey.id.substring('bus_svc_'.length);
       } else {
         final svcDoc =
-            await db.collection('bus_services').doc(_journey.id).get();
+            await db.collection(Col.busServices).doc(_journey.id).get();
         if (!svcDoc.exists) {
           routeId = '';
         } else {
@@ -272,7 +278,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       }
 
       final rsSnap = await db
-          .collection('route_stops')
+          .collection(Col.routeStops)
           .where('routeId', isEqualTo: routeId)
           .get();
 
@@ -287,7 +293,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
 
       final stationDocs = await Future.wait(
         sorted.map((d) =>
-            db.collection('stations').doc(d.data()['stationId'] as String).get()),
+            db.collection(Col.stations).doc(d.data()['stationId'] as String).get()),
       );
 
       final stops = <_StopInfo>[];
@@ -315,8 +321,11 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       if (mounted) {
         setState(() {
           _intermediateStops = stops;
+          _routePolylinePoints =
+              stops.map((s) => LatLng(s.lat, s.lng)).toList(growable: false);
           _stopsLoading = false;
         });
+        _loadRoutedPolyline();
       }
     } catch (_) {
       if (mounted) setState(() => _stopsLoading = false);
@@ -330,7 +339,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     if (line.isEmpty) return ('', null);
 
     final servicesSnap = await db
-        .collection('bus_services')
+        .collection(Col.busServices)
         .where('lineNumber', isEqualTo: line)
         .get();
 
@@ -352,7 +361,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
 
       final ids = <String>{hubId, destId}.where((id) => id.isNotEmpty).toList();
       final stationSnapshots = await Future.wait(
-        ids.map((id) => db.collection('stations').doc(id).get()),
+        ids.map((id) => db.collection(Col.stations).doc(id).get()),
       );
 
       String hubName = '';
@@ -528,14 +537,28 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
 
   List<Polyline> _buildPolylines() {
     if (_intermediateStops.length < 2) return [];
+    final points = _routePolylinePoints.isNotEmpty
+        ? _routePolylinePoints
+        : _intermediateStops.map((s) => LatLng(s.lat, s.lng)).toList();
     return [
       Polyline(
-        points:
-            _intermediateStops.map((s) => LatLng(s.lat, s.lng)).toList(),
+        points: points,
         color: const Color(0xFF1A3A6B),
         strokeWidth: 3.0,
       ),
     ];
+  }
+
+  Future<void> _loadRoutedPolyline() async {
+    if (_intermediateStops.length < 2) return;
+    final base = _intermediateStops
+        .map((s) => LatLng(s.lat, s.lng))
+        .toList(growable: false);
+    final routed = await MapRoutingService.buildRoadPath(base);
+    if (!mounted || routed.length < 2) return;
+    setState(() {
+      _routePolylinePoints = routed;
+    });
   }
 
   Future<void> _shareJourney() async {
@@ -609,7 +632,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     String? fallbackRouteId;
     for (final candidateRouteId in candidateRoutes) {
       final routeStops = await db
-          .collection('route_stops')
+          .collection(Col.routeStops)
           .where('routeId', isEqualTo: candidateRouteId)
           .get();
 
@@ -646,7 +669,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     final tripNumber = (metro.tripNumberStr ?? '').trim();
     for (final candidateRouteId in candidateRoutes) {
       final routeStops = await db
-          .collection('route_stops')
+          .collection(Col.routeStops)
           .where('routeId', isEqualTo: candidateRouteId)
           .get();
 
@@ -664,7 +687,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
         if (fromOrder < toOrder) {
           if (tripNumber.isNotEmpty && tripNumber != '0' && tripNumber != '–') {
             final tripSnap = await db
-                .collection('trips')
+                .collection(Col.trips)
                 .where('routeId', isEqualTo: candidateRouteId)
                 .where('tripNumber', isEqualTo: tripNumber)
                 .limit(1)

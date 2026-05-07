@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/notification_controller.dart';
 import '../firebase_runtime_options.dart';
+import '../constants/firestore_collections.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -110,7 +111,7 @@ class NotificationService {
     }
 
     try {
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      await FirebaseFirestore.instance.collection(Col.users).doc(uid).set({
         'fcmToken': token,
       }, SetOptions(merge: true));
     } catch (e) {

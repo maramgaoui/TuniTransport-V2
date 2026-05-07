@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/metro_sahel_result.dart';
 import '../models/tariff_model.dart';
 import 'route_repository.dart';
+import '../constants/firestore_collections.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Configuration object — one per line type.
@@ -127,7 +128,7 @@ class JourneyRepository {
 
   Future<String> _resolveSncftL5StationId(String stationId) async {
     final snap = await _firestore
-        .collection('route_stops')
+        .collection(Col.routeStops)
         .where('routeId', isEqualTo: 'route_sncft_l5_forward')
         .get();
     final ids = <String>{
@@ -140,7 +141,7 @@ class JourneyRepository {
   }
 
   Future<_RouteSearchMetadata> _getRouteSearchMetadata(String routeId) async {
-    final routeDoc = await _firestore.collection('routes').doc(routeId).get();
+    final routeDoc = await _firestore.collection(Col.routes).doc(routeId).get();
     final routeData = routeDoc.data();
     if (routeData == null) {
       return const _RouteSearchMetadata(operatorId: '', isSearchActive: true);
@@ -171,7 +172,7 @@ class JourneyRepository {
   }) async {
     final normalizedOperator = operatorId.trim().toLowerCase();
     final snapshot = await _firestore
-        .collection('tariffs')
+        .collection(Col.tariffs)
         .where('fromStationId', isEqualTo: fromStationId)
         .where('toStationId', isEqualTo: toStationId)
         .get();
@@ -500,9 +501,9 @@ class JourneyRepository {
     // Price should be read from tariffs collection — see ManageTariffsScreen.
 
     final fromDoc =
-        await _firestore.collection('stations').doc(fromStationId).get();
+        await _firestore.collection(Col.stations).doc(fromStationId).get();
     final toDoc =
-        await _firestore.collection('stations').doc(toStationId).get();
+        await _firestore.collection(Col.stations).doc(toStationId).get();
     final fromName = fromDoc.data()?['name'] ?? fromStationId;
     final toName = toDoc.data()?['name'] ?? toStationId;
 
@@ -511,7 +512,7 @@ class JourneyRepository {
     if (fromOrder == -1 || toOrder == -1) return null;
 
     final routeStopsSnap = await _firestore
-        .collection('route_stops')
+        .collection(Col.routeStops)
         .where('routeId', isEqualTo: routeId)
         .get();
     int fromOffset = 0;
@@ -542,7 +543,7 @@ class JourneyRepository {
 
     final dayOfWeek = searchDateTime.weekday % 7;
     var tripsSnapshot = await _firestore
-        .collection('trips')
+        .collection(Col.trips)
         .where('routeId', isEqualTo: routeId)
         .where('daysOfWeek', arrayContains: dayOfWeek)
         .get();
@@ -550,7 +551,7 @@ class JourneyRepository {
     if (tripsSnapshot.docs.isEmpty) {
       // Legacy seed compatibility: older scripts wrote operatingDays only.
       tripsSnapshot = await _firestore
-          .collection('trips')
+          .collection(Col.trips)
           .where('routeId', isEqualTo: routeId)
           .where('operatingDays', arrayContains: dayOfWeek)
           .get();
@@ -672,15 +673,15 @@ class JourneyRepository {
 
     // ── 1. Station names ────────────────────────────────────────────────────
     final fromDoc =
-        await _firestore.collection('stations').doc(fromStationId).get();
+        await _firestore.collection(Col.stations).doc(fromStationId).get();
     final toDoc =
-        await _firestore.collection('stations').doc(toStationId).get();
+        await _firestore.collection(Col.stations).doc(toStationId).get();
     final fromName = (fromDoc.data()?['name'] as String?) ?? fromStationId;
     final toName = (toDoc.data()?['name'] as String?) ?? toStationId;
 
     // ── 2. Stop offsets & orders ────────────────────────────────────────────
     final routeStopsSnap = await _firestore
-        .collection('route_stops')
+        .collection(Col.routeStops)
         .where('routeId', isEqualTo: routeId)
         .get();
 
@@ -748,7 +749,7 @@ class JourneyRepository {
     // ── 3. Query trips for today's day-of-week ──────────────────────────────
     final dayOfWeek = searchDateTime.weekday % 7;
     var tripsSnapshot = await _firestore
-        .collection('trips')
+        .collection(Col.trips)
         .where('routeId', isEqualTo: routeId)
         .where('daysOfWeek', arrayContains: dayOfWeek)
         .get();
@@ -756,7 +757,7 @@ class JourneyRepository {
     if (tripsSnapshot.docs.isEmpty) {
       // Legacy seed compatibility: older scripts wrote operatingDays only.
       tripsSnapshot = await _firestore
-          .collection('trips')
+          .collection(Col.trips)
           .where('routeId', isEqualTo: routeId)
           .where('operatingDays', arrayContains: dayOfWeek)
           .get();

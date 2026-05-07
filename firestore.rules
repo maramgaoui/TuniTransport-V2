@@ -197,13 +197,12 @@ service cloud.firestore {
     }
 
     // Matricule → real Auth email mapping for promoted admins.
-    // SECURITY NOTE: This collection is publicly readable because the admin
-    // login screen must resolve matricule → email before the user authenticates.
-    // Mitigation: a future Cloud Function (resolveAdminEmail) should handle this
-    // server-side so the lookup can be made private. Until then, this collection
-    // intentionally exposes admin email addresses to enumerate from valid matricules.
+    // get (single-doc by matricule ID) is public so the login screen can resolve
+    // a matricule → email before the user is authenticated.
+    // list is blocked to prevent bulk enumeration of all admin matricules.
     match /admin_login_lookup/{matricule} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isSuperAdmin();
       allow write: if isSuperAdmin();
     }
   }

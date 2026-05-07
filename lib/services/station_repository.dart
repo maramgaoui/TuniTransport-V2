@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/station_model.dart';
+import '../constants/firestore_collections.dart';
 
 class StationMatch {
   final Station station;
@@ -18,17 +20,22 @@ class StationDistance {
 class StationRepository {
   final FirebaseFirestore _firestore;
 
-  // ── In-memory station cache (H-1 fix) ──────────────────────────────────
+  // ── In-memory station cache ─────────────────────────────────────────────
   static List<Station>? _cachedStations;
   static DateTime? _cacheTimestamp;
   static const Duration _cacheTtl = Duration(minutes: 10);
+
+  static bool _isCacheValid() =>
+      _cachedStations != null &&
+      _cacheTimestamp != null &&
+      DateTime.now().difference(_cacheTimestamp!) < _cacheTtl;
 
   static void invalidateCache() {
     _cachedStations = null;
     _cacheTimestamp = null;
   }
 
-  static const Map<String, List<String>> _stationAliasesById = {
+  static const Map<String, List<String>> stationAliasesById = {
     'bs_tunis_ville': ['tunis', 'gare de tunis', 'tunis gare', 'tunis centrale'],
     'rd_saida_manoubia': ['saida manoubia', 'sayda manoubia', 'manoubia'],
     'bs_ezzahra': ['ez zahra', 'ez-zahra', 'ezzahra banlieue'],
@@ -272,14 +279,11 @@ class StationRepository {
   }
 
   Future<List<Station>> getAllStations({bool forceRefresh = false}) async {
-    if (!forceRefresh &&
-        _cachedStations != null &&
-        _cacheTimestamp != null &&
-        DateTime.now().difference(_cacheTimestamp!) < _cacheTtl) {
+    if (!forceRefresh && _isCacheValid()) {
       return _cachedStations!;
     }
 
-    final snapshot = await _firestore.collection('stations').get();
+    final snapshot = await _firestore.collection(Col.stations).get();
     final stations = snapshot.docs.map((doc) => Station.fromFirestore(doc)).toList();
 
     // Inject synthetic Station entries for taxi-collectif-only cities.
@@ -288,7 +292,7 @@ class StationRepository {
     // normalized name. This prevents synthetic entries from shadowing real
     // stations that serve metro/train/bus on the same city.
     try {
-      final taxiSnapshot = await _firestore.collection('taxi_collectif_routes').get();
+      final taxiSnapshot = await _firestore.collection(Col.taxiCollectifRoutes).limit(300).get();
       final existingCityIds = <String>{
         for (final s in stations) s.cityId.toLowerCase().trim(),
       };
@@ -320,8 +324,8 @@ class StationRepository {
           ));
         }
       }
-    } catch (_) {
-      // Best-effort; don't break station list if taxi routes fetch fails.
+    } catch (e) {
+      debugPrint('[StationRepository] taxi_collectif_routes fetch failed: $e');
     }
 
     _cachedStations = stations;
@@ -342,7 +346,7 @@ class StationRepository {
     Future<void> collectPrefix(String q) async {
       if (q.isEmpty) return;
       final snapshot = await _firestore
-          .collection('stations')
+          .collection(Col.stations)
           .where('name', isGreaterThanOrEqualTo: q)
           .where('name', isLessThanOrEqualTo: '$q\uf8ff')
           .limit(20)
@@ -667,7 +671,7 @@ class StationRepository {
         createdAt: DateTime(2024),
       );
     }
-    final doc = await _firestore.collection('stations').doc(id).get();
+    final doc = await _firestore.collection(Col.stations).doc(id).get();
     return doc.exists ? Station.fromFirestore(doc) : null;
   }
 
@@ -748,7 +752,7 @@ class StationRepository {
   }
 
   static List<String> _normalizedAliasesForStation(Station station) {
-    final rawAliases = _stationAliasesById[station.id] ?? const <String>[];
+    final rawAliases = stationAliasesById[station.id] ?? const <String>[];
     final normalized = rawAliases
         .map(normalizeStationText)
         .where((alias) => alias.isNotEmpty)

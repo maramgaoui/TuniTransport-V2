@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/station_model.dart';
+import '../services/map_routing_service.dart';
 
 class RouteMapWidget extends StatefulWidget {
   /// List of stations to display on the map (should be in order along the route)
@@ -32,6 +33,7 @@ class _RouteMapWidgetState extends State<RouteMapWidget> {
   late MapController _mapController;
   late LatLng _centerPoint;
   late List<LatLng> _routePoints;
+  List<LatLng> _displayRoutePoints = const <LatLng>[];
 
   @override
   void initState() {
@@ -40,7 +42,22 @@ class _RouteMapWidgetState extends State<RouteMapWidget> {
     _routePoints = widget.stations
         .map((station) => LatLng(station.latitude, station.longitude))
         .toList();
+    _displayRoutePoints = List<LatLng>.from(_routePoints);
     _centerPoint = _calculateCenter(_routePoints);
+    _loadRoadGeometry();
+  }
+
+  @override
+  void didUpdateWidget(covariant RouteMapWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.stations != widget.stations) {
+      _routePoints = widget.stations
+          .map((station) => LatLng(station.latitude, station.longitude))
+          .toList();
+      _displayRoutePoints = List<LatLng>.from(_routePoints);
+      _centerPoint = _calculateCenter(_routePoints);
+      _loadRoadGeometry();
+    }
   }
 
   /// Calculate the center point of all stations
@@ -59,11 +76,21 @@ class _RouteMapWidgetState extends State<RouteMapWidget> {
   /// Build polyline for the route
   Polyline _buildRouteLine() {
     return Polyline(
-      points: _routePoints,
+      points: _displayRoutePoints,
       color: Colors.blue.shade600,
       strokeWidth: 3.0,
       isDotted: false,
     );
+  }
+
+  Future<void> _loadRoadGeometry() async {
+    if (_routePoints.length < 2) return;
+    final routed = await MapRoutingService.buildRoadPath(_routePoints);
+    if (!mounted || routed.length < 2) return;
+    setState(() {
+      _displayRoutePoints = routed;
+      _centerPoint = _calculateCenter(routed);
+    });
   }
 
   /// Build markers for all stations

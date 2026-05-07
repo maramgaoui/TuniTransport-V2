@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/admin/controllers/admin_auth_controller.dart';
 import 'package:tuni_transport/theme/app_theme.dart';
+import '../../constants/firestore_collections.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -88,7 +89,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                               } else {
                                 // Promoted admin: look up real email from Firestore.
                                 final doc = await FirebaseFirestore.instance
-                                    .collection('admin_login_lookup')
+                                    .collection(Col.adminLoginLookup)
                                     .doc(input.toLowerCase())
                                     .get();
                                 final found =

@@ -2,13 +2,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
 import '../models/journey_model.dart';
+import '../constants/firestore_collections.dart';
 
 class FavoritesService {
   FirebaseFirestore get _firestore => FirebaseFirestore.instance;
   firebase_auth.FirebaseAuth get _auth => firebase_auth.FirebaseAuth.instance;
 
   CollectionReference<Map<String, dynamic>> _favoritesRef(String uid) {
-    return _firestore.collection('users').doc(uid).collection('favorites');
+    return _firestore.collection(Col.users).doc(uid).collection(Col.favorites);
   }
 
   Future<void> addFavoriteJourney(Journey journey) async {

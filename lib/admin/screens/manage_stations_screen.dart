@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../constants/firestore_collections.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/controllers/auth_controller.dart';
@@ -17,7 +18,7 @@ class ManageStationsScreen extends StatefulWidget {
 
 class _ManageStationsScreenState extends State<ManageStationsScreen> {
   final CollectionReference<Map<String, dynamic>> _stationsRef =
-      FirebaseFirestore.instance.collection('stations');
+      FirebaseFirestore.instance.collection(Col.stations);
   bool _isResolvingScope = true;
   bool _isSuperAdmin = false;
   String? _adminType;

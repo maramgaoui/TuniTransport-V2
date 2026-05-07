@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../models/station_model.dart';
+import '../services/station_repository.dart';
 import '../theme/app_theme.dart';
+import '../constants/firestore_collections.dart';
 
 class StationSearchPicker extends StatefulWidget {
   final String label;
@@ -44,50 +46,6 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
   List<_StationSearchItem> _nearbyStations = const <_StationSearchItem>[];
   List<_StationSearchItem> _allStations = const <_StationSearchItem>[];
 
-  // ── Static alias map (mirrors StationRepository._stationAliasesById) ──────
-  static const Map<String, List<String>> _stationAliases = {
-    'bs_tunis_ville': ['tunis', 'gare de tunis', 'tunis gare', 'tunis centrale'],
-    'bs_ezzahra': ['ez zahra', 'ez-zahra', 'ezzahra banlieue'],
-    'bs_hammam_echatt': ['hammam chott', 'hammam echatt'],
-    'bs_megrine': ['megrine', 'megrine'],
-    'ms_aeroport': ['aeroport', 'airport', 'aeroport skanes monastir'],
-    'ms_sousse_bab_jedid': ['sousse', 'sousse bab jedid', 'gare sousse', 'sousse centre'],
-    'ms_monastir': ['monastir', 'monastir centre'],
-    'ms_sousse_zi': ['sousse zi', 'sousse zone industrielle'],
-    'ms_monastir_zi': ['monastir zi', 'monastir zone industrielle'],
-    'bn_tunis': ['tunis', 'tunis banlieue', 'gare de tunis'],
-    'bn_hammamet': ['hammamet', 'hammament', 'hammamet banlieue'],
-    'sncft_sousse_voyageurs': ['sousse voyageurs', 'sousse gare', 'gare de sousse'],
-    'sncft_sfax': ['sfax gare', 'gare de sfax'],
-    'sncft_gabes': ['gabes gare', 'gare de gabes'],
-    // TRANSTU hubs
-    'transtu_hub_tunis_marine': ['tunis marine', 'marine', 'bus tunis'],
-    'transtu_hub_barcelone': ['barcelone', 'place barcelone'],
-    'transtu_hub_jardin_thameur': ['jardin thameur', 'thameur', 'hadika thameur'],
-    'transtu_hub_bab_alioua': ['bab alioua', 'bab aliwa'],
-    'transtu_hub_ariana': ['ariana', 'ariana bus'],
-    'transtu_hub_carthage': ['carthage', 'carthage bus'],
-    'transtu_hub_charguia': ['charguia', 'charguia bus', 'el charguia', 'la charguia'],
-    'transtu_hub_intilaka': ['intilaka', 'intileka', 'intilaqa'],
-    'transtu_hub_bellevue': ['bellevue', 'bellevie', 'belle vue'],
-    'transtu_hub_khaireddine': [
-      'kheireddine',
-      'khaireddine',
-      'khaireddin',
-      'kheredine',
-      'خير الدين',
-    ],
-    'transtu_hub_montazah': ['montazah', 'montazeh'],
-    'transtu_hub_morneg': ['mornag', 'morneg'],
-    'transtu_hub_10_decembre': [
-      '10 decembre',
-      'dix decembre',
-      '10 december',
-      '10 ديسمبر',
-    ],
-    'transtu_hub_slimlen_kahia': ['slimane kahia', 'slim kahia', 'slimlen kahia'],
-    'transtu_hub_tbourba': ['tebourba', 'tbourba'],
-  };
 
   @override
   void initState() {
@@ -127,7 +85,7 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
 
   Future<List<_StationSearchItem>> _fetchStationsFromFirestore() async {
     // 1. Fetch real stations.
-    final snapshot = await _firestore.collection('stations').limit(500).get();
+    final snapshot = await _firestore.collection(Col.stations).limit(500).get();
     final seen = <String>{};
     final items = snapshot.docs
         .map((doc) => _StationSearchItem.fromDoc(doc))
@@ -143,7 +101,7 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
     //    not already covered by a real station entry (matched by cityId OR name).
     try {
       final taxiSnapshot =
-          await _firestore.collection('taxi_collectif_routes').get();
+          await _firestore.collection(Col.taxiCollectifRoutes).limit(300).get();
       final existingCityIds = <String>{
         for (final item in items)
           item.station.cityId.toLowerCase().trim(),
@@ -176,8 +134,8 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
           ));
         }
       }
-    } catch (_) {
-      // Taxi route fetch is best-effort; don't break station search if it fails.
+    } catch (e) {
+      debugPrint('[StationSearchPicker] taxi_collectif_routes fetch failed: $e');
     }
 
     return items;
@@ -208,8 +166,10 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
       _isLoadingSearch = true;
     });
 
-    final source = await _fetchStationsFromFirestore();
-    _allStations = source;
+    if (_allStations.isEmpty) {
+      _allStations = await _fetchStationsFromFirestore();
+    }
+    final source = _allStations;
 
     final matches = <_ScoredStation>[];
     for (final item in source) {
@@ -236,7 +196,7 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
 
   /// Returns a list of known aliases for [stationId].
   List<String> _aliasesFor(String stationId) {
-    return _stationAliases[stationId] ?? const [];
+    return StationRepository.stationAliasesById[stationId] ?? const [];
   }
 
   double _scoreMatch(_StationSearchItem item, String query) {

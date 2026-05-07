@@ -4,6 +4,7 @@ import 'dart:developer' as developer;
 import 'package:image_picker/image_picker.dart';
 import '../models/user_model.dart';
 import '../services/avatar_service.dart';
+import '../constants/firestore_collections.dart';
 
 class ProfileController {
   final firebase_auth.FirebaseAuth _firebaseAuth =
@@ -15,7 +16,7 @@ class ProfileController {
     return _firebaseAuth.authStateChanges().asyncExpand((firebase_auth.User? user) {
       if (user == null) return Stream<User?>.value(null);
 
-      return _firestore.collection('users').doc(user.uid).snapshots().map((userDoc) {
+      return _firestore.collection(Col.users).doc(user.uid).snapshots().map((userDoc) {
         try {
           final userData = userDoc.data() ?? <String, dynamic>{};
           
@@ -53,7 +54,7 @@ class ProfileController {
 
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        final userDoc = await _firestore.collection('users').doc(firebaseUser.uid).get();
+        final userDoc = await _firestore.collection(Col.users).doc(firebaseUser.uid).get();
         final userData = userDoc.data() ?? <String, dynamic>{};
 
         // Even if data is empty, return a basic user object
@@ -93,7 +94,7 @@ class ProfileController {
       final updatedProfile = profile.copyWith(uid: firebaseUser.uid);
       
       await _firestore
-          .collection('users')
+          .collection(Col.users)
           .doc(firebaseUser.uid)
           .set(updatedProfile.toMap(), SetOptions(merge: true));
       return true;
@@ -117,7 +118,7 @@ class ProfileController {
     if (fields.isEmpty) return true; // Nothing to update
 
     try {
-      await _firestore.collection('users').doc(firebaseUser.uid).set(
+      await _firestore.collection(Col.users).doc(firebaseUser.uid).set(
             fields,
             SetOptions(merge: true),
           );
@@ -245,7 +246,7 @@ class ProfileController {
 
     try {
       // Delete user data from Firestore first
-      await _firestore.collection('users').doc(firebaseUser.uid).delete();
+      await _firestore.collection(Col.users).doc(firebaseUser.uid).delete();
       
       // Then delete the Firebase Auth user
       await firebaseUser.delete();
@@ -285,7 +286,7 @@ class ProfileController {
     if (firebaseUser == null) return false;
 
     try {
-      final doc = await _firestore.collection('users').doc(firebaseUser.uid).get();
+      final doc = await _firestore.collection(Col.users).doc(firebaseUser.uid).get();
       return doc.exists;
     } catch (e) {
       developer.log('Error checking profile existence: $e', name: 'ProfileController');

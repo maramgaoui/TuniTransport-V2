@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/bus_service_model.dart';
 import '../utils/text_normalizer.dart';
+import '../constants/firestore_collections.dart';
 
 class BusServiceRepository {
   final FirebaseFirestore _firestore;
@@ -40,7 +41,7 @@ class BusServiceRepository {
   /// Get all bus services departing from a given hub station.
   Future<List<BusService>> getServicesForHub(String hubStationId) async {
     final snap = await _firestore
-      .collection('bus_services')
+      .collection(Col.busServices)
       .where('hubStationId', isEqualTo: hubStationId)
       .get(const GetOptions(source: Source.server));
     return snap.docs.map(BusService.fromFirestore).toList()
@@ -64,7 +65,7 @@ class BusServiceRepository {
 
   /// Search bus lines by line number or direction.
   Future<List<BusService>> searchLines(String query) async {
-    final snap = await _firestore.collection('bus_services').get();
+    final snap = await _firestore.collection(Col.busServices).limit(500).get();
     final q = query.toLowerCase();
     return snap.docs
         .map(BusService.fromFirestore)
