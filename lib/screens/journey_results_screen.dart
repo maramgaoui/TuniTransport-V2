@@ -11,6 +11,7 @@ import '../services/user_preference_service.dart';
 import '../widgets/app_header.dart';
 import '../widgets/metro_sahel_card.dart';
 import '../widgets/taxi_collectif_card.dart';
+import '../widgets/transport_card.dart';
 
 class JourneyResultsScreen extends StatefulWidget {
   final String departure;
@@ -77,10 +78,7 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
   }
 
   Future<void> _changeProfile(UserProfile newProfile) async {
-    setState(() {
-      _profile = newProfile;
-      _recommendation = null; // clear while recomputing so old banner disappears
-    });
+    setState(() => _profile = newProfile);
     await UserPreferenceService.instance.setProfile(newProfile);
     _rerunRecommendation(newProfile);
   }
@@ -113,7 +111,15 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
       return;
     }
 
-    // Équilibré: use the ML model for a weighted trade-off recommendation.
+    // Équilibré: use the controller's recommendation immediately if it was
+    // already computed for the balanced profile (no async wait needed).
+    final controllerRec = _searchController.state.recommendation;
+    if (controllerRec != null && controllerRec.profile == UserProfile.balanced) {
+      if (mounted) setState(() => _recommendation = controllerRec);
+      return;
+    }
+
+    // Otherwise run the ML model (Firestore + scoring ~300 ms).
     final rec = await _recommendationService.recommend(
       trainResults:  s.trainResults,
       busService:    s.bestBusService,
@@ -608,160 +614,55 @@ class _BestBusCard extends StatelessWidget {
     required this.routeLabel,
   });
 
+  String? _estimatedArrival() {
+    final dep = nextDeparture;
+    final dur = service.estimatedTripDurationMinutes;
+    if (dep == null || dur == null) return null;
+    final parts = dep.split(':');
+    if (parts.length != 2) return null;
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null) return null;
+    final total = h * 60 + m + dur;
+    final ah = (total ~/ 60) % 24;
+    final am = total % 60;
+    return '${ah.toString().padLeft(2, '0')}:${am.toString().padLeft(2, '0')}';
+  }
+
+  String get _durationLabel {
+    final dur = service.estimatedTripDurationMinutes;
+    if (dur == null) return service.frequencyLabel.isNotEmpty ? service.frequencyLabel : '—';
+    final h = dur ~/ 60;
+    final m = dur % 60;
+    return h > 0 ? '${h}h ${m}min' : '$dur min';
+  }
+
+  // Split "Hub → Destination" label into two station names.
+  String get _depStation {
+    final parts = routeLabel.split(' → ');
+    return parts.isNotEmpty ? parts.first : routeLabel;
+  }
+
+  String get _arrStation {
+    final parts = routeLabel.split(' → ');
+    return parts.length > 1 ? parts.last : (service.destinationNameFr ?? service.directionAr);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF00695C), Color(0xFF00897B)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF00695C).withValues(alpha: 0.35),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.directions_bus, color: Colors.white, size: 18),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Ligne ${service.lineNumber}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  routeLabel,
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.access_time, color: Colors.white70, size: 20),
-                const SizedBox(width: 8),
-                const Text(
-                  'Prochain départ',
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-                const Spacer(),
-                Text(
-                  nextDeparture ?? '--:--',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 26,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (service.estimatedTripDurationMinutes != null ||
-              service.frequencyLabel.isNotEmpty ||
-              service.priceLabel.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                if (service.estimatedTripDurationMinutes != null) ...[
-                  const Icon(Icons.timer_outlined, color: Colors.white70, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    '~${service.estimatedTripDurationMinutes} min',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ] else if (service.frequencyLabel.isNotEmpty) ...[
-                  const Icon(Icons.schedule, color: Colors.white54, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    service.frequencyLabel,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                ],
-                const Spacer(),
-                if (service.priceLabel.isNotEmpty)
-                  Text(
-                    service.priceLabel,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
-              ],
-            ),
-            if (service.estimatedTripDurationMinutes != null &&
-                service.frequencyLabel.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  const Icon(Icons.schedule, color: Colors.white38, size: 14),
-                  const SizedBox(width: 4),
-                  Text(
-                    service.frequencyLabel,
-                    style: const TextStyle(color: Colors.white54, fontSize: 11),
-                  ),
-                ],
-              ),
-            ],
-          ],
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              const Icon(Icons.info_outline, color: Colors.white38, size: 14),
-              const SizedBox(width: 4),
-              Text(
-                'Appuyez pour les détails',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.5),
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+    return TransportCard(
+      transportName:    'Bus',
+      operatorSubtitle: 'TRANSTU',
+      lineNumber:       service.lineNumber,
+      icon:             Icons.directions_bus,
+      gradientColors:   const [Color(0xFF00695C), Color(0xFF00897B)],
+      departureStation: _depStation,
+      arrivalStation:   _arrStation,
+      departureTime:    nextDeparture,
+      arrivalTime:      _estimatedArrival(),
+      durationLabel:    _durationLabel,
+      tarif:            service.priceLabel.isNotEmpty ? service.priceLabel : '—',
     );
   }
 }
+

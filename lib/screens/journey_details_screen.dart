@@ -41,6 +41,28 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
   bool get _isTranstuBus =>
       widget.journey != null && widget.journey!.type == 'Bus TRANSTU';
 
+  // ── Transport colour theme ────────────────────────────────────────────────
+
+  List<Color> get _themeGradient {
+    if (widget.metroResult != null) {
+      final lt = widget.metroResult!.lineType;
+      if (lt == 'sts_sahel') {
+        return const [Color(0xFF00695C), Color(0xFF00897B)]; // STS bus → green
+      }
+      return const [Color(0xFF1A3A6B), Color(0xFF2E6DA4)];   // train / metro → blue
+    }
+    switch (_journey.iconKey) {
+      case 'bus':
+        return const [Color(0xFF00695C), Color(0xFF00897B)]; // TRANSTU → green
+      case 'taxi':
+        return const [Color(0xFFB34700), Color(0xFFD4680A)]; // taxi → dark amber
+      default:
+        return const [Color(0xFF1A3A6B), Color(0xFF2E6DA4)]; // default → blue
+    }
+  }
+
+  Color get _themeColor => _themeGradient.first;
+
   String get _displayFirstDeparture =>
       _journey.timetableFirstDepartureTime ?? _journey.departureTime;
 
@@ -543,7 +565,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     return [
       Polyline(
         points: points,
-        color: const Color(0xFF1A3A6B),
+        color: _themeColor,
         strokeWidth: 3.0,
       ),
     ];
@@ -819,16 +841,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: _isTranstuBus
-                      ? [const Color(0xFF00695C), const Color(0xFF00897B)]
-                      : isMetro
-                          ? [
-                              const Color(0xFF1A3A6B),
-                              const Color(0xFF2E6DA4),
-                            ]
-                          : [AppTheme.primaryTeal, AppTheme.lightTeal],
-                ),
+                gradient: LinearGradient(colors: _themeGradient),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -969,12 +982,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                             const EdgeInsets.symmetric(horizontal: 20),
                         child: Container(
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFF1A3A6B),
-                                Color(0xFF2E6DA4)
-                              ],
-                            ),
+                            gradient: LinearGradient(colors: _themeGradient),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           padding: const EdgeInsets.all(16),
@@ -1057,12 +1065,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                             const EdgeInsets.symmetric(horizontal: 20),
                         child: Container(
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFF00695C),
-                                Color(0xFF00897B),
-                              ],
-                            ),
+                            gradient: LinearGradient(colors: _themeGradient),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           padding: const EdgeInsets.all(16),
@@ -1424,7 +1427,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
               Container(
                 width: 2,
                 height: isFirst || isLast ? 40 : 28,
-                color: AppTheme.lightTeal,
+                color: _themeColor.withValues(alpha: 0.5),
               ),
           ],
         ),
@@ -1469,11 +1472,11 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: AppTheme.lightTeal.withValues(alpha: 0.2),
+              color: _themeColor.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             padding: const EdgeInsets.all(8),
-            child: Icon(icon, color: AppTheme.primaryTeal, size: 20),
+            child: Icon(icon, color: _themeColor, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
