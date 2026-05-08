@@ -6,8 +6,6 @@ import '../controllers/journey_search_state.dart';
 import '../models/bus_service_model.dart';
 import '../models/journey_model.dart';
 import '../models/journey_recommendation.dart';
-import '../models/metro_sahel_result.dart';
-import '../models/taxi_collectif_result.dart';
 import '../services/recommendation_service.dart';
 import '../services/user_preference_service.dart';
 import '../widgets/app_header.dart';
@@ -61,17 +59,28 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
 
   void _onSearchStateChanged() {
     if (!mounted) return;
+    final controllerRec = _searchController.state.recommendation;
     setState(() {
-      // Mirror the controller's recommendation only if we haven't overridden locally.
-      _recommendation ??= _searchController.state.recommendation;
-      if (_searchController.state.recommendation != null) {
-        _recommendation = _searchController.state.recommendation;
+      if (controllerRec == null) return;
+      if (controllerRec.profile == _profile) {
+        // Controller computed for current profile — use it directly.
+        _recommendation = controllerRec;
+      } else if (_recommendation == null) {
+        // No local recommendation yet — accept controller's and re-run for
+        // the current profile in case user already switched tabs.
+        _recommendation = controllerRec;
+        _rerunRecommendation(_profile);
       }
+      // If profiles differ and we already have a local recommendation,
+      // keep the local one (user switched tabs while controller was computing).
     });
   }
 
   Future<void> _changeProfile(UserProfile newProfile) async {
-    setState(() => _profile = newProfile);
+    setState(() {
+      _profile = newProfile;
+      _recommendation = null; // clear while recomputing so old banner disappears
+    });
     await UserPreferenceService.instance.setProfile(newProfile);
     _rerunRecommendation(newProfile);
   }
@@ -79,6 +88,32 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
   Future<void> _rerunRecommendation(UserProfile profile) async {
     final s = _searchController.state;
     if (!s.hasResult) return;
+
+    // Prix and Rapide: the winner is exactly the top card of the sorted list.
+    // Using the ML model here causes inconsistency (model balances price +
+    // comfort + duration, so it may pick a different option than the cheapest).
+    if (profile != UserProfile.balanced) {
+      final entries = _buildSortedEntries(s);
+      if (entries.isEmpty) return;
+      final winner = entries.first;
+      if (mounted) {
+        setState(() {
+          _recommendation = JourneyRecommendation(
+            winnerTransportType: winner.transportKey,
+            winnerScore:         winner.score,
+            reason: profile == UserProfile.price
+                ? RecommendationReason.bestPrice
+                : RecommendationReason.fastest,
+            allScores:        {for (final e in entries) e.transportKey: e.score},
+            isHighConfidence: entries.length > 1,
+            profile:          profile,
+          );
+        });
+      }
+      return;
+    }
+
+    // Équilibré: use the ML model for a weighted trade-off recommendation.
     final rec = await _recommendationService.recommend(
       trainResults:  s.trainResults,
       busService:    s.bestBusService,
@@ -142,13 +177,6 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
 
   bool _isRecommended(String transportType) =>
       _recommendation?.winnerTransportType == transportType;
-
-  bool _isTrainRecommended(String lineType) {
-    final rec = _recommendation;
-    if (rec == null) return false;
-    return RecommendationService.lineTypeToTransportType(lineType) ==
-        rec.winnerTransportType;
-  }
 
   // ── Build a flat sorted list of all available result cards ────────────────
 
@@ -228,15 +256,12 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state       = _searchController.state;
-    final trainResults = state.trainResults;
-    final busHubName  = state.busHubName;
-    final bestBus     = state.bestBusService;
-    final bestTime    = state.bestBusDepartureTime;
-    final taxiResult  = state.taxiCollectifResult;
-    final isLoading   = state.isLoading;
-    final error       = state.error;
-    final hasAnyResult = trainResults.isNotEmpty || bestBus != null || taxiResult != null;
+    final state        = _searchController.state;
+    final isLoading    = state.isLoading;
+    final error        = state.error;
+    final hasAnyResult = state.trainResults.isNotEmpty ||
+        state.bestBusService != null ||
+        state.taxiCollectifResult != null;
 
     return Scaffold(
       body: SafeArea(
@@ -283,73 +308,31 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
 
                             // ── Recommendation banner ─────────────────────────
                             if (_recommendation != null)
-                              _RecommendationBanner(rec: _recommendation!),
+                              _RecommendationBanner(rec: _recommendation!, profile: _profile),
                             if (_recommendation != null) const SizedBox(height: 16),
 
-                            // ── Train / metro results ─────────────────────────
-                            for (final result in trainResults) ...[
-                              _sectionLabel(
-                                result.lineType == 'sts_sahel'
-                                    ? 'Bus ${result.operatorName}'
-                                    : result.operatorName,
-                              ),
+                            // ── Sorted transport options ──────────────────────
+                            for (final entry in _buildSortedEntries(state)) ...[
+                              _sectionLabel(entry.label),
                               const SizedBox(height: 8),
                               _CardWrapper(
-                                isRecommended: _isTrainRecommended(result.lineType),
-                                onTap: () => context.push(
-                                  '/home/journey-details',
-                                  extra: result,
-                                ),
-                                child: MetroSahelCard(result: result),
+                                isRecommended: _isRecommended(entry.transportKey),
+                                onTap: entry.onTap,
+                                child: entry.card,
                               ),
                               const SizedBox(height: 16),
                             ],
 
-                            // ── TRANSTU Bus ───────────────────────────────────
-                            if (bestBus != null) ...[
-                              _sectionLabel('Bus TRANSTU'),
-                              const SizedBox(height: 8),
-                              if (error != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 6),
-                                  child: Text(
-                                    error,
-                                    style: const TextStyle(color: Colors.orange, fontSize: 13),
-                                  ),
-                                ),
-                              _CardWrapper(
-                                isRecommended: _isRecommended('transtu_bus'),
-                                onTap: () {
-                                  final journey = _busServiceToJourney(
-                                    bestBus,
-                                    hubName:            busHubName,
-                                    nextDeparture:      bestTime,
-                                    isReverseDirection: state.busIsReverse,
-                                  );
-                                  context.push('/home/journey-details', extra: journey);
-                                },
-                                child: _BestBusCard(
-                                  service:      bestBus,
-                                  nextDeparture: bestTime,
-                                  routeLabel:   busHubName ?? '',
+                            // Bus error (if any)
+                            if (error != null && state.bestBusService != null)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Text(
+                                  error,
+                                  style: const TextStyle(
+                                      color: Colors.orange, fontSize: 13),
                                 ),
                               ),
-                              const SizedBox(height: 16),
-                            ],
-
-                            // ── Taxi collectif ────────────────────────────────
-                            if (taxiResult != null) ...[
-                              _sectionLabel('Taxi Collectif'),
-                              const SizedBox(height: 8),
-                              _CardWrapper(
-                                isRecommended: _isRecommended('taxi_collectif'),
-                                onTap: () => context.push(
-                                  '/home/journey-details',
-                                  extra: taxiResult,
-                                ),
-                                child: TaxiCollectifCard(result: taxiResult),
-                              ),
-                            ],
                           ],
                         ),
             ),
@@ -454,8 +437,9 @@ class _ProfileSelector extends StatelessWidget {
 
 class _RecommendationBanner extends StatelessWidget {
   final JourneyRecommendation rec;
+  final UserProfile profile;
 
-  const _RecommendationBanner({required this.rec});
+  const _RecommendationBanner({required this.rec, required this.profile});
 
   String get _transportLabel {
     switch (rec.winnerTransportType) {
@@ -467,6 +451,16 @@ class _RecommendationBanner extends StatelessWidget {
       case 'transtu_bus':     return 'Bus TRANSTU';
       case 'taxi_collectif':  return 'Taxi Collectif';
       default:                return rec.winnerTransportType;
+    }
+  }
+
+  /// Reason label driven by the active filter tab, not the ML model.
+  /// When the user explicitly picks Prix or Rapide, the reason is obvious.
+  String get _effectiveReasonLabel {
+    switch (profile) {
+      case UserProfile.price:    return 'Meilleur prix';
+      case UserProfile.speed:    return 'Le plus rapide';
+      case UserProfile.balanced: return rec.reasonLabel();
     }
   }
 
@@ -507,7 +501,7 @@ class _RecommendationBanner extends StatelessWidget {
                   ),
                   TextSpan(text: _transportLabel),
                   TextSpan(
-                    text: '  ·  ${rec.reasonLabel()}',
+                    text: '  ·  $_effectiveReasonLabel',
                     style: const TextStyle(
                       fontWeight: FontWeight.w500,
                       color: Color(0xFF5C7AAA),
