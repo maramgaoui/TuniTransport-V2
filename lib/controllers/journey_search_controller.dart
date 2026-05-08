@@ -9,21 +9,28 @@ import '../services/route_repository.dart';
 import '../services/journey_repository.dart';
 import '../services/bus_service_repository.dart';
 import '../services/taxi_collectif_service.dart';
+import '../services/recommendation_service.dart';
+import '../services/user_preference_service.dart';
 
 class JourneySearchController extends ChangeNotifier {
   final StationRepository _stationRepository;
   final JourneyRepository _journeyRepository;
   final BusServiceRepository _busServiceRepository;
   final TaxiCollectifService _taxiCollectifService;
+  final RecommendationService _recommendationService;
 
   JourneySearchState _state = const JourneySearchState();
   JourneySearchState get state => _state;
+
+  // Tracks the current search so stale recommendation results are discarded.
+  Object? _activeSearchToken;
 
   JourneySearchController({
     StationRepository? stationRepository,
     JourneyRepository? journeyRepository,
     BusServiceRepository? busServiceRepository,
     TaxiCollectifService? taxiCollectifService,
+    RecommendationService? recommendationService,
   })  : _stationRepository = stationRepository ??
             StationRepository(FirebaseFirestore.instance),
         _journeyRepository = journeyRepository ??
@@ -34,7 +41,9 @@ class JourneySearchController extends ChangeNotifier {
         _busServiceRepository =
             busServiceRepository ?? BusServiceRepository(),
         _taxiCollectifService =
-            taxiCollectifService ?? TaxiCollectifService(FirebaseFirestore.instance);
+            taxiCollectifService ?? TaxiCollectifService(FirebaseFirestore.instance),
+        _recommendationService =
+            recommendationService ?? RecommendationService();
 
   static const Set<String> _bnCanonicalStationIds = {
     'bn_tunis',
@@ -518,6 +527,8 @@ class JourneySearchController extends ChangeNotifier {
         ));
       } else {
         _sortTrainResultsByDeparture(collectedTrainResults);
+        final token = Object();
+        _activeSearchToken = token;
         _emit(_state.copyWith(
           isLoading: false,
           trainResults: collectedTrainResults,
@@ -528,7 +539,18 @@ class JourneySearchController extends ChangeNotifier {
           error: busError,
           taxiCollectifResult: taxiResult,
           clearTaxi: taxiResult == null,
+          clearRecommendation: true,
         ));
+        // Run recommendation asynchronously — UI shows results immediately
+        // and badge appears once scoring + Firestore reads complete.
+        _runRecommendation(
+          token: token,
+          trainResults: collectedTrainResults,
+          busService: bestBusService,
+          taxiResult: taxiResult,
+          fromStationId: normalizedFromStationId,
+          toStationId: normalizedToStationId,
+        );
       }
     } catch (e, st) {
       // Map exceptions to user-friendly French messages.
@@ -550,6 +572,34 @@ class JourneySearchController extends ChangeNotifier {
         debugPrintStack(label: '[JourneySearch] stack', stackTrace: st);
       }
       _emit(_state.copyWith(isLoading: false, error: userMessage));
+    }
+  }
+
+  Future<void> _runRecommendation({
+    required Object token,
+    required List<MetroSahelResult> trainResults,
+    required BusService? busService,
+    required dynamic taxiResult,
+    required String fromStationId,
+    required String toStationId,
+  }) async {
+    try {
+      final profile = await UserPreferenceService.instance.getProfile();
+      final recommendation = await _recommendationService.recommend(
+        trainResults:  trainResults,
+        busService:    busService,
+        taxiResult:    taxiResult,
+        fromStationId: fromStationId,
+        toStationId:   toStationId,
+        profile:       profile,
+      );
+
+      // Discard result if the user started a new search while we were working.
+      if (_activeSearchToken != token) return;
+
+      _emit(_state.copyWith(recommendation: recommendation));
+    } catch (e) {
+      debugPrint('[JourneySearch] recommendation failed: $e');
     }
   }
 }

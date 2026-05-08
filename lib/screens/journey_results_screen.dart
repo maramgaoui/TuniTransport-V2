@@ -2,8 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import '../controllers/journey_search_controller.dart';
+import '../controllers/journey_search_state.dart';
 import '../models/bus_service_model.dart';
 import '../models/journey_model.dart';
+import '../models/journey_recommendation.dart';
+import '../models/metro_sahel_result.dart';
+import '../models/taxi_collectif_result.dart';
+import '../services/recommendation_service.dart';
+import '../services/user_preference_service.dart';
 import '../widgets/app_header.dart';
 import '../widgets/metro_sahel_card.dart';
 import '../widgets/taxi_collectif_card.dart';
@@ -30,21 +36,58 @@ class JourneyResultsScreen extends StatefulWidget {
 
 class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
   final JourneySearchController _searchController = JourneySearchController();
+  final RecommendationService   _recommendationService = RecommendationService();
+
+  UserProfile _profile = UserProfile.balanced;
+  JourneyRecommendation? _recommendation;
 
   @override
   void initState() {
     super.initState();
+    _loadProfile();
     if (widget.fromStationId != null && widget.toStationId != null) {
       _searchController.search(
         fromStationId: widget.fromStationId!,
-        toStationId: widget.toStationId!,
+        toStationId:   widget.toStationId!,
       );
     }
     _searchController.addListener(_onSearchStateChanged);
   }
 
+  Future<void> _loadProfile() async {
+    final p = await UserPreferenceService.instance.getProfile();
+    if (mounted) setState(() => _profile = p);
+  }
+
   void _onSearchStateChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {
+      // Mirror the controller's recommendation only if we haven't overridden locally.
+      _recommendation ??= _searchController.state.recommendation;
+      if (_searchController.state.recommendation != null) {
+        _recommendation = _searchController.state.recommendation;
+      }
+    });
+  }
+
+  Future<void> _changeProfile(UserProfile newProfile) async {
+    setState(() => _profile = newProfile);
+    await UserPreferenceService.instance.setProfile(newProfile);
+    _rerunRecommendation(newProfile);
+  }
+
+  Future<void> _rerunRecommendation(UserProfile profile) async {
+    final s = _searchController.state;
+    if (!s.hasResult) return;
+    final rec = await _recommendationService.recommend(
+      trainResults:  s.trainResults,
+      busService:    s.bestBusService,
+      taxiResult:    s.taxiCollectifResult,
+      fromStationId: widget.fromStationId ?? '',
+      toStationId:   widget.toStationId   ?? '',
+      profile:       profile,
+    );
+    if (mounted) setState(() => _recommendation = rec);
   }
 
   @override
@@ -54,7 +97,6 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
     super.dispose();
   }
 
-  /// Converts a [BusService] to a [Journey] for the details screen.
   Journey _busServiceToJourney(
     BusService service, {
     String? hubName,
@@ -76,17 +118,17 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
       arrivalTime: isReverseDirection
           ? service.lastDepartureFromSuburb
           : service.lastDepartureFromHub,
-      price: (service.price ?? 0.5).toStringAsFixed(3),
-      type: 'Bus TRANSTU',
-      iconKey: 'bus',
+      price:    (service.price ?? 0.5).toStringAsFixed(3),
+      type:     'Bus TRANSTU',
+      iconKey:  'bus',
       duration: service.peakFrequencyMinutes != null
           ? 'Fréquence: ${service.peakFrequencyMinutes} min'
           : '',
       transfers: 0,
       isOptimal: true,
-      operator: 'TRANSTU',
-      line: 'Ligne ${service.lineNumber}',
-      estimatedTripDurationMinutes: service.estimatedTripDurationMinutes,
+      operator:  'TRANSTU',
+      line:      'Ligne ${service.lineNumber}',
+      estimatedTripDurationMinutes:  service.estimatedTripDurationMinutes,
       timetableFirstDepartureTime: isReverseDirection
           ? service.firstDepartureFromSuburb
           : service.firstDepartureFromHub,
@@ -96,16 +138,104 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
     );
   }
 
+  // ── Which transport type won? ─────────────────────────────────────────────
+
+  bool _isRecommended(String transportType) =>
+      _recommendation?.winnerTransportType == transportType;
+
+  bool _isTrainRecommended(String lineType) {
+    final rec = _recommendation;
+    if (rec == null) return false;
+    return RecommendationService.lineTypeToTransportType(lineType) ==
+        rec.winnerTransportType;
+  }
+
+  // ── Build a flat sorted list of all available result cards ────────────────
+
+  List<_ResultEntry> _buildSortedEntries(JourneySearchState state) {
+    final entries = <_ResultEntry>[];
+
+    for (final result in state.trainResults) {
+      final ttype = RecommendationService.lineTypeToTransportType(result.lineType);
+      entries.add(_ResultEntry(
+        label:        result.lineType == 'sts_sahel'
+            ? 'Bus ${result.operatorName}'
+            : result.operatorName,
+        transportKey: ttype,
+        price:        result.price.toDouble(),
+        durationMin:  result.durationMinutes.toDouble(),
+        score:        _recommendation?.allScores[ttype] ?? 0,
+        card:         MetroSahelCard(result: result),
+        onTap:        () => context.push('/home/journey-details', extra: result),
+      ));
+    }
+
+    if (state.bestBusService != null) {
+      final bus = state.bestBusService!;
+      entries.add(_ResultEntry(
+        label:        'Bus TRANSTU',
+        transportKey: 'transtu_bus',
+        price:        (bus.price ?? 0.8).toDouble(),
+        durationMin:  (bus.estimatedTripDurationMinutes ?? 35).toDouble(),
+        score:        _recommendation?.allScores['transtu_bus'] ?? 0,
+        card: _BestBusCard(
+          service:       bus,
+          nextDeparture: state.bestBusDepartureTime,
+          routeLabel:    state.busHubName ?? '',
+        ),
+        onTap: () {
+          final journey = _busServiceToJourney(
+            bus,
+            hubName:            state.busHubName,
+            nextDeparture:      state.bestBusDepartureTime,
+            isReverseDirection: state.busIsReverse,
+          );
+          context.push('/home/journey-details', extra: journey);
+        },
+      ));
+    }
+
+    if (state.taxiCollectifResult != null) {
+      final taxi = state.taxiCollectifResult!;
+      entries.add(_ResultEntry(
+        label:        'Taxi Collectif',
+        transportKey: 'taxi_collectif',
+        price:        taxi.fare,
+        durationMin:  taxi.durationMinutes.toDouble(),
+        score:        _recommendation?.allScores['taxi_collectif'] ?? 0,
+        card:         TaxiCollectifCard(result: taxi),
+        onTap:        () => context.push('/home/journey-details', extra: taxi),
+      ));
+    }
+
+    switch (_profile) {
+      case UserProfile.price:
+        entries.sort((a, b) => a.price.compareTo(b.price));
+      case UserProfile.speed:
+        entries.sort((a, b) => a.durationMin.compareTo(b.durationMin));
+      case UserProfile.balanced:
+        if (_recommendation != null) {
+          entries.sort((a, b) => b.score.compareTo(a.score));
+        } else {
+          entries.sort((a, b) => a.price.compareTo(b.price));
+        }
+    }
+
+    return entries;
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    final trainResults = _searchController.state.trainResults;
-    final busHubName = _searchController.state.busHubName;
-    final bestBus = _searchController.state.bestBusService;
-    final bestTime = _searchController.state.bestBusDepartureTime;
-    final taxiResult = _searchController.state.taxiCollectifResult;
-    final isLoading = _searchController.state.isLoading;
-    final error = _searchController.state.error;
-
+    final state       = _searchController.state;
+    final trainResults = state.trainResults;
+    final busHubName  = state.busHubName;
+    final bestBus     = state.bestBusService;
+    final bestTime    = state.bestBusDepartureTime;
+    final taxiResult  = state.taxiCollectifResult;
+    final isLoading   = state.isLoading;
+    final error       = state.error;
     final hasAnyResult = trainResults.isNotEmpty || bestBus != null || taxiResult != null;
 
     return Scaffold(
@@ -116,7 +246,7 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
               title: AppLocalizations.of(context)!.results,
               subtitle: '${widget.departure} → ${widget.arrival}',
               leading: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                icon: const Icon(Icons.arrow_back),
                 onPressed: () {
                   if (context.canPop()) {
                     context.pop();
@@ -130,79 +260,89 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : !hasAnyResult
-                      // ── No results / error ────────────────────────────────
                       ? Center(
                           child: Padding(
                             padding: const EdgeInsets.all(32),
                             child: Text(
-                              error ??
-                                  'Aucun trajet trouvé pour cette recherche.',
+                              error ?? 'Aucun trajet trouvé pour cette recherche.',
                               textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: Colors.grey[600],
-                              ),
+                              style: TextStyle(fontSize: 15, color: Colors.grey[600]),
                             ),
                           ),
                         )
-                      // ── All available transport options ───────────────────
                       : ListView(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                           children: [
-                            // Train / metro results
+
+                            // ── Profile selector ──────────────────────────────
+                            _ProfileSelector(
+                              current: _profile,
+                              onChanged: _changeProfile,
+                            ),
+                            const SizedBox(height: 16),
+
+                            // ── Recommendation banner ─────────────────────────
+                            if (_recommendation != null)
+                              _RecommendationBanner(rec: _recommendation!),
+                            if (_recommendation != null) const SizedBox(height: 16),
+
+                            // ── Train / metro results ─────────────────────────
                             for (final result in trainResults) ...[
                               _sectionLabel(
                                 result.lineType == 'sts_sahel'
-                                    ? '🚌 Prochain bus ${result.operatorName}'
-                                    : '🚆 Prochain ${result.operatorName}',
+                                    ? 'Bus ${result.operatorName}'
+                                    : result.operatorName,
                               ),
-                              const SizedBox(height: 12),
-                              GestureDetector(
+                              const SizedBox(height: 8),
+                              _CardWrapper(
+                                isRecommended: _isTrainRecommended(result.lineType),
                                 onTap: () => context.push(
                                   '/home/journey-details',
                                   extra: result,
                                 ),
                                 child: MetroSahelCard(result: result),
                               ),
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 16),
                             ],
-                            // Bus result
+
+                            // ── TRANSTU Bus ───────────────────────────────────
                             if (bestBus != null) ...[
-                              _sectionLabel('🚌 Prochain bus TRANSTU'),
-                              const SizedBox(height: 12),
+                              _sectionLabel('Bus TRANSTU'),
+                              const SizedBox(height: 8),
                               if (error != null)
                                 Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.only(bottom: 6),
                                   child: Text(
                                     error,
-                                    style: const TextStyle(
-                                        color: Colors.orange, fontSize: 13),
+                                    style: const TextStyle(color: Colors.orange, fontSize: 13),
                                   ),
                                 ),
-                              GestureDetector(
+                              _CardWrapper(
+                                isRecommended: _isRecommended('transtu_bus'),
                                 onTap: () {
                                   final journey = _busServiceToJourney(
                                     bestBus,
-                                    hubName: busHubName,
-                                    nextDeparture: bestTime,
-                                    isReverseDirection: _searchController.state.busIsReverse,
+                                    hubName:            busHubName,
+                                    nextDeparture:      bestTime,
+                                    isReverseDirection: state.busIsReverse,
                                   );
-                                  context.push('/home/journey-details',
-                                      extra: journey);
+                                  context.push('/home/journey-details', extra: journey);
                                 },
                                 child: _BestBusCard(
-                                  service: bestBus,
+                                  service:      bestBus,
                                   nextDeparture: bestTime,
-                                  routeLabel: busHubName ?? '',
+                                  routeLabel:   busHubName ?? '',
                                 ),
                               ),
+                              const SizedBox(height: 16),
                             ],
-                            // Taxi collectif result
+
+                            // ── Taxi collectif ────────────────────────────────
                             if (taxiResult != null) ...[
-                              const SizedBox(height: 20),
-                              _sectionLabel('🚕 Taxi collectif disponible'),
-                              const SizedBox(height: 12),
-                              GestureDetector(
+                              _sectionLabel('Taxi Collectif'),
+                              const SizedBox(height: 8),
+                              _CardWrapper(
+                                isRecommended: _isRecommended('taxi_collectif'),
                                 onTap: () => context.push(
                                   '/home/journey-details',
                                   extra: taxiResult,
@@ -223,9 +363,239 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
     return Text(
       text,
       style: const TextStyle(
-        fontWeight: FontWeight.bold,
-        fontSize: 15,
+        fontWeight: FontWeight.w700,
+        fontSize: 13,
         color: Color(0xFF1A3A6B),
+        letterSpacing: 0.3,
+      ),
+    );
+  }
+}
+
+// ── Result entry model ────────────────────────────────────────────────────────
+
+class _ResultEntry {
+  final String label;
+  final String transportKey;
+  final double price;
+  final double durationMin;
+  final double score;
+  final Widget card;
+  final VoidCallback onTap;
+
+  const _ResultEntry({
+    required this.label,
+    required this.transportKey,
+    required this.price,
+    required this.durationMin,
+    required this.score,
+    required this.card,
+    required this.onTap,
+  });
+}
+
+// ── Profile selector ──────────────────────────────────────────────────────────
+
+class _ProfileSelector extends StatelessWidget {
+  final UserProfile current;
+  final ValueChanged<UserProfile> onChanged;
+
+  const _ProfileSelector({required this.current, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          _tab(UserProfile.price,    '💰 Prix',      Icons.savings_outlined),
+          _tab(UserProfile.balanced, '⚖️ Équilibré', Icons.balance_outlined),
+          _tab(UserProfile.speed,    '⚡ Rapide',    Icons.speed_outlined),
+        ],
+      ),
+    );
+  }
+
+  Widget _tab(UserProfile profile, String label, IconData icon) {
+    final active = current == profile;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onChanged(profile),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: active ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: active
+                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 4)]
+                : null,
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+              color: active ? const Color(0xFF1A3A6B) : Colors.grey.shade500,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Recommendation banner ─────────────────────────────────────────────────────
+
+class _RecommendationBanner extends StatelessWidget {
+  final JourneyRecommendation rec;
+
+  const _RecommendationBanner({required this.rec});
+
+  String get _transportLabel {
+    switch (rec.winnerTransportType) {
+      case 'metro_sahel':     return 'Métro du Sahel';
+      case 'banlieue_nabeul': return 'Banlieue Nabeul';
+      case 'banlieue_sud':    return 'Banlieue Sud';
+      case 'sncft':           return 'SNCFT';
+      case 'sts_sahel':       return 'STS Sahel';
+      case 'transtu_bus':     return 'Bus TRANSTU';
+      case 'taxi_collectif':  return 'Taxi Collectif';
+      default:                return rec.winnerTransportType;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A3A6B).withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFF1A3A6B).withValues(alpha: 0.18),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A3A6B).withValues(alpha: 0.10),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.auto_awesome_rounded,
+              size: 16,
+              color: Color(0xFF1A3A6B),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(fontSize: 13, color: Color(0xFF1A3A6B)),
+                children: [
+                  const TextSpan(
+                    text: 'Recommandé  ',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  TextSpan(text: _transportLabel),
+                  TextSpan(
+                    text: '  ·  ${rec.reasonLabel()}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF5C7AAA),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (rec.isHighConfidence)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A3A6B).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${(rec.winnerScore / 5 * 100).round()}%',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1A3A6B),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Card wrapper with recommended badge ───────────────────────────────────────
+
+class _CardWrapper extends StatelessWidget {
+  final bool isRecommended;
+  final VoidCallback onTap;
+  final Widget child;
+
+  const _CardWrapper({
+    required this.isRecommended,
+    required this.onTap,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          child,
+          if (isRecommended)
+            Positioned(
+              top: -10,
+              right: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A3A6B),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF1A3A6B).withValues(alpha: 0.35),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.auto_awesome_rounded, size: 12, color: Colors.white),
+                    SizedBox(width: 4),
+                    Text(
+                      'Recommandé',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -266,12 +636,10 @@ class _BestBusCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Line badge + direction
           Row(
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
@@ -279,8 +647,7 @@ class _BestBusCard extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.directions_bus,
-                        color: Colors.white, size: 18),
+                    const Icon(Icons.directions_bus, color: Colors.white, size: 18),
                     const SizedBox(width: 6),
                     Text(
                       'Ligne ${service.lineNumber}',
@@ -305,19 +672,16 @@ class _BestBusCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          // Next departure banner
           Container(
             width: double.infinity,
-            padding:
-                const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
               children: [
-                const Icon(Icons.access_time,
-                    color: Colors.white70, size: 20),
+                const Icon(Icons.access_time, color: Colors.white70, size: 20),
                 const SizedBox(width: 8),
                 const Text(
                   'Prochain départ',
@@ -345,8 +709,12 @@ class _BestBusCard extends StatelessWidget {
                   const Icon(Icons.timer_outlined, color: Colors.white70, size: 16),
                   const SizedBox(width: 4),
                   Text(
-                    '~${service.estimatedTripDurationMinutes} min de trajet',
-                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                    '~${service.estimatedTripDurationMinutes} min',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ] else if (service.frequencyLabel.isNotEmpty) ...[
                   const Icon(Icons.schedule, color: Colors.white54, size: 16),
@@ -368,7 +736,8 @@ class _BestBusCard extends StatelessWidget {
                   ),
               ],
             ),
-            if (service.estimatedTripDurationMinutes != null && service.frequencyLabel.isNotEmpty) ...[
+            if (service.estimatedTripDurationMinutes != null &&
+                service.frequencyLabel.isNotEmpty) ...[
               const SizedBox(height: 4),
               Row(
                 children: [
@@ -382,13 +751,11 @@ class _BestBusCard extends StatelessWidget {
               ),
             ],
           ],
-          // Tap hint
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              const Icon(Icons.info_outline,
-                  color: Colors.white38, size: 14),
+              const Icon(Icons.info_outline, color: Colors.white38, size: 14),
               const SizedBox(width: 4),
               Text(
                 'Appuyez pour les détails',

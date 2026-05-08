@@ -1,18 +1,20 @@
 import 'package:equatable/equatable.dart';
 import '../models/bus_service_model.dart';
+import '../models/journey_recommendation.dart';
 import '../models/metro_sahel_result.dart';
 import '../models/taxi_collectif_result.dart';
 
 class JourneySearchState extends Equatable {
   final bool isLoading;
   final String? error;
-  final List<MetroSahelResult> trainResults;   // all matched train/metro results
-  final List<BusService>? busServices;         // full timetable list (hub → hub)
-  final BusService? bestBusService;            // single "next bus" result
-  final String? bestBusDepartureTime;          // computed next departure "HH:MM"
-  final String? busHubName;                    // display name for best bus result
-  final bool busIsReverse;                     // true when direction is suburb→hub
-  final TaxiCollectifResult? taxiCollectifResult; // taxi collectif route if available
+  final List<MetroSahelResult> trainResults;
+  final List<BusService>? busServices;
+  final BusService? bestBusService;
+  final String? bestBusDepartureTime;
+  final String? busHubName;
+  final bool busIsReverse;
+  final TaxiCollectifResult? taxiCollectifResult;
+  final JourneyRecommendation? recommendation;
 
   const JourneySearchState({
     this.isLoading = false,
@@ -24,6 +26,7 @@ class JourneySearchState extends Equatable {
     this.busHubName,
     this.busIsReverse = false,
     this.taxiCollectifResult,
+    this.recommendation,
   });
 
   // ── Convenience getters for UI state checks ──────────────────────────────
@@ -58,6 +61,7 @@ class JourneySearchState extends Equatable {
         busHubName,
         busIsReverse,
         taxiCollectifResult,
+        recommendation,
       ];
 
   /// Enables readable toString() output for debugPrint and Flutter DevTools.
@@ -90,21 +94,24 @@ class JourneySearchState extends Equatable {
     bool? busIsReverse,
     TaxiCollectifResult? taxiCollectifResult,
     bool clearTaxi = false,
+    JourneyRecommendation? recommendation,
+    bool clearRecommendation = false,
   }) {
     return JourneySearchState(
-      isLoading: isLoading ?? this.isLoading,
-      error: clearError ? null : (error ?? this.error),
+      isLoading:    isLoading ?? this.isLoading,
+      error:        clearError ? null : (error ?? this.error),
       trainResults: clearTrainResults ? const [] : (trainResults ?? this.trainResults),
-      busServices: clearBus ? null : (busServices ?? this.busServices),
-      bestBusService:
-          clearBestBus ? null : (bestBusService ?? this.bestBusService),
+      busServices:  clearBus ? null : (busServices ?? this.busServices),
+      bestBusService: clearBestBus ? null : (bestBusService ?? this.bestBusService),
       bestBusDepartureTime: clearBestBus
           ? null
           : (bestBusDepartureTime ?? this.bestBusDepartureTime),
-      busHubName: clearBestBus ? null : (busHubName ?? this.busHubName),
+      busHubName:   clearBestBus ? null : (busHubName ?? this.busHubName),
       busIsReverse: clearBestBus ? false : (busIsReverse ?? this.busIsReverse),
       taxiCollectifResult:
           clearTaxi ? null : (taxiCollectifResult ?? this.taxiCollectifResult),
+      recommendation:
+          clearRecommendation ? null : (recommendation ?? this.recommendation),
     );
   }
 }

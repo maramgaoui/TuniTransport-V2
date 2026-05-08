@@ -10,7 +10,12 @@
       "Bash(grep -E \"\\\\.dart$\")",
       "WebFetch(domain:catalogue-data.transport.tn)",
       "Bash(GOOGLE_APPLICATION_CREDENTIALS=\"../serviceAccount.json\" FIREBASE_PROJECT_ID=\"tuni-transport-20eaf\" node cleanup_transtu_all.js --confirm)",
-      "Bash(GOOGLE_APPLICATION_CREDENTIALS=\"../serviceAccount.json\" FIREBASE_PROJECT_ID=\"tuni-transport-20eaf\" node seed_transtu_nonjsonbatch.js --dir=data/generated)"
+      "Bash(GOOGLE_APPLICATION_CREDENTIALS=\"../serviceAccount.json\" FIREBASE_PROJECT_ID=\"tuni-transport-20eaf\" node seed_transtu_nonjsonbatch.js --dir=data/generated)",
+      "Bash(git checkout *)",
+      "Bash(flutter analyze *)",
+      "Bash(python generate_synthetic_ratings.py)",
+      "Bash(python train_model.py)",
+      "Bash(python -c ' *)"
     ]
   }
 }

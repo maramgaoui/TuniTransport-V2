@@ -196,6 +196,50 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
 
+    // ── Rating system ──────────────────────────────────────────────────────────
+
+    match /ratings/{ratingId} {
+      // Users can only read their own ratings.
+      allow read: if isSignedIn() && resource.data.uid == request.auth.uid;
+
+      // Create: must own the doc, rating must be 1–5 integer.
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.routeKey is string
+        && request.resource.data.routeKey.size() > 0;
+
+      // Update: same owner, same constraints.
+      allow update: if isSignedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5;
+
+      // Users may delete their own rating.
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    match /route_stats/{routeKey} {
+      // Any signed-in user can read aggregates (needed for recommendations).
+      allow read: if isSignedIn();
+
+      // Clients write via RatingService transactions — validate the fields.
+      allow create, update: if isSignedIn()
+        && request.resource.data.averageRating is number
+        && request.resource.data.averageRating >= 0
+        && request.resource.data.averageRating <= 5
+        && request.resource.data.totalRatings is int
+        && request.resource.data.totalRatings >= 0
+        && request.resource.data.sumRatings is number
+        && request.resource.data.sumRatings >= 0;
+
+      allow delete: if isSuperAdmin();
+    }
+
     // Matricule → real Auth email mapping for promoted admins.
     // get (single-doc by matricule ID) is public so the login screen can resolve
     // a matricule → email before the user is authenticated.

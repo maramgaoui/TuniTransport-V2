@@ -60,7 +60,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     } else if (_isTranstuBus) {
       _loadTranstuStops();
     } else {
-      // Generic journey: no route_stops to load.
       _stopsLoading = false;
     }
   }
@@ -70,6 +69,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     _mapController.dispose();
     super.dispose();
   }
+
 
   Future<void> _loadIntermediateStops() async {
     try {
