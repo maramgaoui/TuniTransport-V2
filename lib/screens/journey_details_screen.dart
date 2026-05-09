@@ -1,19 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/widgets/time_text.dart';
-import '../services/map_routing_service.dart';
-import '../controllers/favorites_controller.dart';
 import '../services/active_journey_service.dart';
+import '../services/map_routing_service.dart';
+import '../services/rating_service.dart';
+import '../services/recommendation_service.dart';
+import '../controllers/favorites_controller.dart';
 import '../theme/app_theme.dart';
 import '../models/journey_model.dart';
 import '../models/metro_sahel_result.dart';
 import '../constants/firestore_collections.dart';
+import '../widgets/star_rating_widget.dart';
 
 class JourneyDetailsScreen extends StatefulWidget {
   final Journey? journey;
@@ -265,6 +268,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     }
   }
 
+
   /// Loads route stops for a TRANSTU bus journey from Firestore.
   Future<void> _loadTranstuStops() async {
     try {
@@ -480,6 +484,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
   }
 
   double _getZoom() {
+    if (_intermediateStops.isEmpty) return 7.5;  // inter-city (taxi) view
     if (_intermediateStops.length <= 3) return 13.0;
     if (_intermediateStops.length <= 8) return 11.0;
     return 10.0;
@@ -624,15 +629,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
           backgroundColor: Colors.red,
         ),
       );
-    }
-  }
-
-  Future<void> _callOperator() async {
-    final metroResult = widget.metroResult;
-    if (metroResult == null) return;
-    final uri = Uri(scheme: 'tel', path: metroResult.operatorPhone);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
     }
   }
 
@@ -826,11 +822,132 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     );
   }
 
+  // ── Rating sheet ─────────────────────────────────────────────────────────
+
+  static String _iconKeyToTransportType(String iconKey) {
+    switch (iconKey) {
+      case 'bus':
+        return 'transtu_bus';
+      case 'taxi':
+        return 'taxi_collectif';
+      case 'train':
+        return 'sncft';
+      default:
+        return 'metro_sahel';
+    }
+  }
+
+  Future<void> _showRatingSheet(BuildContext ctx, Journey journey) {
+    final metro = widget.metroResult;
+    return showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: true,
+      builder: (_) => _RatingSheet(
+        journey: journey,
+        fromStationId: metro?.fromStationId,
+        toStationId: metro?.toStationId,
+        transportType: metro != null
+            ? RecommendationService.lineTypeToTransportType(metro.lineType)
+            : _iconKeyToTransportType(journey.iconKey),
+      ),
+    );
+  }
+
+  Future<void> _openMaps() async {
+    final coords = _getCoordinates();
+    final uri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1'
+      '&destination=${coords.latitude},${coords.longitude}',
+    );
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  // ── Section header ────────────────────────────────────────────────────────
+
+  Widget _sectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
+      child: Row(
+        children: [
+          Container(width: 4, height: 18, color: _themeColor,
+              margin: const EdgeInsets.only(right: 10)),
+          Text(title,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  // ── Shadow card wrapper used for each info section ────────────────────────
+
+  Widget _sectionCard(Widget child) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.07),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final metro = widget.metroResult;
     final isMetro = metro != null;
+    final isTaxi = !isMetro && _journey.iconKey == 'taxi';
+    final isStusBus = isMetro && metro.lineType == 'sts_sahel';
+
+    // ── Derive transport display names ──────────────────────────────────────
+    final String transportName = isMetro
+        ? (isStusBus ? 'Bus' : 'Train')
+        : isTaxi
+            ? 'Taxi Collectif'
+            : 'Bus';
+
+    final String? lineNum = isMetro
+        ? '${metro.tripNumberStr ?? metro.tripNumber}'
+        : _isTranstuBus
+            ? _journey.line
+            : null;
+
+    final String operatorSub =
+        isMetro ? metro.operatorName : _journey.operator;
+
+    // Icon for transport type in header
+    final IconData transportIcon = isMetro
+        ? (isStusBus ? Icons.directions_bus : Icons.train)
+        : isTaxi
+            ? Icons.local_taxi
+            : Icons.directions_bus;
+
+    // ── Duration string ─────────────────────────────────────────────────────
+    final String durationStr = isMetro
+        ? '${metro.durationMinutes} min'
+        : _journey.estimatedTripDurationMinutes != null
+            ? '~${_journey.estimatedTripDurationMinutes} min'
+            : _journey.duration.isNotEmpty
+                ? _journey.duration
+                : '--';
+
+    // ── Price string ────────────────────────────────────────────────────────
+    final String priceStr = isMetro
+        ? '${metro.price.toStringAsFixed(3)} TND'
+        : '${_journey.price} TND';
 
     return Scaffold(
       body: SafeArea(
@@ -839,506 +956,461 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
             // ── Header ───────────────────────────────────────────────────────
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(4, 12, 8, 16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: _themeGradient),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Row(
-                    children: [
-                      IconButton(
-                        icon:
-                            const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () {
-                          if (context.canPop()) {
-                            context.pop();
-                          } else {
-                            context.go('/home/journey-input');
-                          }
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              l10n.journeyDetails,
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              isMetro
-                                  ? metro.operatorName
-                                  : _journey.operator,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color:
-                                    Colors.white.withValues(alpha: 0.85),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (isMetro && !metro.noTrainToday)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFF8C00),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            'N°${metro.tripNumberStr ?? metro.tripNumber}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      if (_isTranstuBus)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.directions_bus,
-                                  color: Colors.white, size: 14),
-                              SizedBox(width: 4),
-                              Text(
-                                'TRANSTU',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
+                  // Back button
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/home/journey-input');
+                      }
+                    },
                   ),
+                  // Transport icon
+                  Icon(transportIcon, color: Colors.white, size: 22),
+                  const SizedBox(width: 10),
+                  // Transport name + operator
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          transportName,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          operatorSub,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withValues(alpha: 0.70),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Line number (no circle, plain white text) — hidden for taxi
+                  if (lineNum != null && lineNum.isNotEmpty) ...[
+                    Text(
+                      lineNum,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  // ⭐ and 📤 only for taxi — hidden for train and bus
+                  if (isTaxi) ...[
+                    IconButton(
+                      icon: const Icon(Icons.star_border, color: Colors.white),
+                      tooltip: 'Évaluer',
+                      onPressed: () => _showRatingSheet(context, _journey),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.ios_share, color: Colors.white),
+                      tooltip: 'Partager',
+                      onPressed: _shareJourney,
+                    ),
+                  ],
                 ],
               ),
             ),
 
-            // ── Content ──────────────────────────────────────────────────────
+            // ── Scrollable content ────────────────────────────────────────────
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Map — shown for trains and TRANSTU bus when route data is available
-                    if (_stopsLoading || _intermediateStops.isNotEmpty)
-                      SizedBox(
-                        height: 250,
-                        child: _stopsLoading
-                            ? const Center(
-                                child: CircularProgressIndicator())
-                            : ClipRRect(
-                                borderRadius: const BorderRadius.vertical(
-                                  bottom: Radius.circular(20),
+                    // ── Map (250 px) — shown for all modes ─────────────────
+                    SizedBox(
+                      height: 250,
+                      child: _stopsLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : ClipRRect(
+                              borderRadius: const BorderRadius.vertical(
+                                bottom: Radius.circular(20),
+                              ),
+                              child: FlutterMap(
+                                mapController: _mapController,
+                                options: MapOptions(
+                                  initialCenter: _getCoordinates(),
+                                  initialZoom: _getZoom(),
+                                  maxZoom: 18,
+                                  minZoom: 5,
                                 ),
-                                child: FlutterMap(
-                                  mapController: _mapController,
-                                  options: MapOptions(
-                                    initialCenter: _getCoordinates(),
-                                    initialZoom: _getZoom(),
-                                    maxZoom: 18,
-                                    minZoom: 5,
+                                children: [
+                                  TileLayer(
+                                    urlTemplate:
+                                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                    userAgentPackageName:
+                                        'com.example.tunitransport',
+                                    maxNativeZoom: 19,
                                   ),
-                                  children: [
-                                    TileLayer(
-                                      urlTemplate:
-                                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                      userAgentPackageName:
-                                          'com.example.tunitransport',
-                                      maxNativeZoom: 19,
-                                    ),
+                                  if (_buildPolylines().isNotEmpty)
                                     PolylineLayer(
                                         polylines: _buildPolylines()),
+                                  if (_buildMarkers().isNotEmpty)
                                     MarkerLayer(markers: _buildMarkers()),
-                                  ],
-                                ),
+                                ],
                               ),
-                      ),
+                            ),
+                    ),
 
-                    const SizedBox(height: 16),
-
-                    // Times banner (Metro / train)
-                    if (isMetro && !metro.noTrainToday)
-                      Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 20),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: _themeGradient),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              _timeBadge('Départ', metro.departureTime),
-                              const Spacer(),
-                              Column(
+                    // ── Informations du trajet ────────────────────────────────
+                    _sectionHeader('Informations du trajet'),
+                    _sectionCard(
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // No-service banner
+                          if (isMetro && metro.noTrainToday)
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade50,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.amber.shade200),
+                              ),
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
                                 children: [
-                                  const Icon(Icons.arrow_forward,
-                                      color: Colors.white54, size: 18),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${metro.durationMinutes} min',
-                                    style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 11),
+                                  const Icon(Icons.info_outline,
+                                      color: Colors.amber, size: 20),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text.rich(
+                                      TextSpan(children: [
+                                        TextSpan(
+                                          text: isStusBus
+                                              ? 'Aucun bus ce soir. Prochain demain à '
+                                              : 'Aucun train ce soir. Premier demain à ',
+                                        ),
+                                        WidgetSpan(
+                                          alignment: PlaceholderAlignment.middle,
+                                          child: TimeText(metro.departureTime,
+                                              style: TextStyle(
+                                                  color: Colors.amber.shade900,
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 13)),
+                                        ),
+                                      ]),
+                                      style: TextStyle(
+                                          color: Colors.amber.shade900,
+                                          fontSize: 13),
+                                    ),
                                   ),
                                 ],
                               ),
-                              const Spacer(),
-                              _timeBadge('Arrivée', metro.arrivalTime),
-                            ],
-                          ),
-                        ),
-                      ),
+                            ),
 
-                    if (isMetro && metro.noTrainToday)
-                      Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 20),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.amber.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border:
-                                Border.all(color: Colors.amber.shade200),
-                          ),
-                          padding: const EdgeInsets.all(14),
-                          child: Row(
+                          // Départ / Arrivée — hidden for taxi
+                          if (!isTaxi && !(isMetro && metro.noTrainToday)) ...[
+                            _infoRow(
+                              label: 'Départ',
+                              station: isMetro
+                                  ? metro.fromStationName
+                                  : _journey.departureStation,
+                              time: isMetro
+                                  ? metro.departureTime
+                                  : _journey.departureTime,
+                            ),
+                            const SizedBox(height: 8),
+                            _infoRow(
+                              label: 'Arrivée',
+                              station: isMetro
+                                  ? metro.toStationName
+                                  : _journey.arrivalStation,
+                              time: isMetro
+                                  ? metro.arrivalTime
+                                  : (_journey.arrivalTime ?? ''),
+                            ),
+                            const SizedBox(height: 12),
+                            const Divider(height: 1),
+                            const SizedBox(height: 10),
+                          ],
+
+                          // Durée du trajet
+                          Row(
                             children: [
-                              const Icon(Icons.info_outline,
-                                  color: Colors.amber, size: 22),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text.rich(
-                                  TextSpan(
-                                    children: [
-                                      TextSpan(
-                                          text: metro.lineType == 'sts_sahel'
-                                              ? 'Aucun bus disponible ce soir.\nProchain bus demain à '
-                                              : 'Aucun train disponible ce soir.\nPremier train demain à '),
-                                      WidgetSpan(
-                                        alignment:
-                                            PlaceholderAlignment.middle,
-                                        child: TimeText(
-                                          metro.departureTime,
-                                          style: TextStyle(
-                                            color: Colors.amber.shade900,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  style: TextStyle(
-                                      color: Colors.amber.shade900,
-                                      fontSize: 13),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                    // TRANSTU bus departure + last departure banner
-                    if (_isTranstuBus)
-                      Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 20),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: _themeGradient),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              _timeBadge(
-                                  'Premier départ',
-                                  _displayFirstDeparture),
+                              Icon(Icons.timer_outlined,
+                                  size: 18, color: _themeColor),
+                              const SizedBox(width: 8),
+                              Text('Durée du trajet',
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.mediumGrey)),
                               const Spacer(),
-                              const Icon(Icons.directions_bus,
-                                  color: Colors.white54, size: 22),
-                              const Spacer(),
-                              if (_displayLastDeparture != null)
-                                _timeBadge(
-                                    'Dernier départ',
-                                    _displayLastDeparture!),
+                              Text(durationStr,
+                                  style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700)),
                             ],
                           ),
-                        ),
-                      ),
-
-                    const SizedBox(height: 20),
-
-                    // ── Route steps (metro, train, bus with stops) OR basic bus panel ──
-                    if (_isTranstuBus && _intermediateStops.isEmpty && !_stopsLoading)
-                      _buildBusDetailsPanel()
-                    else
-                      Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Étapes du trajet',
-                              style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700),
-                            ),
-                            const SizedBox(height: 16),
-                            if (_intermediateStops.isNotEmpty)
-                              ..._buildStopsList()
-                            else ...[
-                              _buildRouteStep(
-                                time: _journey.departure,
-                                station: _journey.departureStation,
-                                isFirst: true,
-                                isLast: false,
-                              ),
-                              _buildRouteStep(
-                                time: _journey.arrival,
-                                station: _journey.arrivalStation,
-                                isFirst: false,
-                                isLast: true,
-                                type: 'Destination',
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-
-                    const SizedBox(height: 20),
-
-                    // Info cards (train, metro, and TRANSTU bus with loaded stops)
-                    if (!_isTranstuBus || _intermediateStops.isNotEmpty)
-                      Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 20),
-                        child: Column(
-                          children: [
-                            _buildInfoCard(
-                              icon: Icons.access_time,
-                              title: l10n.totalDuration,
-                              value: isMetro
-                                  ? '${metro.durationMinutes} min'
-                                  : _journey.duration.isNotEmpty
-                                      ? _journey.duration
-                                      : '--',
-                            ),
-                            const SizedBox(height: 12),
-                            _buildInfoCard(
-                              icon: Icons.payments_outlined,
-                              title: l10n.fare,
-                              value: isMetro
-                                  ? '${metro.price.toStringAsFixed(3)} TND'
-                                  : '${_journey.price} TND',
-                            ),
-                            const SizedBox(height: 12),
-                            _buildInfoCard(
-                              icon: isMetro
-                                  ? (metro.lineType == 'sts_sahel'
-                                      ? Icons.directions_bus
-                                      : Icons.train)
-                                  : Icons.directions_bus,
-                              title: l10n.journeyType,
-                              value: isMetro
-                                  ? metro.operatorName
-                                  : _journey.type,
-                            ),
-                            const SizedBox(height: 12),
-                            _buildInfoCard(
-                              icon: Icons.place_outlined,
-                              title: 'Arrêts',
-                              value: _intermediateStops.isNotEmpty
-                                  ? '${_intermediateStops.length} arrêts'
-                                  : isMetro
-                                      ? '${metro.numberOfStops} arrêts'
-                                      : _journey.transfers == 0
-                                          ? 'Direct'
-                                          : '${_journey.transfers} correspondance(s)',
-                            ),
-                            if (isMetro) ...[
-                              const SizedBox(height: 12),
-                              _buildInfoCard(
-                                icon: Icons.route,
-                                title: 'Ligne',
-                                value: metro.routeName,
-                              ),
-                            ],
-                            if (_isTranstuBus) ...[
-                              const SizedBox(height: 12),
-                              _buildInfoCard(
-                                icon: Icons.route,
-                                title: 'Ligne',
-                                value: _journey.line,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-
-                    const SizedBox(height: 24),
-
-                    // ── Action buttons ────────────────────────────────────
-                    Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        children: [
-                          if (!isMetro || !metro.noTrainToday)
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                onPressed: () async {
-                                  final confirmed =
-                                      await showDialog<bool>(
-                                    context: context,
-                                    builder: (ctx) => AlertDialog(
-                                      title: const Text(
-                                          'Commencer le trajet'),
-                                      content: Text(
-                                        'Voulez-vous commencer le trajet '
-                                        '"${_journey.departureStation} → '
-                                        '${_journey.arrivalStation}" ?',
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.of(ctx)
-                                                  .pop(false),
-                                          child:
-                                              const Text('Annuler'),
-                                        ),
-                                        ElevatedButton(
-                                          onPressed: () =>
-                                              Navigator.of(ctx)
-                                                  .pop(true),
-                                          child:
-                                              const Text('Confirmer'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                  if (confirmed != true) return;
-                                  await ActiveJourneyService.instance
-                                      .setActiveJourney(_journey);
-                                  if (!context.mounted) return;
-                                  context.go('/home/active-journey',
-                                      extra: _journey);
-                                },
-                                icon: const Icon(Icons.check_circle),
-                                label:
-                                    const Text('Commencer le trajet'),
-                              ),
-                            ),
-
-                          const SizedBox(height: 12),
-
-                          SizedBox(
-                            width: double.infinity,
-                            child: ListenableBuilder(
-                              listenable: FavoritesController.instance,
-                              builder: (context, _) {
-                                final isFav = FavoritesController
-                                    .instance
-                                    .isFavorite(_journey.id);
-                                return OutlinedButton.icon(
-                                  onPressed: () async {
-                                    try {
-                                      await FavoritesController
-                                          .instance
-                                          .toggleFavorite(_journey);
-                                      if (!context.mounted) return;
-                                      final nowFav =
-                                          FavoritesController.instance
-                                              .isFavorite(_journey.id);
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Text(nowFav
-                                              ? 'Ajouté aux favoris! ♥'
-                                              : 'Retiré des favoris'),
-                                          duration: const Duration(
-                                              seconds: 2),
-                                        ),
-                                      );
-                                    } catch (_) {
-                                      if (!context.mounted) return;
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                              'Erreur lors de la mise à jour des favoris'),
-                                          backgroundColor: Colors.red,
-                                          duration:
-                                              Duration(seconds: 2),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  icon: Icon(
-                                    isFav
-                                        ? Icons.favorite
-                                        : Icons.favorite_border,
-                                    color:
-                                        isFav ? Colors.red : null,
-                                  ),
-                                  label: Text(isFav
-                                      ? 'Retirer des favoris'
-                                      : 'Ajouter aux favoris'),
-                                );
-                              },
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: _shareJourney,
-                              icon: const Icon(Icons.share),
-                              label: const Text('Partager'),
-                            ),
-                          ),
-
-                          if (isMetro) ...[
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: _callOperator,
-                                icon: const Icon(Icons.phone),
-                                label: Text(
-                                    'Appeler ${metro.operatorPhone}'),
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ),
 
-                    const SizedBox(height: 24),
+                    // ── Étapes du trajet — hidden for taxi ──────────────────
+                    if (!isTaxi) ...[
+                      _sectionHeader('Étapes du trajet'),
+                      _sectionCard(
+                        _stopsLoading
+                            ? const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: CircularProgressIndicator(),
+                                ),
+                              )
+                            : _isTranstuBus && _intermediateStops.isEmpty
+                                ? _buildBusDetailsPanel()
+                                : _intermediateStops.isNotEmpty
+                                    ? Column(children: _buildStopsList())
+                                    : Column(
+                                        children: [
+                                          _buildRouteStep(
+                                            time: _journey.departure,
+                                            station: _journey.departureStation,
+                                            isFirst: true,
+                                            isLast: false,
+                                          ),
+                                          _buildRouteStep(
+                                            time: _journey.arrival,
+                                            station: _journey.arrivalStation,
+                                            isFirst: false,
+                                            isLast: true,
+                                            type: 'Destination',
+                                          ),
+                                        ],
+                                      ),
+                      ),
+                    ],
+
+                    // ── Tarif ───────────────────────────────────────────────
+                    _sectionHeader('Tarif'),
+                    _sectionCard(
+                      Row(
+                        children: [
+                          Icon(Icons.confirmation_number_outlined,
+                              size: 18, color: _themeColor),
+                          const SizedBox(width: 8),
+                          Text(
+                            priceStr,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: _themeColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+
+                    // ── Fréquence — bus only ─────────────────────────────────
+                    if (_isTranstuBus && _resolvedBusFrequencyMinutes != null) ...[
+                      _sectionHeader('Fréquence'),
+                      _sectionCard(
+                        Row(
+                          children: [
+                            Icon(Icons.schedule, size: 18, color: _themeColor),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Toutes les $_resolvedBusFrequencyMinutes minutes',
+                              style: const TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    // ── Actions ──────────────────────────────────────────────
+                    _sectionHeader('Actions'),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        children: [
+
+                          // ── Train + Bus: Commencer le trajet ─────────────────
+                          if (!isTaxi) ...[
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _themeColor,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(12)),
+                                  elevation: 0,
+                                ),
+                                onPressed: () async {
+                                  await ActiveJourneyService.instance
+                                      .setActiveJourney(_journey);
+                                  if (!context.mounted) return;
+                                  context.push('/home/active-journey',
+                                      extra: <String, dynamic>{
+                                        'journey':       _journey,
+                                        'fromStationId': widget.metroResult?.fromStationId,
+                                        'toStationId':   widget.metroResult?.toStationId,
+                                        'metroResult':   widget.metroResult,
+                                      });
+                                },
+                                icon:
+                                    const Icon(Icons.directions_run),
+                                label: const Text(
+                                  'Commencer le trajet',
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+
+                          // ── Taxi only: Google Maps + Évaluer ─────────────────
+                          if (isTaxi) ...[
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _themeColor,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(12)),
+                                  elevation: 0,
+                                ),
+                                onPressed: _openMaps,
+                                icon: const Icon(Icons.map_outlined),
+                                label: const Text(
+                                  'Consulter sur Google Maps',
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: _themeColor,
+                                  side: BorderSide(color: _themeColor),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(12)),
+                                ),
+                                onPressed: () =>
+                                    _showRatingSheet(context, _journey),
+                                icon:
+                                    const Icon(Icons.star_border_rounded),
+                                label: const Text('Évaluer le trajet',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600)),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+
+                          // Favoris + Partager — side by side
+                          Row(
+                            children: [
+                              Expanded(
+                                child: AnimatedBuilder(
+                                  animation: FavoritesController.instance,
+                                  builder: (bCtx, _) {
+                                    final isFav = FavoritesController.instance
+                                        .isFavorite(_journey.id);
+                                    return OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: isFav
+                                            ? Colors.red
+                                            : AppTheme.mediumGrey,
+                                        side: BorderSide(
+                                          color: isFav
+                                              ? Colors.red.shade200
+                                              : AppTheme.lightGrey,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12)),
+                                      ),
+                                      onPressed: () async {
+                                        try {
+                                          await FavoritesController.instance
+                                              .toggleFavorite(_journey);
+                                          if (!bCtx.mounted) return;
+                                          final nowFav =
+                                              FavoritesController.instance
+                                                  .isFavorite(_journey.id);
+                                          ScaffoldMessenger.of(bCtx)
+                                              .showSnackBar(SnackBar(
+                                            content: Text(nowFav
+                                                ? 'Ajouté aux favoris'
+                                                : 'Retiré des favoris'),
+                                            duration:
+                                                const Duration(seconds: 2),
+                                          ));
+                                        } catch (_) {}
+                                      },
+                                      icon: Icon(isFav
+                                          ? Icons.favorite_rounded
+                                          : Icons.favorite_border_rounded),
+                                      label: Text(isFav ? 'Favoris ♥' : 'Favoris'),
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppTheme.mediumGrey,
+                                    side: const BorderSide(
+                                        color: AppTheme.lightGrey),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12)),
+                                  ),
+                                  onPressed: _shareJourney,
+                                  icon: const Icon(Icons.ios_share),
+                                  label: const Text('Partager'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
@@ -1349,20 +1421,38 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     );
   }
 
-  Widget _timeBadge(String label, String time) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  // ── Départ / Arrivée row ──────────────────────────────────────────────────
+
+  Widget _infoRow({
+    required String label,
+    required String station,
+    required String time,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(label,
-            style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.65),
-                fontSize: 11)),
+        SizedBox(
+          width: 56,
+          child: Text(
+            '$label:',
+            style: const TextStyle(
+                fontSize: 13, color: AppTheme.mediumGrey),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            station,
+            style: const TextStyle(
+                fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+        ),
+        const SizedBox(width: 8),
         TimeText(
           time,
-          style: const TextStyle(
-              color: Colors.white,
+          style: TextStyle(
+              fontSize: 14,
               fontWeight: FontWeight.bold,
-              fontSize: 28),
+              color: _themeColor),
         ),
       ],
     );
@@ -1510,4 +1600,180 @@ class _StopInfo {
     required this.lat,
     required this.lng,
   });
+}
+
+// ── Rating bottom sheet ────────────────────────────────────────────────────
+
+class _RatingSheet extends StatefulWidget {
+  final Journey journey;
+  final String? fromStationId;
+  final String? toStationId;
+  final String transportType;
+
+  const _RatingSheet({
+    required this.journey,
+    required this.transportType,
+    this.fromStationId,
+    this.toStationId,
+  });
+
+  @override
+  State<_RatingSheet> createState() => _RatingSheetState();
+}
+
+class _RatingSheetState extends State<_RatingSheet> {
+  final _ratingService = RatingService();
+  int _transportRating = 0;
+  int _experienceRating = 0;
+  final _commentController = TextEditingController();
+  bool _submitting = false;
+
+  String? get _uid =>
+      firebase_auth.FirebaseAuth.instance.currentUser?.uid;
+
+  bool get _canSave =>
+      widget.fromStationId != null &&
+      widget.toStationId != null &&
+      _uid != null;
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_transportRating == 0 || _experienceRating == 0) return;
+    setState(() => _submitting = true);
+
+    final combined = ((_transportRating + _experienceRating) / 2).round();
+
+    if (_canSave) {
+      try {
+        await _ratingService.submitRating(
+          uid: _uid!,
+          fromStationId: widget.fromStationId!,
+          toStationId: widget.toStationId!,
+          transportType: widget.transportType,
+          rating: combined,
+        );
+      } catch (e) {
+        debugPrint('[RatingSheet] submit failed: $e');
+      }
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Merci pour votre évaluation !'),
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+  Widget _starRow(String label, int current, ValueChanged<int> onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textDark,
+          ),
+        ),
+        const SizedBox(height: 8),
+        StarRatingWidget(
+          rating: current,
+          starSize: 36,
+          onRated: onChanged,
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppTheme.mediumGrey,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+
+            const Text(
+              'Évaluer le trajet',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textDark,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            _starRow(
+              'Qualité du transport',
+              _transportRating,
+              (v) => setState(() => _transportRating = v),
+            ),
+            const SizedBox(height: 16),
+            _starRow(
+              'Expérience globale',
+              _experienceRating,
+              (v) => setState(() => _experienceRating = v),
+            ),
+            const SizedBox(height: 16),
+
+            TextField(
+              controller: _commentController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'Commentaire (facultatif)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: (_submitting ||
+                        _transportRating == 0 ||
+                        _experienceRating == 0)
+                    ? null
+                    : _submit,
+                child: _submitting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Soumettre'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

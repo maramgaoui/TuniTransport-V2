@@ -16,7 +16,6 @@ import '../models/journey_model.dart';
 import '../models/metro_sahel_result.dart';
 import '../models/session_result.dart';
 import '../models/taxi_collectif_result.dart';
-import '../screens/taxi_collectif_details_screen.dart';
 import '../screens/auth_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/active_journey_screen.dart';
@@ -213,7 +212,25 @@ class AppRouter {
               return JourneyDetailsScreen(metroResult: extra);
             }
             if (extra is TaxiCollectifResult) {
-              return TaxiCollectifDetailsScreen(result: extra);
+              final h = extra.durationMinutes ~/ 60;
+              final m = extra.durationMinutes % 60;
+              final dur = h > 0 ? '${h}h ${m}min' : '$m min';
+              final journey = Journey(
+                id:               extra.id,
+                departureStation: extra.fromCityName,
+                arrivalStation:   extra.toCityName,
+                departureTime:    '--:--',
+                price:            extra.fare.toStringAsFixed(3),
+                type:             'Taxi Collectif',
+                iconKey:          'taxi',
+                duration:         dur,
+                transfers:        0,
+                isOptimal:        false,
+                operator:         'Taxi Collectif',
+                line:             '${extra.distanceKm.toStringAsFixed(0)} km',
+                estimatedTripDurationMinutes: extra.durationMinutes,
+              );
+              return JourneyDetailsScreen(journey: journey);
             }
             return const HomeScreen();
           },
@@ -222,6 +239,17 @@ class AppRouter {
           path: '/home/active-journey',
           builder: (context, state) {
             final extra = state.extra;
+            if (extra is Map<String, dynamic>) {
+              final journey = extra['journey'] as Journey?;
+              if (journey != null) {
+                return ActiveJourneyScreen(
+                  journey:       journey,
+                  fromStationId: extra['fromStationId'] as String?,
+                  toStationId:   extra['toStationId']   as String?,
+                  metroResult:   extra['metroResult']   as MetroSahelResult?,
+                );
+              }
+            }
             if (extra is Journey) {
               return ActiveJourneyScreen(journey: extra);
             }
