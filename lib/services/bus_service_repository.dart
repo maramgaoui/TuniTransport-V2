@@ -39,14 +39,18 @@ class BusServiceRepository {
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Get all bus services departing from a given hub station.
-  /// Services whose corresponding route document has [isActive] set to false
-  /// are excluded so that admin toggles propagate to TRANSTU bus results.
+  /// Services explicitly marked inactive (via their own [isActive] field or
+  /// via their linked route document) are excluded so admin toggles propagate
+  /// to TRANSTU bus search results.
   Future<List<BusService>> getServicesForHub(String hubStationId) async {
     final snap = await _firestore
       .collection(Col.busServices)
       .where('hubStationId', isEqualTo: hubStationId)
       .get(const GetOptions(source: Source.server));
-    final services = snap.docs.map(BusService.fromFirestore).toList()
+    final services = snap.docs
+        .map(BusService.fromFirestore)
+        .where((s) => s.isActive)
+        .toList()
       ..sort((a, b) => (a.firstDepartureFromHub ?? '99:99')
           .compareTo(b.firstDepartureFromHub ?? '99:99'));
     return _filterByRouteActive(services);

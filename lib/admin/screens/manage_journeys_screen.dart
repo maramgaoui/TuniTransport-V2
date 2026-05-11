@@ -121,17 +121,42 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
   }
 
   /// Toggles the `isActive` field on a route document.
-  /// Also sets `searchVisibilityManaged: true` so the repository
-  /// knows this route has been explicitly managed by an admin.
+  /// The route write is committed immediately so the StreamBuilder reflects
+  /// the change without delay. Bus-service propagation runs in the background
+  /// to avoid blocking the UI while waiting for the secondary Firestore query.
   Future<void> _toggleActive(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
     bool current,
   ) async {
+    final newActive = !current;
+
     await _routesRef.doc(doc.id).update({
-      'isActive': !current,
+      'isActive': newActive,
       'searchVisibilityManaged': true,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+
+    // Propagate to matching bus_services in background — does not affect
+    // the current screen's UI so it is intentionally not awaited.
+    _propagateToBusServices(doc.id, newActive);
+  }
+
+  /// Batch-updates every `bus_services` document whose `routeId` matches
+  /// [routeDocId] to reflect the new [isActive] value.
+  Future<void> _propagateToBusServices(
+    String routeDocId,
+    bool isActive,
+  ) async {
+    final busSnap = await FirebaseFirestore.instance
+        .collection(Col.busServices)
+        .where('routeId', isEqualTo: routeDocId)
+        .get();
+    if (busSnap.docs.isEmpty) return;
+    final batch = FirebaseFirestore.instance.batch();
+    for (final busDoc in busSnap.docs) {
+      batch.update(busDoc.reference, {'isActive': isActive});
+    }
+    await batch.commit();
   }
 
   @override
