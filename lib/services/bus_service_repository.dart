@@ -39,14 +39,46 @@ class BusServiceRepository {
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Get all bus services departing from a given hub station.
+  /// Services whose corresponding route document has [isActive] set to false
+  /// are excluded so that admin toggles propagate to TRANSTU bus results.
   Future<List<BusService>> getServicesForHub(String hubStationId) async {
     final snap = await _firestore
       .collection(Col.busServices)
       .where('hubStationId', isEqualTo: hubStationId)
       .get(const GetOptions(source: Source.server));
-    return snap.docs.map(BusService.fromFirestore).toList()
+    final services = snap.docs.map(BusService.fromFirestore).toList()
       ..sort((a, b) => (a.firstDepartureFromHub ?? '99:99')
           .compareTo(b.firstDepartureFromHub ?? '99:99'));
+    return _filterByRouteActive(services);
+  }
+
+  /// Batch-checks each service's [routeId] against the `routes` collection and
+  /// removes services whose route has been explicitly marked inactive by an admin.
+  Future<List<BusService>> _filterByRouteActive(List<BusService> services) async {
+    final routeIds = services
+        .map((s) => s.routeId)
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList();
+    if (routeIds.isEmpty) return services;
+
+    final inactiveIds = <String>{};
+    // Firestore whereIn supports up to 30 values per query.
+    for (var i = 0; i < routeIds.length; i += 30) {
+      final chunk = routeIds.sublist(i, (i + 30).clamp(0, routeIds.length));
+      final snap = await _firestore
+          .collection(Col.routes)
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+      for (final doc in snap.docs) {
+        if ((doc.data()['isActive'] ?? true) != true) {
+          inactiveIds.add(doc.id);
+        }
+      }
+    }
+
+    if (inactiveIds.isEmpty) return services;
+    return services.where((s) => !inactiveIds.contains(s.routeId)).toList();
   }
 
   /// Get bus services from a hub that match a specific destination query.

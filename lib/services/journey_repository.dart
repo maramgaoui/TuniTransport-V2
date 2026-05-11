@@ -148,15 +148,11 @@ class JourneyRepository {
     }
 
     final operatorId = (routeData['operatorId'] ?? '').toString();
-    final searchVisibilityManaged = routeData['searchVisibilityManaged'] == true;
     final explicitlyInactive = (routeData['isActive'] ?? true) != true;
 
-    // User search still resolves canonical routes from route_stops/trips.
-    // Only let route metadata hide results after an explicit admin opt-in,
-    // otherwise legacy or incomplete route docs can suppress valid journeys.
     return _RouteSearchMetadata(
       operatorId: operatorId,
-      isSearchActive: !(searchVisibilityManaged && explicitlyInactive),
+      isSearchActive: !explicitlyInactive,
     );
   }
 
