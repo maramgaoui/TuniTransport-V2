@@ -6,7 +6,6 @@ import 'package:integration_test/integration_test.dart';
 import 'package:tuni_transport/admin/screens/admin_dashboard.dart';
 import 'package:tuni_transport/admin/screens/admin_profile_screen.dart';
 import 'package:tuni_transport/admin/screens/manage_journeys_screen.dart';
-import 'package:tuni_transport/admin/screens/manage_stations_screen.dart';
 import 'package:tuni_transport/admin/screens/manage_tariffs_screen.dart';
 import 'package:tuni_transport/admin/screens/manage_users_screen.dart';
 import 'package:tuni_transport/admin/screens/send_notifications_screen.dart';
@@ -347,10 +346,7 @@ void main() {
         await _goToRoute(tester, find.byType(ManageUsersScreen), '/admin/manage-journeys');
         await _waitForType<ManageJourneysScreen>(tester);
 
-        await _goToRoute(tester, find.byType(ManageJourneysScreen), '/admin/manage-stations');
-        await _waitForType<ManageStationsScreen>(tester);
-
-        await _goToRoute(tester, find.byType(ManageStationsScreen), '/admin/manage-tariffs');
+        await _goToRoute(tester, find.byType(ManageJourneysScreen), '/admin/manage-tariffs');
         await _waitForType<ManageTariffsScreen>(tester);
 
         await _goToRoute(tester, find.byType(ManageTariffsScreen), '/admin/send-notifications');

@@ -46,6 +46,7 @@ class AuthController {
       _userStatusSubscription;
   String? _userStatusListenerUid;
   String? _lastObservedUserStatus;
+  String? _lastObservedUserRole;
 
   // When true, an admin or super-admin is browsing the app as a regular user.
   bool _actingAsUser = false;
@@ -206,6 +207,7 @@ class AuthController {
     _userStatusSubscription = null;
     _userStatusListenerUid = null;
     _lastObservedUserStatus = null;
+    _lastObservedUserRole = null;
   }
 
   Future<void> _setUserStatusListener(String uid) async {
@@ -224,14 +226,18 @@ class AuthController {
           (snapshot) {
             final data = snapshot.data();
             final currentStatus = (data?['status'] ?? 'active').toString();
+            final currentRole = (data?['role'] ?? 'user').toString();
 
-            if (_lastObservedUserStatus == null) {
+            if (_lastObservedUserStatus == null && _lastObservedUserRole == null) {
               _lastObservedUserStatus = currentStatus;
+              _lastObservedUserRole = currentRole;
               return;
             }
 
-            if (_lastObservedUserStatus != currentStatus) {
+            if (_lastObservedUserStatus != currentStatus ||
+                _lastObservedUserRole != currentRole) {
               _lastObservedUserStatus = currentStatus;
+              _lastObservedUserRole = currentRole;
               _invalidateSessionCache(uid: uid);
             }
           },

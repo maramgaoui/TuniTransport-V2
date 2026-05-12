@@ -4,7 +4,6 @@ import '../../constants/firestore_collections.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/controllers/auth_controller.dart';
-import 'package:tuni_transport/admin/utils/admin_data_scope.dart';
 import 'package:tuni_transport/admin/widgets/admin_soft_card.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/theme/app_theme.dart';
@@ -20,7 +19,6 @@ enum _RouteFilter { all, active, inactive }
 ///
 /// Admins can NOT add or delete routes from this screen.
 /// They can only toggle the `isActive` flag on existing routes.
-/// Inactive routes are hidden from the public user search.
 class ManageJourneysScreen extends StatefulWidget {
   const ManageJourneysScreen({super.key});
 
@@ -79,6 +77,26 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
       if (!mounted) return;
       setState(() => _isResolvingScope = false);
     }
+  }
+
+  bool _matchesAdminScope(Map<String, dynamic> data) {
+    if (_isSuperAdmin) return true;
+    if (_adminType == null) return false;
+
+    final operatorId = (data['operatorId'] ?? '').toString().toLowerCase();
+    final typeIdRaw = data['typeId'];
+    final typeId = typeIdRaw is Iterable
+        ? typeIdRaw.join(' ').toLowerCase()
+        : typeIdRaw.toString().toLowerCase();
+
+    return switch (_adminType) {
+      'bus' => operatorId == 'transtu' || typeId.contains('bus'),
+      'metro_train' =>
+        typeId.contains('metro') || typeId.contains('train'),
+      'taxicollectifs' => typeId.contains('taxicollectif'),
+      'louage' => typeId.contains('louage'),
+      _ => false,
+    };
   }
 
   void _applySearch() {
@@ -170,7 +188,13 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/admin'),
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              context.pop();
+            } else {
+              context.go('/admin');
+            }
+          },
         ),
       ),
       body: _isResolvingScope
@@ -197,14 +221,7 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
 
                 // Role-based scope: each admin sees only their transport type.
                 final scopedDocs = (!_isSuperAdmin && _adminType != null)
-                    ? allDocs
-                        .where(
-                          (doc) => AdminDataScope.matchesRouteData(
-                            adminType: _adminType!,
-                            data: doc.data(),
-                          ),
-                        )
-                        .toList()
+                    ? allDocs.where((doc) => _matchesAdminScope(doc.data())).toList()
                     : allDocs;
 
                 if (scopedDocs.isEmpty) {

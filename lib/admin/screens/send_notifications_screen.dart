@@ -124,7 +124,13 @@ class _SendNotificationsScreenState extends State<SendNotificationsScreen> {
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/admin'),
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              context.pop();
+            } else {
+              context.go('/admin');
+            }
+          },
         ),
       ),
       body: SingleChildScrollView(

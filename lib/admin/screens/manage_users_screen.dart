@@ -227,7 +227,13 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
         title: Text(AppLocalizations.of(context)!.manageUsers),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/admin'),
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              context.pop();
+            } else {
+              context.go('/admin');
+            }
+          },
         ),
       ),
       body: Column(

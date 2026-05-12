@@ -10,13 +10,15 @@ service cloud.firestore {
     function isAdmin() {
       return request.auth != null
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin';
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin'
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('status', '') == 'active';
     }
 
     function isSuperAdmin() {
       return request.auth != null
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'super_admin';
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'super_admin'
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('status', '') == 'active';
     }
 
     function isPrivileged() {
@@ -40,8 +42,30 @@ service cloud.firestore {
       // independent of userId so Firestore allows the list operation).
       allow read: if isSignedIn() && (request.auth.uid == userId || isPrivileged());
 
-      // Privileged users can write any field (ban, block, promote admin, etc.).
-      allow write: if isPrivileged();
+      // Privileged users can write, but admins are limited to regular users.
+      allow write: if
+        isSuperAdmin()
+        || (
+          isAdmin()
+          && resource.exists
+          && resource.data.get('role', '') == 'user'
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'role',
+            'adminType',
+            'permissions',
+          ])
+        )
+        || (
+          request.auth.uid == userId
+          && resource.exists
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'status',
+            'banUntil',
+            'role',
+            'adminType',
+            'permissions',
+          ])
+        );
 
       // Regular users may only create or update their own document and
       // must NEVER touch the security-sensitive status / banUntil fields.
@@ -109,6 +133,28 @@ service cloud.firestore {
     match /notifications/{notifId} {
       allow read: if isSignedIn();
       allow write: if isPrivileged();
+    }
+
+    match /audit_logs/{logId} {
+      allow create: if isPrivileged()
+        && request.resource.data.keys().hasOnly([
+          'action',
+          'targetUid',
+          'targetEmail',
+          'actorUid',
+          'actorEmail',
+          'details',
+          'createdAt',
+        ])
+        && request.resource.data.action is string
+        && request.resource.data.targetUid is string
+        && request.resource.data.targetEmail is string
+        && request.resource.data.actorUid is string
+        && request.resource.data.actorEmail is string
+        && request.resource.data.details is map
+        && request.resource.data.createdAt is timestamp;
+      allow read: if false;
+      allow update, delete: if false;
     }
 
     match /community_messages/{messageId} {
