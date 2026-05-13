@@ -7,18 +7,40 @@ service cloud.firestore {
 
     // Explicit role checks — avoids ternary precedence issues that can
     // cause PERMISSION_DENIED on collection queries.
+    function isLegacyAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', '') == 'admin';
+    }
+
+    function isLegacySuperAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', '') == 'super_admin';
+    }
+
     function isAdmin() {
       return request.auth != null
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin'
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('status', '') == 'active';
+        && (
+          (
+            exists(/databases/$(database)/documents/users/$(request.auth.uid))
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin'
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('status', '') == 'active'
+          )
+          || isLegacyAdmin()
+        );
     }
 
     function isSuperAdmin() {
       return request.auth != null
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'super_admin'
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('status', '') == 'active';
+        && (
+          (
+            exists(/databases/$(database)/documents/users/$(request.auth.uid))
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'super_admin'
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('status', '') == 'active'
+          )
+          || isLegacySuperAdmin()
+        );
     }
 
     function isPrivileged() {
@@ -73,7 +95,13 @@ service cloud.firestore {
         && request.auth.uid == userId
         && (!('status' in request.resource.data) || request.resource.data.status == 'active')
         && (!('banUntil' in request.resource.data) || request.resource.data.banUntil == null)
-        && (!('role' in request.resource.data) || request.resource.data.role == 'user');
+        && (
+          (!('role' in request.resource.data) || request.resource.data.role == 'user')
+          || (
+            exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+            && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', '') in ['admin', 'super_admin']
+          )
+        );
 
       allow update: if isSignedIn()
         && request.auth.uid == userId

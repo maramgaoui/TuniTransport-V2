@@ -124,7 +124,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         setState(() {
           _name = _session?.adminName;
           _matricule = _session?.adminMatricule;
-          _role = _session?.adminType;
+          _role = _session?.isSuperAdmin == true ? 'super_admin' : _session?.adminType;
           _errorMessage = 'Admin profile not found in Firestore.';
           _isLoading = false;
         });
@@ -144,9 +144,11 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       setState(() {
         _name = resolvedName;
         _matricule = adminData!['matricule']?.toString() ?? _session?.adminMatricule;
-        _role = _session?.adminType ??
-            (adminData['adminType'] as String?) ??
-            (adminData['role'] as String?);
+        _role = _session?.isSuperAdmin == true
+            ? 'super_admin'
+            : _session?.adminType ??
+                (adminData['adminType'] as String?) ??
+                (adminData['role'] as String?);
         _isLoading = false;
       });
     } on FirebaseException catch (e) {
@@ -154,7 +156,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       setState(() {
         _name = _session?.adminName;
         _matricule = _session?.adminMatricule;
-        _role = _session?.adminType;
+        _role = _session?.isSuperAdmin == true ? 'super_admin' : _session?.adminType;
         _errorMessage = e.message ?? 'Failed to load admin profile.';
         _isLoading = false;
       });
@@ -163,7 +165,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       setState(() {
         _name = _session?.adminName;
         _matricule = _session?.adminMatricule;
-        _role = _session?.adminType;
+        _role = _session?.isSuperAdmin == true ? 'super_admin' : _session?.adminType;
         _errorMessage = 'Unexpected error while loading admin profile.';
         _isLoading = false;
       });

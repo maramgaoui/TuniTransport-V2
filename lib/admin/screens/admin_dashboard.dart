@@ -62,8 +62,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
 
     final l10n = AppLocalizations.of(context)!;
-    final trustedRole = _session?.adminType;
     final isSuperAdmin = _session?.isSuperAdmin ?? false;
+    final trustedRole = isSuperAdmin ? 'super_admin' : _session?.adminType;
 
     final pages = <Widget>[
       _DashboardTab(
@@ -324,7 +324,7 @@ class _DashboardTab extends StatelessWidget {
         labelKey: (l) => l.manageAdminRolesPermissions,
         icon: Icons.manage_accounts_outlined,
         isSuperAdminOnly: true,
-        onTap: (ctx) => ctx.push('/super-admin/dashboard?tab=roles'),
+        onTap: (ctx) => ctx.push('/admin/manage-admins'),
       ),
       _AdminAction(
         labelKey: (l) => l.globalPlatformSupervision,

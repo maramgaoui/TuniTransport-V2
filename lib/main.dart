@@ -7,13 +7,14 @@ import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:cloud_firestore/cloud_firestore.dart' as dartFirebaseFirestore;
+import 'package:cloud_firestore/cloud_firestore.dart' as dart_firestore;
 import 'firebase_runtime_options.dart';
 import 'firebase_options.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/notification_controller.dart';
 import 'router/app_router.dart';
 import 'service_locator.dart';
+import 'services/analytics_service.dart';
 import 'services/notification_service.dart';
 import 'services/active_journey_service.dart';
 import 'package:tuni_transport/services/settings_service.dart';
@@ -45,7 +46,7 @@ void main() async {
     try {
       await Firebase.initializeApp(options: activeOptions);
       // Disable Firestore persistence to avoid old data issues
-      dartFirebaseFirestore.FirebaseFirestore.instance.settings = const dartFirebaseFirestore.Settings(
+      dart_firestore.FirebaseFirestore.instance.settings = const dart_firestore.Settings(
         persistenceEnabled: false,
       );
     } on FirebaseException catch (e) {
@@ -54,6 +55,9 @@ void main() async {
       }
     }
   }
+
+  await AnalyticsService.instance.setAnalyticsCollectionEnabled(!FirebaseRuntimeOptions.integrationTestMode);
+  await AnalyticsService.instance.logAppOpen();
 
   if (!FirebaseRuntimeOptions.integrationTestMode) {
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);

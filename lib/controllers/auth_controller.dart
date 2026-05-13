@@ -905,27 +905,25 @@ class AuthController {
         final adminData = adminDoc.data()!;
         // Auto-migrate: stamp role='admin' onto the users document so future
         // lookups hit the fast path above.
-        unawaited(
-          _firestore.collection(Col.users).doc(current.uid).set(
-            {
-              'uid': current.uid,
-              'email': current.email,
-              'role': 'admin',
-              'adminType': adminData['role'] as String?,
-              'matricule': (adminData['matricule'] ?? '').toString(),
-              'firstName': adminData['name'] as String?,
-              'status': 'active',
-              'permissions': adminData['permissions'] ?? <String>[],
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true),
-          ).catchError((e) {
-            developer.log(
-              'Failed to auto-migrate admin to users collection: $e',
-              name: 'AuthController',
-            );
-          }),
-        );
+        await _firestore.collection(Col.users).doc(current.uid).set(
+          {
+            'uid': current.uid,
+            'email': current.email,
+            'role': 'admin',
+            'adminType': adminData['role'] as String?,
+            'matricule': (adminData['matricule'] ?? '').toString(),
+            'firstName': adminData['name'] as String?,
+            'status': 'active',
+            'permissions': adminData['permissions'] ?? <String>[],
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        ).catchError((e) {
+          developer.log(
+            'Failed to auto-migrate admin to users collection: $e',
+            name: 'AuthController',
+          );
+        });
 
         final result = SessionResult(
           role: SessionRole.admin,

@@ -131,8 +131,7 @@ class AppRouter {
             return adminLocation;
           }
           if (path == '/admin/login') return adminLocation;
-          if (path == '/auth' || path.startsWith('/home')) return adminLocation;
-          if (isSuperAdminRoute) return adminLocation;
+          if (path == '/auth' || path.startsWith('/home')) return adminLocation;          if (path == '/admin/manage-admins') return adminLocation;          if (isSuperAdminRoute) return adminLocation;
           return null;
         }
 

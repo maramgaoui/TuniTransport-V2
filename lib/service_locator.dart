@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get_it/get_it.dart';
 
+import 'services/analytics_service.dart';
 import 'services/bus_service_repository.dart';
 import 'services/settings_service.dart';
 import 'services/station_repository.dart';
@@ -15,6 +16,9 @@ void setupServiceLocator({
 }) {
   sl.registerLazySingleton<FirebaseFirestore>(
     () => firestore ?? FirebaseFirestore.instance,
+  );
+  sl.registerLazySingleton<AnalyticsService>(
+    () => AnalyticsService.instance,
   );
   sl.registerLazySingleton<BusServiceRepository>(
     () => BusServiceRepository(sl<FirebaseFirestore>()),
