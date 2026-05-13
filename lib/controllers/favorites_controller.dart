@@ -95,4 +95,10 @@ class FavoritesController extends ChangeNotifier {
   bool isFavorite(String journeyId) {
     return _favorites.any((journey) => journey.id == journeyId);
   }
+
+  @override
+  void dispose() {
+    // Singleton - prevent dispose to avoid assertion failures
+    // when listeners exist during hot reload or app restart
+  }
 }

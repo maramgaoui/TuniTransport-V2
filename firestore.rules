@@ -120,7 +120,7 @@ service cloud.firestore {
 
     match /stations/{stationId} {
       allow read: if isSignedIn();
-      allow write: if isPrivileged();
+      allow write: if isSuperAdmin();
     }
 
     match /routes/{routeId} {
@@ -244,7 +244,7 @@ service cloud.firestore {
 
     // Legacy admins collection — kept for backward-compat during migration.
     match /admins/{adminId} {
-      allow read: if isSignedIn();
+      allow read: if isPrivileged() || request.auth.uid == adminId;
       allow write: if isSuperAdmin();
     }
 

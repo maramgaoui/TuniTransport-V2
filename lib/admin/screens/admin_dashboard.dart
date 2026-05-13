@@ -321,12 +321,6 @@ class _DashboardTab extends StatelessWidget {
         onTap: (ctx) => ctx.push('/admin/manage-admins'),
       ),
       _AdminAction(
-        labelKey: (l) => l.manageAdminRolesPermissions,
-        icon: Icons.manage_accounts_outlined,
-        isSuperAdminOnly: true,
-        onTap: (ctx) => ctx.push('/admin/manage-admins'),
-      ),
-      _AdminAction(
         labelKey: (l) => l.globalPlatformSupervision,
         icon: Icons.monitor_outlined,
         isSuperAdminOnly: true,

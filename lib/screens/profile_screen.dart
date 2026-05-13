@@ -93,14 +93,17 @@ class ProfileScreenState extends State<ProfileScreen> {
     super.didChangeDependencies();
     if (!_prefsLoaded) {
       _prefsLoaded = true;
-      final settings = AppSettings.of(context);
-      _selectedLanguage = settings.settingsService.getLanguage();
-      final themeSetting = settings.settingsService.getThemeMode();
-      _themeMode = switch (themeSetting) {
-        'dark' => ThemeMode.dark,
-        'system' => ThemeMode.system,
-        _ => ThemeMode.light,
-      };
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final settings = AppSettings.maybeOf(context);
+        if (settings == null) return;
+        _selectedLanguage = settings.settingsService.getLanguage();
+        final themeSetting = settings.settingsService.getThemeMode();
+        _themeMode = switch (themeSetting) {
+          'dark' => ThemeMode.dark,
+          'system' => ThemeMode.system,
+          _ => ThemeMode.light,
+        };
+      });
     }
   }
 
@@ -545,30 +548,33 @@ class ProfileScreenState extends State<ProfileScreen> {
                 backgroundColor: AppTheme.primaryTeal,
               ),
               onPressed: () async {
-                final settings = AppSettings.of(context);
-                // Save language preference
-                await settings.settingsService.setLanguage(_selectedLanguage);
-                
-                // Save and apply theme preference
-                final themeString = _themeMode == ThemeMode.dark ? 'dark' : 
-                                   _themeMode == ThemeMode.system ? 'system' : 'light';
-                await settings.settingsService.setThemeMode(themeString);
-                
-                // Notify parent of theme change
-                settings.onThemeChanged(_themeMode);
-                settings.onLanguageChanged(_selectedLanguage);
-                
-                if (!dialogContext.mounted) return;
-                Navigator.pop(dialogContext);
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '${l10n.settingsSaved} - ${l10n.mode}: ${_themeMode.name}, ${l10n.language}: $_selectedLanguage',
+                WidgetsBinding.instance.addPostFrameCallback((_) async {
+                  final settings = AppSettings.maybeOf(context);
+                  if (settings == null) return;
+                  // Save language preference
+                  await settings.settingsService.setLanguage(_selectedLanguage);
+                  
+                  // Save and apply theme preference
+                  final themeString = _themeMode == ThemeMode.dark ? 'dark' : 
+                                     _themeMode == ThemeMode.system ? 'system' : 'light';
+                  await settings.settingsService.setThemeMode(themeString);
+                  
+                  // Notify parent of theme change
+                  settings.onThemeChanged(_themeMode);
+                  settings.onLanguageChanged(_selectedLanguage);
+                  
+                  if (!dialogContext.mounted) return;
+                  Navigator.pop(dialogContext);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '${l10n.settingsSaved} - ${l10n.mode}: ${_themeMode.name}, ${l10n.language}: $_selectedLanguage',
                       ),
                       backgroundColor: AppTheme.primaryTeal,
                     ),
                   );
+                });
               },
               child: Text(
                 l10n.save,

@@ -131,7 +131,9 @@ class AppRouter {
             return adminLocation;
           }
           if (path == '/admin/login') return adminLocation;
-          if (path == '/auth' || path.startsWith('/home')) return adminLocation;          if (path == '/admin/manage-admins') return adminLocation;          if (isSuperAdminRoute) return adminLocation;
+          if (path == '/auth' || path.startsWith('/home')) return adminLocation;
+          if (path == '/admin/manage-admins') return adminLocation;
+          if (isSuperAdminRoute) return adminLocation;
           return null;
         }
 
@@ -307,10 +309,7 @@ class AppRouter {
         ),
         GoRoute(
           path: '/super-admin/dashboard',
-          builder: (context, state) {
-            final tab = state.uri.queryParameters['tab'] ?? 'roles';
-            return SuperAdminDashboard(initialTab: tab);
-          },
+          builder: (context, state) => const SuperAdminDashboard(),
         ),
       ],
     );

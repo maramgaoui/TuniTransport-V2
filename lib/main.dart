@@ -111,6 +111,8 @@ class _MyAppState extends State<MyApp> {
   late final GoRouter _router;
   late ThemeMode _themeMode;
   late Locale _locale;
+  late void Function(ThemeMode) _onThemeChanged;
+  late void Function(String) _onLanguageChanged;
 
   @override
   void initState() {
@@ -131,6 +133,9 @@ class _MyAppState extends State<MyApp> {
       authController: _authController,
       settingsService: widget.settingsService,
     );
+
+    _onThemeChanged = _updateThemeMode;
+    _onLanguageChanged = _updateLanguage;
   }
 
   void _updateThemeMode(ThemeMode mode) {
@@ -161,8 +166,8 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return AppSettings(
       settingsService: widget.settingsService,
-      onThemeChanged: _updateThemeMode,
-      onLanguageChanged: _updateLanguage,
+      onThemeChanged: _onThemeChanged,
+      onLanguageChanged: _onLanguageChanged,
       child: MaterialApp.router(
         onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
         theme: AppTheme.lightTheme,

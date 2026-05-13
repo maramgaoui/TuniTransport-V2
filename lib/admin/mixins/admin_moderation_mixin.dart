@@ -7,6 +7,20 @@ import 'package:tuni_transport/controllers/auth_controller.dart';
 mixin AdminModerationMixin<T extends StatefulWidget> on State<T> {
   AdminUserService get _adminUserService => AdminUserService();
 
+  Future<bool> _targetIsPrivileged(String userId) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('admins')
+        .doc(userId)
+        .get();
+    if (doc.exists) return true;
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .get();
+    final role = userDoc.data()?['role']?.toString() ?? '';
+    return role == 'admin' || role == 'super_admin';
+  }
+
   Future<void> banUserWithFeedback(
     BuildContext context,
     String userId, {
@@ -21,6 +35,17 @@ mixin AdminModerationMixin<T extends StatefulWidget> on State<T> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Cannot ban your own account.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (await _targetIsPrivileged(userId)) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot moderate another administrator.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -59,6 +84,17 @@ mixin AdminModerationMixin<T extends StatefulWidget> on State<T> {
       );
       return;
     }
+
+    if (await _targetIsPrivileged(userId)) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot moderate another administrator.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
     
     try {
       await _adminUserService.blockUser(userId);
@@ -90,6 +126,17 @@ mixin AdminModerationMixin<T extends StatefulWidget> on State<T> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Cannot modify your own account from this action.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (await _targetIsPrivileged(userId)) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot moderate another administrator.'),
           backgroundColor: Colors.red,
         ),
       );

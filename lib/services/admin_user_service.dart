@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../constants/firestore_collections.dart';
 import 'audit_log_service.dart';
 
 class AdminUserService {

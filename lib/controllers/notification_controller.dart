@@ -248,7 +248,6 @@ class NotificationController extends ChangeNotifier {
       case 'journey':
         return NotificationType.journey;
       case 'system':
-        return NotificationType.system;
       default:
         return NotificationType.system;
     }

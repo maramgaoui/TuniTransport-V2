@@ -59,9 +59,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final path = GoRouterState.of(context).uri.path;
-    final selectedIndex = _tabIndexFromLocation(path);
+    return Builder(
+      builder: (innerContext) {
+        final l10n = AppLocalizations.of(innerContext)!;
+        final path = GoRouterState.of(innerContext).uri.path;
+        final selectedIndex = _tabIndexFromLocation(path);
 
     // Wrap the shell in inherited text direction to keep RTL/LTR behavior consistent.
     return Directionality(
@@ -80,7 +82,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   context.go('/splash');
                 },
               ),
-            Expanded(child: _screens[selectedIndex]),
+            Expanded(
+              child: IndexedStack(
+                index: selectedIndex,
+                children: _screens,
+              ),
+            ),
           ],
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -159,6 +166,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+    );
+      },
     );
   }
 }

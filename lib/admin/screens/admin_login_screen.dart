@@ -47,14 +47,18 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
           return StatefulBuilder(
             builder: (ctx, setDialogState) => AlertDialog(
               title: const Text('Mot de passe oublié'),
-              content: resultMessage != null
-                  ? Text(
-                      resultMessage!,
-                      style: TextStyle(
-                        color: isSuccess ? Colors.green : Colors.red,
-                      ),
-                    )
-                  : Form(
+              // Visibility(maintainState: true) keeps _FormScope in the element
+              // tree for the dialog's full lifetime, preventing the
+              // _dependents.isEmpty assertion that fires when a ternary swap
+              // removes Form while TextFormField still holds a dependency.
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Visibility(
+                    visible: resultMessage == null,
+                    maintainState: true,
+                    child: Form(
                       key: formKey,
                       child: TextFormField(
                         controller: inputController,
@@ -68,6 +72,16 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                             (v?.trim().isEmpty ?? true) ? 'Champ obligatoire' : null,
                       ),
                     ),
+                  ),
+                  if (resultMessage != null)
+                    Text(
+                      resultMessage!,
+                      style: TextStyle(
+                        color: isSuccess ? Colors.green : Colors.red,
+                      ),
+                    ),
+                ],
+              ),
               actions: <Widget>[
                 TextButton(
                   onPressed: isSending ? null : () => Navigator.pop(ctx),

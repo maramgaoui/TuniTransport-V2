@@ -188,7 +188,8 @@ class AdminAuthController {
       Map<String, dynamic>? adminData;
 
       final userDoc = await _firestore.collection(Col.users).doc(uid).get();
-      if (userDoc.exists && userDoc.data()?['role'] == 'admin') {
+      final userRole = userDoc.data()?['role']?.toString() ?? '';
+      if (userDoc.exists && (userRole == 'admin' || userRole == 'super_admin')) {
         adminData = userDoc.data();
       } else {
         final adminDoc = await _firestore.collection(Col.admins).doc(uid).get();

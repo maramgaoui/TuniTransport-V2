@@ -35,9 +35,13 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen>
-  with AdminModerationMixin, AdminUserStatusMixin {
+  with AdminModerationMixin, AdminUserStatusMixin,
+       AutomaticKeepAliveClientMixin {
   static const int _kInitialMessagesLimit = 50;
   static const int _kMessagesPageSize = 30;
+
+  @override
+  bool get wantKeepAlive => true;
 
   late final AuthController _authController;
   final _messageController = TextEditingController();
@@ -857,6 +861,7 @@ class _ChatScreenState extends State<ChatScreen>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final l10n = AppLocalizations.of(context)!;
     final isAuthenticated = _canParticipateInChat;
 

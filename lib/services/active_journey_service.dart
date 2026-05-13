@@ -47,4 +47,10 @@ class ActiveJourneyService extends ChangeNotifier {
     await _prefs!.remove(_activeJourneyKey);
     notifyListeners();
   }
+
+  @override
+  void dispose() {
+    // Singleton - prevent dispose to avoid assertion failures
+    // when listeners exist during hot reload or app restart
+  }
 }

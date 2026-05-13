@@ -220,9 +220,16 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                 });
 
                 // Role-based scope: each admin sees only their transport type.
-                final scopedDocs = (!_isSuperAdmin && _adminType != null)
-                    ? allDocs.where((doc) => _matchesAdminScope(doc.data())).toList()
-                    : allDocs;
+                // An admin with no adminType sees nothing (empty list) rather
+                // than leaking all routes.
+                final List<QueryDocumentSnapshot<Map<String, dynamic>>> scopedDocs;
+                if (_isSuperAdmin) {
+                  scopedDocs = allDocs;
+                } else if (_adminType != null) {
+                  scopedDocs = allDocs.where((doc) => _matchesAdminScope(doc.data())).toList();
+                } else {
+                  scopedDocs = const [];
+                }
 
                 if (scopedDocs.isEmpty) {
                   return Center(

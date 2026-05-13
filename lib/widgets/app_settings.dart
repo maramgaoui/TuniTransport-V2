@@ -24,10 +24,13 @@ class AppSettings extends InheritedWidget {
   }
 
   static AppSettings? maybeOf(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<AppSettings>();
+    return context.getInheritedWidgetOfExactType<AppSettings>();
   }
 
   @override
-  bool updateShouldNotify(AppSettings oldWidget) =>
-      settingsService != oldWidget.settingsService;
+  bool updateShouldNotify(AppSettings oldWidget) {
+    return settingsService != oldWidget.settingsService ||
+        onThemeChanged != oldWidget.onThemeChanged ||
+        onLanguageChanged != oldWidget.onLanguageChanged;
+  }
 }
