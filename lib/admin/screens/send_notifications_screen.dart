@@ -26,7 +26,7 @@ class _SendNotificationsScreenState extends State<SendNotificationsScreen> {
   bool _isSending = false;
   DateTime? _lastSentAt;
   Timer? _cooldownTicker;
-  String selectedTarget = 'all'; // all, app_users
+  String selectedTarget = 'all'; // all, admins, super_admins
 
   int get _cooldownRemainingSeconds {
     final last = _lastSentAt;
@@ -52,12 +52,13 @@ class _SendNotificationsScreenState extends State<SendNotificationsScreen> {
 
   Future<int> _estimateRecipients(String target) async {
     final AggregateQuery query;
-    if (target == 'app_users') {
-      // Count only regular users (excludes admins and super admins).
-      query = _usersRef.where('role', isEqualTo: 'user').count();
-    } else {
-      // 'all' — every document in the users collection.
-      query = _usersRef.count();
+    switch (target) {
+      case 'admins':
+        query = _usersRef.where('role', isNotEqualTo: 'user').count();
+      case 'super_admins':
+        query = _usersRef.where('role', isEqualTo: 'super_admin').count();
+      default: // 'all'
+        query = _usersRef.count();
     }
     final snapshot = await query.get();
     return snapshot.count ?? 0;
@@ -189,26 +190,34 @@ class _SendNotificationsScreenState extends State<SendNotificationsScreen> {
                     DropdownButton<String>(
                       isExpanded: true,
                       value: selectedTarget,
-                      items: [
+                      items: const [
                         DropdownMenuItem(
                           value: 'all',
                           child: Row(
                             children: [
-                              const Icon(Icons.people,
-                                  size: 18, color: AppTheme.primaryTeal),
-                              const SizedBox(width: 8),
-                              Text(l10n.allUsers),
+                              Icon(Icons.people, size: 18, color: AppTheme.primaryTeal),
+                              SizedBox(width: 8),
+                              Text('Tous les utilisateurs'),
                             ],
                           ),
                         ),
                         DropdownMenuItem(
-                          value: 'app_users',
+                          value: 'admins',
                           child: Row(
                             children: [
-                              const Icon(Icons.smartphone,
-                                  size: 18, color: AppTheme.primaryTeal),
-                              const SizedBox(width: 8),
-                              Text(l10n.appUsers),
+                              Icon(Icons.admin_panel_settings, size: 18, color: AppTheme.primaryTeal),
+                              SizedBox(width: 8),
+                              Text('Admins & Super admins'),
+                            ],
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 'super_admins',
+                          child: Row(
+                            children: [
+                              Icon(Icons.security, size: 18, color: AppTheme.primaryTeal),
+                              SizedBox(width: 8),
+                              Text('Super admins uniquement'),
                             ],
                           ),
                         ),
@@ -246,19 +255,6 @@ class _SendNotificationsScreenState extends State<SendNotificationsScreen> {
                                   ? 'Resend in ${_cooldownRemainingSeconds}s'
                                   : l10n.sendNotificationAction),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryTeal.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        'Notification saved. A Cloud Function is required to deliver it via FCM.',
-                        style: TextStyle(fontSize: 12),
                       ),
                     ),
                   ],

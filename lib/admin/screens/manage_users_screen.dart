@@ -371,8 +371,14 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
 
                       final doc = docs[index];
                       final data = doc.data();
-                      final username =
-                          (data['username'] ?? 'Unknown user').toString();
+                      final rawUsername = (data['username'] ?? '').toString().trim();
+                      final firstName = (data['firstName'] ?? '').toString().trim();
+                      final lastName = (data['lastName'] ?? '').toString().trim();
+                      final username = rawUsername.isNotEmpty
+                          ? rawUsername
+                          : '$firstName $lastName'.trim().isNotEmpty
+                              ? '$firstName $lastName'.trim()
+                              : (data['email'] ?? 'Unknown user').toString();
                       final email = (data['email'] ?? '').toString();
                       final avatar =
                           ((data['avatar'] ?? data['avatarId']) ?? 'avatar-01')

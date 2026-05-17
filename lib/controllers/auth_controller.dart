@@ -775,13 +775,29 @@ class AuthController {
           throw Exception(accessError);
         }
         _invalidateSessionCache(uid: firebaseUser.uid);
-        return User.fromMap(userDoc.data() ?? {});
+        final existingData = Map<String, dynamic>.from(userDoc.data() ?? {});
+        // Backfill username for existing Google users who never had one set.
+        if ((existingData['username'] ?? '').toString().isEmpty) {
+          final generated = _generateUsername(
+            displayName: googleUser.displayName,
+            email: firebaseUser.email ?? '',
+          );
+          await _firestore
+              .collection(Col.users)
+              .doc(firebaseUser.uid)
+              .update({'username': generated});
+          existingData['username'] = generated;
+        }
+        return User.fromMap(existingData);
       } else {
         // Create new user document
         final user = User(
           uid: firebaseUser.uid,
           email: firebaseUser.email ?? '',
-          username: null,
+          username: _generateUsername(
+            displayName: googleUser.displayName,
+            email: firebaseUser.email ?? '',
+          ),
           firstName: googleUser.displayName?.split(' ').first ?? '',
           lastName: googleUser.displayName?.split(' ').skip(1).join(' ') ?? '',
           avatarId: 'avatar-01',
@@ -808,6 +824,20 @@ class AuthController {
         'An error occurred during Google sign in. Please try again.',
       );
     }
+  }
+
+  String _generateUsername({String? displayName, required String email}) {
+    if (displayName != null && displayName.isNotEmpty) {
+      final cleaned = displayName
+          .toLowerCase()
+          .replaceAll(RegExp(r'\s+'), '_')
+          .replaceAll(RegExp(r'[^a-z0-9_]'), '');
+      if (cleaned.isNotEmpty) return cleaned;
+    }
+    final prefix = email.split('@').first
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9_]'), '');
+    return prefix.isNotEmpty ? prefix : 'user';
   }
 
   /// Resolves the role of the currently signed-in user from the unified

@@ -9,7 +9,7 @@ class NotificationController extends ChangeNotifier {
   NotificationController._();
 
   static final NotificationController instance = NotificationController._();
-  static const String _storageKey = 'local_notifications_v1';
+  static const String _storageKey = 'local_notifications_v2';
   static const String _l10nPrefix = 'l10n:';
 
   final List<NotificationModel> _notifications = [];

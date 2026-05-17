@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
-import '../controllers/notification_controller.dart';
 import '../controllers/journey_input_controller.dart';
 import '../models/station_model.dart';
 import '../services/station_repository.dart';
@@ -421,11 +420,6 @@ class _JourneyInputScreenState extends State<JourneyInputScreen> {
           'toId=${to.id} toName=${to.name}',
         );
       }
-
-      NotificationController.instance.addExampleJourneyNotification(
-        _displayStationName(from),
-        _displayStationName(to),
-      );
 
       final departureLabel = _displayStationName(from);
       final arrivalLabel = _displayStationName(to);
