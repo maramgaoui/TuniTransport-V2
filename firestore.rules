@@ -10,7 +10,9 @@ service cloud.firestore {
     function isLegacyAdmin() {
       return request.auth != null
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', '') == 'admin';
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', '') in [
+             'admin', 'admin_bus', 'admin_metro', 'admin_taxi_collectifs', 'admin_louage_train'
+           ];
     }
 
     function isLegacySuperAdmin() {
@@ -24,7 +26,9 @@ service cloud.firestore {
         && (
           (
             exists(/databases/$(database)/documents/users/$(request.auth.uid))
-            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin'
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') in [
+                 'admin', 'admin_bus', 'admin_metro', 'admin_taxi_collectifs', 'admin_louage_train'
+               ]
             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('status', '') == 'active'
           )
           || isLegacyAdmin()

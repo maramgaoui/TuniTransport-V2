@@ -86,10 +86,20 @@ class NotificationController extends ChangeNotifier {
     }
     
     final type = _typeFromString(data['type']?.toString());
-    
-    // Use messageId or generate a unique ID
-    final id = message.messageId ?? 
-               '${DateTime.now().millisecondsSinceEpoch}_${type.name}';
+
+    // Prefer the FCM message ID. When it is absent (some platforms/configs
+    // omit it), build a stable content-based key so that multiple handlers
+    // (onMessage, onMessageOpenedApp, getInitialMessage) firing for the same
+    // push within a 2-minute window all produce the same ID and the duplicate
+    // check in addNotification() suppresses the extras.
+    final String id;
+    final rawId = message.messageId;
+    if (rawId != null && rawId.isNotEmpty) {
+      id = rawId;
+    } else {
+      final bucket = DateTime.now().millisecondsSinceEpoch ~/ 120000;
+      id = '${title.hashCode ^ body.hashCode ^ type.index}_$bucket';
+    }
 
     addNotification(
       NotificationModel(

@@ -106,17 +106,47 @@ class NotificationService {
 
   Future<void> _saveTokenToCurrentUser(String token) async {
     final uid = AuthController.instance.currentUser?.uid;
-    if (uid == null || uid.isEmpty) {
-      return;
-    }
+    if (uid == null || uid.isEmpty) return;
 
     try {
-      await FirebaseFirestore.instance.collection(Col.users).doc(uid).set({
+      final db = FirebaseFirestore.instance;
+
+      // Claim this token exclusively: remove it from every OTHER user document
+      // so the same device doesn't receive duplicate FCM messages when multiple
+      // accounts were used on it (common during testing / shared devices).
+      final others = await db
+          .collection(Col.users)
+          .where('fcmToken', isEqualTo: token)
+          .get();
+      if (others.docs.isNotEmpty) {
+        final batch = db.batch();
+        for (final doc in others.docs) {
+          if (doc.id != uid) {
+            batch.update(doc.reference, {'fcmToken': FieldValue.delete()});
+          }
+        }
+        await batch.commit();
+      }
+
+      await db.collection(Col.users).doc(uid).set({
         'fcmToken': token,
       }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Failed to persist FCM token: $e');
     }
+  }
+
+  /// Removes the FCM token from the current user's Firestore document.
+  /// Call this on sign-out so stale tokens don't accumulate across accounts.
+  Future<void> clearTokenFromCurrentUser() async {
+    final uid = AuthController.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection(Col.users)
+          .doc(uid)
+          .update({'fcmToken': FieldValue.delete()});
+    } catch (_) {}
   }
 
   void _registerForegroundHandler() {

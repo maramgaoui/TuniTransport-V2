@@ -257,6 +257,16 @@ class AuthController {
     _invalidateSessionCache(uid: currentUid, clearPersistent: clearSessionCache);
     await _cancelUserStatusListener();
 
+    // Remove FCM token before signing out so stale tokens don't accumulate
+    // across multiple accounts used on the same device.
+    if (currentUid != null) {
+      try {
+        await _firestore.collection(Col.users).doc(currentUid).update({
+          'fcmToken': FieldValue.delete(),
+        });
+      } catch (_) {}
+    }
+
     try {
       await _firebaseAuth.signOut();
     } catch (e) {
@@ -884,6 +894,28 @@ class AuthController {
             role: SessionRole.admin,
             adminType: data['adminType'] as String?,
             adminRole: data['adminType'] as String?,
+            adminMatricule: (data['matricule'] ?? '').toString(),
+            adminName: (data['firstName'] ?? data['name'] ?? '').toString(),
+          );
+          _cacheSession(current.uid, result);
+          return result;
+        }
+
+        // Handle sub-admin roles stored directly on the users doc by older
+        // versions of createAdminAccount (e.g. 'admin_taxi_collectifs').
+        const subAdminRoleMap = {
+          'admin_bus': 'bus',
+          'admin_metro': 'metro_train',
+          'admin_taxi_collectifs': 'taxicollectifs',
+          'admin_louage_train': 'louage',
+        };
+        if (subAdminRoleMap.containsKey(role)) {
+          final resolvedType = (data['adminType'] as String?)
+              ?? subAdminRoleMap[role];
+          final result = SessionResult(
+            role: SessionRole.admin,
+            adminType: resolvedType,
+            adminRole: resolvedType,
             adminMatricule: (data['matricule'] ?? '').toString(),
             adminName: (data['firstName'] ?? data['name'] ?? '').toString(),
           );

@@ -15,7 +15,8 @@
       "Bash(flutter analyze *)",
       "Bash(python generate_synthetic_ratings.py)",
       "Bash(python train_model.py)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(firebase deploy *)"
     ]
   }
 }

@@ -151,6 +151,17 @@ class StationRepository {
     'transtu_dest_ghazala':        ['ghazala', 'cité ghazala', 'el ghazala', 'غزالة', 'حي الغزالة'],
     'transtu_dest_raoued_plage':   ['raoued', 'raoued plage', 'رواد', 'رواد الشاطئ'],
     'transtu_dest_raoued':         ['raoued', 'raoued plage', 'رواد', 'رواد الشاطئ'],
+    // Synthetic taxi-collectif city aliases — dialect/informal spellings.
+    'tc_city_kalaa_kebira':        ['kalla kobra', 'kalla kebira', 'kalaa kobra', 'kalaat kebira', 'القلعة الكبرى'],
+    'tc_city_kalaa_sghira':        ['kalla sghira', 'kalaa sghira', 'القلعة الصغرى'],
+    'tc_city_ariana':              ['ariana', 'l ariana', 'ariena', 'أريانة'],
+    'tc_city_raoued':              ['raoued', 'راود', 'رواد'],
+    'tc_city_sousse':              ['sousse', 'susa', 'سوسة'],
+    'tc_city_monastir':            ['monastir', 'mnastir', 'المنستير'],
+    'tc_city_nabeul':              ['nabeul', 'نابل'],
+    'tc_city_hammamet':            ['hammamet', 'الحمامات'],
+    'tc_city_sfax':                ['sfax', 'safaqes', 'صفاقس'],
+    'tc_city_bizerte':             ['bizerte', 'banzart', 'بنزرت'],
     'transtu_dest_kalaat_alandalous':['kalaat el andalous', 'kalaat andalous', 'qalaat andalous', 'قلعة الأندلس'],
     'transtu_dest_kalaat_andalous':['kalaat el andalous', 'kalaat andalous', 'qalaat andalous', 'قلعة الأندلس'],
     'transtu_dest_sidi_amor':      ['sidi amor', 'sidi omar', 'سيدي عمر'],
@@ -293,11 +304,22 @@ class StationRepository {
     // stations that serve metro/train/bus on the same city.
     try {
       final taxiSnapshot = await _firestore.collection(Col.taxiCollectifRoutes).limit(300).get();
+      // Block synthetic taxi-city creation if ANY real Firestore station already
+      // carries that cityId. Station cityIds are now kept accurate (e.g.
+      // sncft_kalaa_kebira.cityId = 'kalaa_kebira'), so this simple check is
+      // sufficient and avoids false duplicates.
       final existingCityIds = <String>{
         for (final s in stations) s.cityId.toLowerCase().trim(),
       };
+      // Also include station aliases in the name set so that a TRANSTU station
+      // named "Kalaat El Andalous" (with alias "kalaat andalous") correctly
+      // blocks the synthetic tc_city_kalaat_andalous from being created.
       final existingNames = <String>{
-        for (final s in stations) normalizeStationText(s.name),
+        for (final s in stations) ...[
+          normalizeStationText(s.name),
+          ...(stationAliasesById[s.id] ?? const <String>[])
+              .map(normalizeStationText),
+        ],
       };
       final seenCityIds = <String>{};
       for (final doc in taxiSnapshot.docs) {
@@ -512,7 +534,8 @@ class StationRepository {
       'transtu_dest_raoued_plage': 'dest_raoued_plage',
       'transtu_dest_raoued': 'dest_raoued_plage',
       'transtu_dest_kalaat_alandalous': 'dest_kalaat_alandalous',
-      'transtu_dest_kalaat_andalous': 'dest_kalaat_alandalous',
+      'transtu_dest_kalaat_andalous':  'dest_kalaat_alandalous',
+      'transtu_dest_kalaat_ar':        'dest_kalaat_alandalous',
       'transtu_dest_sidi_amor': 'dest_sidi_amor',
       'transtu_dest_sidi_omar': 'dest_sidi_amor',
       'transtu_dest_el_bhararja': 'dest_el_bhararja',

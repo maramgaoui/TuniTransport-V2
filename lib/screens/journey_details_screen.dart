@@ -5,12 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:tuni_transport/widgets/time_text.dart';
 import '../services/active_journey_service.dart';
 import '../services/map_routing_service.dart';
 import '../services/rating_service.dart';
 import '../services/recommendation_service.dart';
+import '../services/taxi_collectif_service.dart';
 import '../controllers/favorites_controller.dart';
 import '../theme/app_theme.dart';
 import '../models/journey_model.dart';
@@ -37,6 +37,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
   late Journey _journey;
   List<_StopInfo> _intermediateStops = [];
   List<LatLng> _routePolylinePoints = const <LatLng>[];
+  List<LatLng> _taxiMapPoints       = const <LatLng>[];
   bool _stopsLoading = true;
   int? _resolvedBusFrequencyMinutes;
 
@@ -84,6 +85,8 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       _loadIntermediateStops();
     } else if (_isTranstuBus) {
       _loadTranstuStops();
+    } else if (_journey.iconKey == 'taxi') {
+      _loadTaxiMapPoints();
     } else {
       _stopsLoading = false;
     }
@@ -476,29 +479,61 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       final last = _intermediateStops.last;
       return LatLng((first.lat + last.lat) / 2, (first.lng + last.lng) / 2);
     }
+    if (_taxiMapPoints.length >= 2) {
+      return LatLng(
+        (_taxiMapPoints.first.latitude + _taxiMapPoints.last.latitude) / 2,
+        (_taxiMapPoints.first.longitude + _taxiMapPoints.last.longitude) / 2,
+      );
+    }
     final name = _journey.departureStation.toLowerCase();
-    if (name.contains('mahdia')) return const LatLng(35.5047, 11.0622);
+    if (name.contains('mahdia'))   return const LatLng(35.5047, 11.0622);
     if (name.contains('monastir')) return const LatLng(35.7441, 10.8081);
-    if (name.contains('sousse')) return const LatLng(35.8256, 10.6369);
+    if (name.contains('sousse'))   return const LatLng(35.8256, 10.6369);
     return const LatLng(35.66, 10.85);
   }
 
   double _getZoom() {
-    if (_intermediateStops.isEmpty) return 7.5;  // inter-city (taxi) view
+    if (_taxiMapPoints.length >= 2) {
+      // Approximate zoom from geographic distance between the two points.
+      final dlat = (_taxiMapPoints.first.latitude  - _taxiMapPoints.last.latitude).abs();
+      final dlon = (_taxiMapPoints.first.longitude - _taxiMapPoints.last.longitude).abs();
+      final deg  = dlat > dlon ? dlat : dlon;
+      if (deg < 0.1)  return 13.0;
+      if (deg < 0.3)  return 11.5;
+      if (deg < 0.7)  return 10.5;
+      if (deg < 1.5)  return 9.5;
+      if (deg < 3.0)  return 8.5;
+      return 7.5;
+    }
+    if (_intermediateStops.isEmpty) return 7.5;
     if (_intermediateStops.length <= 3) return 13.0;
     if (_intermediateStops.length <= 8) return 11.0;
     return 10.0;
   }
 
   List<Marker> _buildMarkers() {
+    // Taxi collectif: show departure + arrival markers from resolved coordinates.
+    if (_taxiMapPoints.length >= 2) {
+      return [
+        Marker(
+          point: _taxiMapPoints.first,
+          width: 80, height: 80,
+          child: _markerWidget(Colors.green, Icons.play_arrow, 'Départ'),
+        ),
+        Marker(
+          point: _taxiMapPoints.last,
+          width: 80, height: 80,
+          child: _markerWidget(Colors.red, Icons.stop, 'Arrivée'),
+        ),
+      ];
+    }
+
     final markers = <Marker>[];
     if (_intermediateStops.isEmpty) return markers;
 
     markers.add(Marker(
-      point:
-          LatLng(_intermediateStops.first.lat, _intermediateStops.first.lng),
-      width: 80,
-      height: 80,
+      point: LatLng(_intermediateStops.first.lat, _intermediateStops.first.lng),
+      width: 80, height: 80,
       child: _markerWidget(Colors.green, Icons.play_arrow, 'Départ'),
     ));
 
@@ -506,8 +541,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       final stop = _intermediateStops[i];
       markers.add(Marker(
         point: LatLng(stop.lat, stop.lng),
-        width: 14,
-        height: 14,
+        width: 14, height: 14,
         child: Container(
           decoration: BoxDecoration(
             color: const Color(0xFFFF8C00),
@@ -519,10 +553,8 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     }
 
     markers.add(Marker(
-      point:
-          LatLng(_intermediateStops.last.lat, _intermediateStops.last.lng),
-      width: 80,
-      height: 80,
+      point: LatLng(_intermediateStops.last.lat, _intermediateStops.last.lng),
+      width: 80, height: 80,
       child: _markerWidget(Colors.red, Icons.stop, 'Arrivée'),
     ));
 
@@ -563,29 +595,134 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
   }
 
   List<Polyline> _buildPolylines() {
-    if (_intermediateStops.length < 2) return [];
-    final points = _routePolylinePoints.isNotEmpty
-        ? _routePolylinePoints
-        : _intermediateStops.map((s) => LatLng(s.lat, s.lng)).toList();
-    return [
-      Polyline(
-        points: points,
-        color: _themeColor,
-        strokeWidth: 3.0,
-      ),
-    ];
+    List<LatLng> points;
+    if (_taxiMapPoints.length >= 2) {
+      // Prefer routed road path; fall back to straight line between cities.
+      points = _routePolylinePoints.isNotEmpty ? _routePolylinePoints : _taxiMapPoints;
+    } else if (_intermediateStops.length >= 2) {
+      points = _routePolylinePoints.isNotEmpty
+          ? _routePolylinePoints
+          : _intermediateStops.map((s) => LatLng(s.lat, s.lng)).toList();
+    } else {
+      return [];
+    }
+    return [Polyline(points: points, color: _themeColor, strokeWidth: 3.0)];
   }
 
   Future<void> _loadRoutedPolyline() async {
-    if (_intermediateStops.length < 2) return;
-    final base = _intermediateStops
-        .map((s) => LatLng(s.lat, s.lng))
-        .toList(growable: false);
+    final base = _taxiMapPoints.isNotEmpty
+        ? _taxiMapPoints
+        : _intermediateStops.length < 2
+            ? null
+            : _intermediateStops.map((s) => LatLng(s.lat, s.lng)).toList(growable: false);
+    if (base == null || base.length < 2) return;
     final routed = await MapRoutingService.buildRoadPath(base);
     if (!mounted || routed.length < 2) return;
-    setState(() {
-      _routePolylinePoints = routed;
-    });
+    setState(() => _routePolylinePoints = routed);
+  }
+
+  // Approximate coordinates for every city that appears in taxi collectif routes.
+  static const _taxiCityCoords = <String, LatLng>{
+    'tunis':             LatLng(36.8189, 10.1658),
+    'ariana':            LatLng(36.8625, 10.1956),
+    'raoued':            LatLng(36.8890, 10.0790),
+    'borj_touil':        LatLng(37.0431, 10.0250),
+    'kalaat_andalous':   LatLng(37.0631, 10.0811),
+    'sidi_thabet':       LatLng(36.9025, 10.0050),
+    'sousse':            LatLng(35.8256, 10.6369),
+    'monastir':          LatLng(35.7641, 10.8113),
+    'sfax':              LatLng(34.7406, 10.7603),
+    'bizerte':           LatLng(37.2744,  9.8739),
+    'nabeul':            LatLng(36.4553, 10.7328),
+    'hammamet':          LatLng(36.3990, 10.6162),
+    'kalaa_kebira':      LatLng(35.9163, 10.5119),
+    'kalaa_sghira':      LatLng(35.8600, 10.5560),
+    'msaken':            LatLng(35.7306, 10.5878),
+    'hergla':            LatLng(36.0431, 10.4606),
+    'enfidha':           LatLng(36.1233, 10.3794),
+    'sidi_bouali':       LatLng(35.8219, 10.3953),
+    'therayet':          LatLng(35.8800, 10.6800),
+    'korba':             LatLng(36.5700, 10.8600),
+    'el_mazraa':         LatLng(36.5289, 10.8844),
+    'kelibia':           LatLng(36.8456, 11.0989),
+    'haouaria':          LatLng(37.0526, 11.0009),
+    'beni_khiar':        LatLng(36.4819, 10.8064),
+    'soliman':           LatLng(36.7000, 10.4833),
+    'maamoura':          LatLng(36.5000, 10.7900),
+    'zaghouan':          LatLng(36.4031, 10.1439),
+    'zriba_hammam':      LatLng(36.3500, 10.2500),
+    'mograne':           LatLng(36.4000, 10.0667),
+    'sidi_youssef':      LatLng(36.3333,  8.5333),
+    'el_kraten':         LatLng(36.2500,  8.3500),
+    'hammam_lif':        LatLng(36.7277, 10.3348),
+    'ezzahra':           LatLng(36.7439, 10.3556),
+    'rades':             LatLng(36.7660, 10.2776),
+    'ben_arous':         LatLng(36.7539, 10.2295),
+    'fouchana':          LatLng(36.7017, 10.2203),
+    'menzel_bourguiba':  LatLng(37.1547,  9.7981),
+    'sejnane':           LatLng(37.2000,  9.2333),
+    'sidi_bouzid':       LatLng(35.0381,  9.4850),
+    'bir_lahffey':       LatLng(35.0500,  9.1333),
+    'ajim':              LatLng(33.7000, 10.7500),
+    'houmt_souk':        LatLng(33.8756, 10.8569),
+    'el_hencha':         LatLng(34.5167, 10.2667),
+    'mahres':            LatLng(34.5333, 10.5000),
+  };
+
+  /// Resolves departure/arrival coordinates for taxi collectif journeys.
+  /// Uses Firestore first, falls back to the built-in coordinate table.
+  Future<void> _loadTaxiMapPoints() async {
+    try {
+      final fromId = TaxiCollectifService.normalizeCityId(_journey.departureStation);
+      final toId   = TaxiCollectifService.normalizeCityId(_journey.arrivalStation);
+
+      // Try Firestore first so admin-updated coordinates are respected.
+      Future<LatLng?> fetchCoords(String cityId) async {
+        final snap = await FirebaseFirestore.instance
+            .collection(Col.stations)
+            .where('cityId', isEqualTo: cityId)
+            .limit(5)
+            .get();
+        for (final doc in snap.docs) {
+          final d   = doc.data();
+          final lat = (d['latitude']  as num?)?.toDouble() ?? 0;
+          final lng = (d['longitude'] as num?)?.toDouble() ?? 0;
+          if (lat != 0 && lng != 0) return LatLng(lat, lng);
+        }
+        return null;
+      }
+
+      final results = await Future.wait([
+        fetchCoords(fromId),
+        fetchCoords(toId),
+      ]);
+
+      // Fall back to the built-in table when Firestore has no coordinates.
+      final fromPt = results[0] ?? _taxiCityCoords[fromId];
+      final toPt   = results[1] ?? _taxiCityCoords[toId];
+
+      if (!mounted) return;
+      setState(() {
+        if (fromPt != null && toPt != null) {
+          _taxiMapPoints = [fromPt, toPt];
+        }
+        _stopsLoading = false;
+      });
+      if (_taxiMapPoints.length >= 2) _loadRoutedPolyline();
+    } catch (_) {
+      // If all else fails, try the built-in table synchronously.
+      final fromId = TaxiCollectifService.normalizeCityId(_journey.departureStation);
+      final toId   = TaxiCollectifService.normalizeCityId(_journey.arrivalStation);
+      final fromPt = _taxiCityCoords[fromId];
+      final toPt   = _taxiCityCoords[toId];
+      if (mounted) {
+        setState(() {
+          if (fromPt != null && toPt != null) _taxiMapPoints = [fromPt, toPt];
+          _stopsLoading = false;
+        });
+        if (_taxiMapPoints.length >= 2) _loadRoutedPolyline();
+      }
+    }
   }
 
   Future<void> _shareJourney() async {
@@ -855,16 +992,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     );
   }
 
-  Future<void> _openMaps() async {
-    final coords = _getCoordinates();
-    final uri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1'
-      '&destination=${coords.latitude},${coords.longitude}',
-    );
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
 
   // ── Section header ────────────────────────────────────────────────────────
 
@@ -1163,40 +1290,38 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                       ),
                     ),
 
-                    // ── Étapes du trajet — hidden for taxi ──────────────────
-                    if (!isTaxi) ...[
-                      _sectionHeader('Étapes du trajet'),
-                      _sectionCard(
-                        _stopsLoading
-                            ? const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: CircularProgressIndicator(),
-                                ),
-                              )
-                            : _isTranstuBus && _intermediateStops.isEmpty
-                                ? _buildBusDetailsPanel()
-                                : _intermediateStops.isNotEmpty
-                                    ? Column(children: _buildStopsList())
-                                    : Column(
-                                        children: [
-                                          _buildRouteStep(
-                                            time: _journey.departure,
-                                            station: _journey.departureStation,
-                                            isFirst: true,
-                                            isLast: false,
-                                          ),
-                                          _buildRouteStep(
-                                            time: _journey.arrival,
-                                            station: _journey.arrivalStation,
-                                            isFirst: false,
-                                            isLast: true,
-                                            type: 'Destination',
-                                          ),
-                                        ],
-                                      ),
-                      ),
-                    ],
+                    // ── Étapes du trajet ────────────────────────────────────
+                    _sectionHeader('Étapes du trajet'),
+                    _sectionCard(
+                      _stopsLoading
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(16),
+                                child: CircularProgressIndicator(),
+                              ),
+                            )
+                          : _isTranstuBus && _intermediateStops.isEmpty
+                              ? _buildBusDetailsPanel()
+                              : _intermediateStops.isNotEmpty
+                                  ? Column(children: _buildStopsList())
+                                  : Column(
+                                      children: [
+                                        _buildRouteStep(
+                                          time: _journey.departure,
+                                          station: _journey.departureStation,
+                                          isFirst: true,
+                                          isLast: false,
+                                        ),
+                                        _buildRouteStep(
+                                          time: _journey.arrival,
+                                          station: _journey.arrivalStation,
+                                          isFirst: false,
+                                          isLast: true,
+                                          type: 'Destination',
+                                        ),
+                                      ],
+                                    ),
+                    ),
 
                     // ── Tarif ───────────────────────────────────────────────
                     _sectionHeader('Tarif'),
@@ -1244,96 +1369,40 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                       child: Column(
                         children: [
 
-                          // ── Train + Bus: Commencer le trajet ─────────────────
-                          if (!isTaxi) ...[
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: _themeColor,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(12)),
-                                  elevation: 0,
-                                ),
-                                onPressed: () async {
-                                  await ActiveJourneyService.instance
-                                      .setActiveJourney(_journey);
-                                  if (!context.mounted) return;
-                                  context.push('/home/active-journey',
-                                      extra: <String, dynamic>{
-                                        'journey':       _journey,
-                                        'fromStationId': widget.metroResult?.fromStationId,
-                                        'toStationId':   widget.metroResult?.toStationId,
-                                        'metroResult':   widget.metroResult,
-                                      });
-                                },
-                                icon:
-                                    const Icon(Icons.directions_run),
-                                label: const Text(
-                                  'Commencer le trajet',
-                                  style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600),
-                                ),
+                          // ── Commencer le trajet — all modes ──────────────────
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _themeColor,
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                elevation: 0,
+                              ),
+                              onPressed: () async {
+                                await ActiveJourneyService.instance
+                                    .setActiveJourney(_journey);
+                                if (!context.mounted) return;
+                                context.push('/home/active-journey',
+                                    extra: <String, dynamic>{
+                                      'journey':       _journey,
+                                      'fromStationId': widget.metroResult?.fromStationId,
+                                      'toStationId':   widget.metroResult?.toStationId,
+                                      'metroResult':   widget.metroResult,
+                                    });
+                              },
+                              icon: const Icon(Icons.directions_run),
+                              label: const Text(
+                                'Commencer le trajet',
+                                style: TextStyle(
+                                    fontSize: 15, fontWeight: FontWeight.w600),
                               ),
                             ),
-                            const SizedBox(height: 10),
-                          ],
-
-                          // ── Taxi only: Google Maps + Évaluer ─────────────────
-                          if (isTaxi) ...[
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: _themeColor,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(12)),
-                                  elevation: 0,
-                                ),
-                                onPressed: _openMaps,
-                                icon: const Icon(Icons.map_outlined),
-                                label: const Text(
-                                  'Consulter sur Google Maps',
-                                  style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: _themeColor,
-                                  side: BorderSide(color: _themeColor),
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(12)),
-                                ),
-                                onPressed: () =>
-                                    _showRatingSheet(context, _journey),
-                                icon:
-                                    const Icon(Icons.star_border_rounded),
-                                label: const Text('Évaluer le trajet',
-                                    style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600)),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                          ],
+                          ),
+                          const SizedBox(height: 10),
 
                           // Favoris + Partager — side by side
                           Row(
@@ -1527,11 +1596,12 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 2),
-              TimeText(
-                time,
-                style: const TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w700),
-              ),
+              if (time.isNotEmpty && time != '--:--')
+                TimeText(
+                  time,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w700),
+                ),
               Text(station,
                   style: const TextStyle(
                       fontSize: 13, fontWeight: FontWeight.w500)),

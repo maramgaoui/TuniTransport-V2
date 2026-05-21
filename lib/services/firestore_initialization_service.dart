@@ -187,7 +187,7 @@ class FirestoreInitializationService {
       'transtu_dest_ghazala': {
         'name': 'Ghazala',
         'nameAr': 'غزالة',
-        'cityId': 'ariana',
+        'cityId': 'ghazala',
         'latitude': 36.9020,
         'longitude': 10.1450,
         'operatorsHere': ['transtu'],
@@ -199,7 +199,7 @@ class FirestoreInitializationService {
       'transtu_dest_raoued': {
         'name': 'Raoued',
         'nameAr': 'رواد',
-        'cityId': 'ariana',
+        'cityId': 'raoued',
         'latitude': 36.8890,
         'longitude': 10.0790,
         'operatorsHere': ['transtu'],

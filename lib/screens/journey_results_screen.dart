@@ -55,26 +55,28 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
 
   Future<void> _loadProfile() async {
     final p = await UserPreferenceService.instance.getProfile();
-    if (mounted) setState(() => _profile = p);
+    if (!mounted) return;
+    setState(() => _profile = p);
+    // Re-run so the recommendation matches the actual saved profile.
+    // Without this call, the balanced default recommendation set while
+    // the async load was in-flight would remain visible even after the
+    // profile tab switches to the user's real preference.
+    _rerunRecommendation(p);
   }
 
   void _onSearchStateChanged() {
     if (!mounted) return;
     final controllerRec = _searchController.state.recommendation;
-    setState(() {
-      if (controllerRec == null) return;
-      if (controllerRec.profile == _profile) {
-        // Controller computed for current profile — use it directly.
-        _recommendation = controllerRec;
-      } else if (_recommendation == null) {
-        // No local recommendation yet — accept controller's and re-run for
-        // the current profile in case user already switched tabs.
-        _recommendation = controllerRec;
-        _rerunRecommendation(_profile);
-      }
-      // If profiles differ and we already have a local recommendation,
-      // keep the local one (user switched tabs while controller was computing).
-    });
+
+    // Controller produced a result for exactly our active profile — adopt it.
+    if (controllerRec != null && controllerRec.profile == _profile) {
+      setState(() => _recommendation = controllerRec);
+      return;
+    }
+
+    // Results arrived (or changed) but controller's profile differs from ours.
+    // Recompute rather than showing a mismatched recommendation.
+    _rerunRecommendation(_profile);
   }
 
   Future<void> _changeProfile(UserProfile newProfile) async {
@@ -93,17 +95,24 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
     if (profile != UserProfile.balanced) {
       final entries = _buildSortedEntries(s);
       if (entries.isEmpty) return;
-      final winner = entries.first;
+      final n = entries.length;
+      // Assign relative scores from rank: 1st → 5.0, last → 1.0 (linear).
+      // entry.score is from the balanced model and defaults to 0 before that
+      // model runs, so we compute ranks independently here.
+      final relativeScores = <String, double>{
+        for (int i = 0; i < n; i++)
+          entries[i].transportKey: n == 1 ? 5.0 : 5.0 - (i * 4.0 / (n - 1)),
+      };
       if (mounted) {
         setState(() {
           _recommendation = JourneyRecommendation(
-            winnerTransportType: winner.transportKey,
-            winnerScore:         winner.score,
+            winnerTransportType: entries.first.transportKey,
+            winnerScore:         relativeScores[entries.first.transportKey]!,
             reason: profile == UserProfile.price
                 ? RecommendationReason.bestPrice
                 : RecommendationReason.fastest,
-            allScores:        {for (final e in entries) e.transportKey: e.score},
-            isHighConfidence: entries.length > 1,
+            allScores:        relativeScores,
+            isHighConfidence: n > 1,
             profile:          profile,
           );
         });

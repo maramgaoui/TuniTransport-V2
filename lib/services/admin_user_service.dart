@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'admin_notification_service.dart';
 import 'audit_log_service.dart';
 
 class AdminUserService {
@@ -30,47 +31,58 @@ class AdminUserService {
     );
   }
 
+  Future<String> _resolveUsername(String userId) async {
+    try {
+      final doc = await _firestore.collection(_usersCollection).doc(userId).get();
+      final data = doc.data() ?? {};
+      final username = (data['username'] ?? '').toString().trim();
+      if (username.isNotEmpty) return username;
+      return (data['email'] ?? userId).toString();
+    } catch (_) {
+      return userId;
+    }
+  }
+
   Future<void> banUser(String userId, {required int days}) async {
-    final until = DateTime.now().add(Duration(days: days));
+    final until    = DateTime.now().add(Duration(days: days));
+    final username = await _resolveUsername(userId);
     await _firestore.collection(_usersCollection).doc(userId).update({
-      'status': 'banned',
+      'status':   'banned',
       'banUntil': Timestamp.fromDate(until),
     });
+    unawaited(AdminNotificationService.notifyUserBanned(username: username, days: days));
     unawaited(_logAdminAction(
       action: 'ban_user',
       targetUid: userId,
-      details: {
-        'days': days,
-        'banUntil': until.toIso8601String(),
-      },
+      details: {'days': days, 'banUntil': until.toIso8601String()},
     ));
   }
 
   Future<void> blockUser(String userId) async {
+    final username = await _resolveUsername(userId);
     await _firestore.collection(_usersCollection).doc(userId).update({
-      'status': 'blocked',
+      'status':   'blocked',
       'banUntil': null,
     });
+    unawaited(AdminNotificationService.notifyUserBlocked(username: username));
     unawaited(_logAdminAction(
       action: 'block_user',
       targetUid: userId,
-      details: const {
-        'status': 'blocked',
-      },
+      details: const {'status': 'blocked'},
     ));
   }
 
   Future<void> unblockUser(String userId) async {
+    final username = await _resolveUsername(userId);
     await _firestore.collection(_usersCollection).doc(userId).update({
-      'status': 'active',
+      'status':   'active',
       'banUntil': null,
     });
+    unawaited(AdminNotificationService.notifyUserUnblocked(username: username));
     unawaited(_logAdminAction(
       action: 'unblock_user',
       targetUid: userId,
-      details: const {
-        'status': 'active',
-      },
+      details: const {'status': 'active'},
     ));
   }
 }

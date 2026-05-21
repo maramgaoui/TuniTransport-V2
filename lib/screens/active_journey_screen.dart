@@ -207,32 +207,33 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
                           ),
                         ),
                       ),
-                      // Dynamic status badge
-                      Builder(builder: (_) {
-                        final badge = _statusBadge;
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.25),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(badge.icon, color: badge.color, size: 10),
-                              const SizedBox(width: 5),
-                              Text(
-                                badge.label,
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
+                      // Status badge — only for modes with a fixed schedule
+                      if (widget.journey.iconKey != 'taxi')
+                        Builder(builder: (_) {
+                          final badge = _statusBadge;
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(badge.icon, color: badge.color, size: 10),
+                                const SizedBox(width: 5),
+                                Text(
+                                  badge.label,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -284,7 +285,7 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
                         onPressed: _openMaps,
                         icon: const Icon(Icons.map_outlined),
                         label: const Text(
-                          'Voir le trajet sur la carte',
+                          'Voir le trajet sur Google Maps',
                           style: TextStyle(
                               fontSize: 15, fontWeight: FontWeight.w600),
                         ),
@@ -295,12 +296,15 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
                     // Info card
                     _InfoCard(
                       children: [
-                        _InfoRow(
-                          icon: Icons.schedule,
-                          label: 'Départ',
-                          value: widget.journey.departureTime,
-                          forceLtrValue: true,
-                        ),
+                        // Departure/arrival times are hidden for taxi collectif
+                        // (no fixed schedule — departureTime is empty string).
+                        if (widget.journey.departureTime.isNotEmpty)
+                          _InfoRow(
+                            icon: Icons.schedule,
+                            label: 'Départ',
+                            value: widget.journey.departureTime,
+                            forceLtrValue: true,
+                          ),
                         if (widget.journey.arrivalTime != null &&
                             widget.journey.arrivalTime!.isNotEmpty)
                           _InfoRow(
@@ -317,7 +321,7 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
                         _InfoRow(
                           icon: Icons.payments_outlined,
                           label: 'Prix',
-                          value: widget.journey.price,
+                          value: '${widget.journey.price} TND',
                         ),
                       ],
                     ),

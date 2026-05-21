@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../constants/firestore_collections.dart';
@@ -7,6 +9,7 @@ import 'package:tuni_transport/controllers/auth_controller.dart';
 import 'package:tuni_transport/admin/widgets/admin_soft_card.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/theme/app_theme.dart';
+import '../../services/admin_notification_service.dart';
 
 /// Filter applied to the route list.
 enum _RouteFilter { all, active, inactive }
@@ -27,8 +30,16 @@ class ManageJourneysScreen extends StatefulWidget {
 }
 
 class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
-  final CollectionReference<Map<String, dynamic>> _routesRef =
-      FirebaseFirestore.instance.collection(Col.routes);
+  // Routes collection switches based on admin type:
+  // taxicollectifs admin reads from taxi_collectif_routes; all others read from routes.
+  CollectionReference<Map<String, dynamic>> get _routesRef {
+    if (!_isSuperAdmin && _adminType == 'taxicollectifs') {
+      return FirebaseFirestore.instance.collection(Col.taxiCollectifRoutes);
+    }
+    return FirebaseFirestore.instance.collection(Col.routes);
+  }
+
+  bool get _isTaxiAdmin => !_isSuperAdmin && _adminType == 'taxicollectifs';
 
   final TextEditingController _departureController = TextEditingController();
   final TextEditingController _arrivalController = TextEditingController();
@@ -82,6 +93,9 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
   bool _matchesAdminScope(Map<String, dynamic> data) {
     if (_isSuperAdmin) return true;
     if (_adminType == null) return false;
+    // Taxi collectif admin reads directly from taxi_collectif_routes,
+    // so every document in that stream belongs to them.
+    if (_isTaxiAdmin) return true;
 
     final operatorId = (data['operatorId'] ?? '').toString().toLowerCase();
     final typeIdRaw = data['typeId'];
@@ -91,9 +105,7 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
 
     return switch (_adminType) {
       'bus' => operatorId == 'transtu' || typeId.contains('bus'),
-      'metro_train' =>
-        typeId.contains('metro') || typeId.contains('train'),
-      'taxicollectifs' => typeId.contains('taxicollectif'),
+      'metro_train' => typeId.contains('metro') || typeId.contains('train'),
       'louage' => typeId.contains('louage'),
       _ => false,
     };
@@ -118,10 +130,21 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
   /// - Both given            → match both origin and destination.
   /// - Neither given         → return all.
   bool _matchesSearch(Map<String, dynamic> data) {
-    final origin = _normalize((data['originStationId'] ?? '').toString());
-    final destination =
-        _normalize((data['destinationStationId'] ?? '').toString());
-    final routeName = _normalize((data['name'] ?? '').toString());
+    final String origin;
+    final String destination;
+    final String routeName;
+    if (_isTaxiAdmin) {
+      origin = _normalize(
+          (data['fromCityName'] ?? data['fromCityId'] ?? '').toString());
+      destination = _normalize(
+          (data['toCityName'] ?? data['toCityId'] ?? '').toString());
+      routeName = '$origin $destination';
+    } else {
+      origin = _normalize((data['originStationId'] ?? '').toString());
+      destination =
+          _normalize((data['destinationStationId'] ?? '').toString());
+      routeName = _normalize((data['name'] ?? '').toString());
+    }
     final depQ = _normalize(_departureQuery);
     final arrQ = _normalize(_arrivalQuery);
 
@@ -150,13 +173,30 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
 
     await _routesRef.doc(doc.id).update({
       'isActive': newActive,
-      'searchVisibilityManaged': true,
+      if (!_isTaxiAdmin) 'searchVisibilityManaged': true,
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
-    // Propagate to matching bus_services in background — does not affect
-    // the current screen's UI so it is intentionally not awaited.
-    _propagateToBusServices(doc.id, newActive);
+    // Bus service propagation only applies to TRANSTU routes.
+    if (!_isTaxiAdmin) _propagateToBusServices(doc.id, newActive);
+
+    // Notify all users about the availability change.
+    final data = doc.data();
+    final String routeLabel;
+    if (_isTaxiAdmin) {
+      final from = (data['fromCityName'] ?? data['fromCityId'] ?? '').toString();
+      final to   = (data['toCityName']   ?? data['toCityId']   ?? '').toString();
+      routeLabel = '$from → $to';
+    } else {
+      final name   = (data['name'] ?? '').toString().trim();
+      final origin = (data['originStationId'] ?? '').toString();
+      final dest   = (data['destinationStationId'] ?? '').toString();
+      routeLabel = name.isNotEmpty ? name : '$origin → $dest';
+    }
+    unawaited(AdminNotificationService.notifyRouteToggled(
+      routeLabel: routeLabel,
+      isActive:   newActive,
+    ));
   }
 
   /// Batch-updates every `bus_services` document whose `routeId` matches
@@ -359,18 +399,30 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                         itemBuilder: (_, i) {
                           final doc = docs[i];
                           final data = doc.data();
-                          final lineNumber =
-                              (data['lineNumber'] ?? '').toString();
-                          final name = (data['name'] ?? '').toString();
-                          final operatorId =
-                              (data['operatorId'] ?? '').toString();
-                          final typeId = (data['typeId'] ?? '').toString();
-                          final origin =
-                              (data['originStationId'] ?? '').toString();
-                          final destination =
-                              (data['destinationStationId'] ?? '').toString();
-                          final isActive =
-                              (data['isActive'] ?? true) == true;
+                          final isActive = (data['isActive'] ?? true) == true;
+
+                          // Taxi collectif schema differs from routes schema.
+                          final String name;
+                          final String origin;
+                          final String destination;
+                          final String subtitle;
+                          if (_isTaxiAdmin) {
+                            origin = (data['fromCityName'] ?? data['fromCityId'] ?? '').toString();
+                            destination = (data['toCityName'] ?? data['toCityId'] ?? '').toString();
+                            name = '$origin → $destination';
+                            final fare = (data['fare'] as num?)?.toStringAsFixed(3) ?? '—';
+                            final dist = (data['distanceKm'] as num?)?.toStringAsFixed(1) ?? '—';
+                            subtitle = '$fare TND • $dist km';
+                          } else {
+                            final lineNumber = (data['lineNumber'] ?? '').toString();
+                            final operatorId = (data['operatorId'] ?? '').toString();
+                            final typeId = (data['typeId'] ?? '').toString();
+                            origin = (data['originStationId'] ?? '').toString();
+                            destination = (data['destinationStationId'] ?? '').toString();
+                            name = (data['name'] ?? 'Route $lineNumber').toString();
+                            subtitle = '$operatorId • $typeId'
+                                '${lineNumber.isNotEmpty ? ' • Ligne $lineNumber' : ''}';
+                          }
 
                           return AdminSoftCard(
                             child: Padding(
@@ -386,22 +438,20 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          name.isNotEmpty
-                                              ? name
-                                              : 'Route $lineNumber',
+                                          name,
                                           style: const TextStyle(
                                             fontWeight: FontWeight.w600,
                                             fontSize: 14,
                                           ),
                                         ),
                                         const SizedBox(height: 2),
+                                        if (!_isTaxiAdmin)
+                                          Text(
+                                            '$origin → $destination',
+                                            style: const TextStyle(fontSize: 12),
+                                          ),
                                         Text(
-                                          '$origin → $destination',
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                        Text(
-                                          '$operatorId • $typeId'
-                                          '${lineNumber.isNotEmpty ? ' • Ligne $lineNumber' : ''}',
+                                          subtitle,
                                           style: const TextStyle(
                                             fontSize: 11,
                                             color: Colors.black54,

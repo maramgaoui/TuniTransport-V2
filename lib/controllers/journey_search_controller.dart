@@ -4,6 +4,7 @@ import 'journey_search_state.dart';
 import '../models/bus_service_model.dart';
 import '../models/metro_sahel_result.dart';
 import '../models/station_model.dart';
+import '../models/taxi_collectif_result.dart';
 import '../services/station_repository.dart';
 import '../services/route_repository.dart';
 import '../services/journey_repository.dart';
@@ -579,7 +580,7 @@ class JourneySearchController extends ChangeNotifier {
     required Object token,
     required List<MetroSahelResult> trainResults,
     required BusService? busService,
-    required dynamic taxiResult,
+    required TaxiCollectifResult? taxiResult,
     required String fromStationId,
     required String toStationId,
   }) async {
