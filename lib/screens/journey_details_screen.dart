@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -8,7 +7,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:tuni_transport/widgets/time_text.dart';
 import '../services/active_journey_service.dart';
 import '../services/map_routing_service.dart';
-import '../services/rating_service.dart';
 import '../services/recommendation_service.dart';
 import '../services/taxi_collectif_service.dart';
 import '../controllers/favorites_controller.dart';
@@ -16,7 +14,7 @@ import '../theme/app_theme.dart';
 import '../models/journey_model.dart';
 import '../models/metro_sahel_result.dart';
 import '../constants/firestore_collections.dart';
-import '../widgets/star_rating_widget.dart';
+import '../widgets/rating_sheet.dart';
 
 class JourneyDetailsScreen extends StatefulWidget {
   final Journey? journey;
@@ -981,7 +979,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       isDismissible: true,
-      builder: (_) => _RatingSheet(
+      builder: (_) => RatingSheet(
         journey: journey,
         fromStationId: metro?.fromStationId,
         toStationId: metro?.toStationId,
@@ -1674,176 +1672,3 @@ class _StopInfo {
 
 // ── Rating bottom sheet ────────────────────────────────────────────────────
 
-class _RatingSheet extends StatefulWidget {
-  final Journey journey;
-  final String? fromStationId;
-  final String? toStationId;
-  final String transportType;
-
-  const _RatingSheet({
-    required this.journey,
-    required this.transportType,
-    this.fromStationId,
-    this.toStationId,
-  });
-
-  @override
-  State<_RatingSheet> createState() => _RatingSheetState();
-}
-
-class _RatingSheetState extends State<_RatingSheet> {
-  final _ratingService = RatingService();
-  int _transportRating = 0;
-  int _experienceRating = 0;
-  final _commentController = TextEditingController();
-  bool _submitting = false;
-
-  String? get _uid =>
-      firebase_auth.FirebaseAuth.instance.currentUser?.uid;
-
-  bool get _canSave =>
-      widget.fromStationId != null &&
-      widget.toStationId != null &&
-      _uid != null;
-
-  @override
-  void dispose() {
-    _commentController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (_transportRating == 0 || _experienceRating == 0) return;
-    setState(() => _submitting = true);
-
-    final combined = ((_transportRating + _experienceRating) / 2).round();
-
-    if (_canSave) {
-      try {
-        await _ratingService.submitRating(
-          uid: _uid!,
-          fromStationId: widget.fromStationId!,
-          toStationId: widget.toStationId!,
-          transportType: widget.transportType,
-          rating: combined,
-        );
-      } catch (e) {
-        debugPrint('[RatingSheet] submit failed: $e');
-      }
-    }
-
-    if (!mounted) return;
-    Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Merci pour votre évaluation !'),
-        duration: Duration(seconds: 3),
-      ),
-    );
-  }
-
-  Widget _starRow(String label, int current, ValueChanged<int> onChanged) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textDark,
-          ),
-        ),
-        const SizedBox(height: 8),
-        StarRatingWidget(
-          rating: current,
-          starSize: 36,
-          onRated: onChanged,
-        ),
-      ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Container(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Handle
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: AppTheme.mediumGrey,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-
-            const Text(
-              'Évaluer le trajet',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textDark,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            _starRow(
-              'Qualité du transport',
-              _transportRating,
-              (v) => setState(() => _transportRating = v),
-            ),
-            const SizedBox(height: 16),
-            _starRow(
-              'Expérience globale',
-              _experienceRating,
-              (v) => setState(() => _experienceRating = v),
-            ),
-            const SizedBox(height: 16),
-
-            TextField(
-              controller: _commentController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                hintText: 'Commentaire (facultatif)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: (_submitting ||
-                        _transportRating == 0 ||
-                        _experienceRating == 0)
-                    ? null
-                    : _submit,
-                child: _submitting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Soumettre'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

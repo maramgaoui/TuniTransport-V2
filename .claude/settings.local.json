@@ -16,7 +16,10 @@
       "Bash(python generate_synthetic_ratings.py)",
       "Bash(python train_model.py)",
       "Bash(python -c ' *)",
-      "Bash(firebase deploy *)"
+      "Bash(firebase deploy *)",
+      "Read(//c/Users/Snaws/Downloads/**)",
+      "Read(//c/Users/Snaws/**)",
+      "Bash(ls /mnt/c/Users/Snaws/Downloads/ | grep -i latex)"
     ]
   }
 }

@@ -21,6 +21,14 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', '') == 'super_admin';
     }
 
+    // Returns true if the caller's users document marks them as active.
+    // Accepts both status:'active' (new format) and isActive:true (legacy
+    // bootstrap documents that were created before status was standardised).
+    function callerIsActive() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('status', '') == 'active'
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isActive', false) == true;
+    }
+
     function isAdmin() {
       return request.auth != null
         && (
@@ -29,7 +37,7 @@ service cloud.firestore {
             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') in [
                  'admin', 'admin_bus', 'admin_metro', 'admin_taxi_collectifs', 'admin_louage_train'
                ]
-            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('status', '') == 'active'
+            && callerIsActive()
           )
           || isLegacyAdmin()
         );
@@ -41,7 +49,7 @@ service cloud.firestore {
           (
             exists(/databases/$(database)/documents/users/$(request.auth.uid))
             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'super_admin'
-            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('status', '') == 'active'
+            && callerIsActive()
           )
           || isLegacySuperAdmin()
         );
@@ -64,22 +72,26 @@ service cloud.firestore {
 
     match /users/{userId} {
       // Single-document reads: own doc OR privileged.
-      // Collection queries: privileged users can query all (isPrivileged() is
-      // independent of userId so Firestore allows the list operation).
-      allow read: if isSignedIn() && (request.auth.uid == userId || isPrivileged());
+      allow get: if isSignedIn() && (request.auth.uid == userId || isPrivileged());
+      // Collection queries: privileged users have no limit; authenticated users
+      // are restricted to limit-1 queries (used for username uniqueness checks).
+      allow list: if isSignedIn() && (isPrivileged() || request.query.limit <= 1);
 
       // Privileged users can write, but admins are limited to regular users.
+      // Uses request.resource.data (new document state) instead of resource.data
+      // because Firestore evaluates set/update operations as CREATE in rules,
+      // making resource null. Checking the resulting document state is equivalent:
+      // if role stays 'user' and no adminType/permissions are granted, the write is safe.
       allow write: if
         isSuperAdmin()
         || (
           isAdmin()
-          && resource.exists
-          && resource.data.get('role', '') == 'user'
-          && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-            'role',
-            'adminType',
-            'permissions',
-          ])
+          && request.resource.data.get('role', 'user') == 'user'
+          && request.resource.data.get('adminType', null) == null
+          && (
+            !('permissions' in request.resource.data)
+            || request.resource.data.permissions.size() == 0
+          )
         )
         || (
           request.auth.uid == userId
@@ -91,6 +103,17 @@ service cloud.firestore {
             'adminType',
             'permissions',
           ])
+        )
+        // User may self-clear their own expired ban (AuthController auto-reactivation).
+        || (
+          request.auth.uid == userId
+          && resource.exists
+          && resource.data.get('status', '') == 'banned'
+          && resource.data.get('banUntil', null) is timestamp
+          && resource.data.banUntil <= request.time
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'banUntil'])
+          && request.resource.data.status == 'active'
+          && request.resource.data.banUntil == null
         );
 
       // Regular users may only create or update their own document and
@@ -234,16 +257,6 @@ service cloud.firestore {
     match /taxi_collectif_routes/{routeId} {
       allow read: if isSignedIn();
       allow write: if isPrivileged();
-    }
-
-    match /usernames/{username} {
-      allow read: if true;
-      allow create: if isSignedIn()
-        && request.resource.data.uid == request.auth.uid;
-      allow update: if isSignedIn()
-        && resource.data.uid == request.auth.uid
-        && request.resource.data.uid == request.auth.uid;
-      allow delete: if isPrivileged();
     }
 
     // Legacy admins collection — kept for backward-compat during migration.

@@ -8,17 +8,23 @@ mixin AdminModerationMixin<T extends StatefulWidget> on State<T> {
   AdminUserService get _adminUserService => AdminUserService();
 
   Future<bool> _targetIsPrivileged(String userId) async {
-    final doc = await FirebaseFirestore.instance
-        .collection('admins')
-        .doc(userId)
-        .get();
-    if (doc.exists) return true;
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .get();
-    final role = userDoc.data()?['role']?.toString() ?? '';
-    return role == 'admin' || role == 'super_admin';
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('admins')
+          .doc(userId)
+          .get();
+      if (doc.exists) return true;
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      final role = userDoc.data()?['role']?.toString() ?? '';
+      return role == 'admin' || role == 'super_admin';
+    } on FirebaseException {
+      // If the privilege check fails due to a network error, deny the action
+      // rather than risk moderating an admin account.
+      return true;
+    }
   }
 
   Future<void> banUserWithFeedback(

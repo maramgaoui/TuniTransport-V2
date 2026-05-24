@@ -37,6 +37,8 @@ class NotificationService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   bool _initialized = false;
   StreamSubscription<String>? _tokenRefreshSubscription;
+  StreamSubscription<RemoteMessage>? _foregroundSubscription;
+  StreamSubscription<RemoteMessage>? _openedAppSubscription;
 
   bool get _isMessagingSupported {
     if (kIsWeb) return false;
@@ -109,26 +111,7 @@ class NotificationService {
     if (uid == null || uid.isEmpty) return;
 
     try {
-      final db = FirebaseFirestore.instance;
-
-      // Claim this token exclusively: remove it from every OTHER user document
-      // so the same device doesn't receive duplicate FCM messages when multiple
-      // accounts were used on it (common during testing / shared devices).
-      final others = await db
-          .collection(Col.users)
-          .where('fcmToken', isEqualTo: token)
-          .get();
-      if (others.docs.isNotEmpty) {
-        final batch = db.batch();
-        for (final doc in others.docs) {
-          if (doc.id != uid) {
-            batch.update(doc.reference, {'fcmToken': FieldValue.delete()});
-          }
-        }
-        await batch.commit();
-      }
-
-      await db.collection(Col.users).doc(uid).set({
+      await FirebaseFirestore.instance.collection(Col.users).doc(uid).set({
         'fcmToken': token,
       }, SetOptions(merge: true));
     } catch (e) {
@@ -150,14 +133,16 @@ class NotificationService {
   }
 
   void _registerForegroundHandler() {
-    FirebaseMessaging.onMessage.listen((message) {
+    _foregroundSubscription?.cancel();
+    _foregroundSubscription = FirebaseMessaging.onMessage.listen((message) {
       debugPrint('Foreground notification received: ${message.messageId}');
       NotificationController.instance.addFromRemoteMessage(message);
     });
   }
 
   void _registerOpenedAppHandler() {
-    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+    _openedAppSubscription?.cancel();
+    _openedAppSubscription = FirebaseMessaging.onMessageOpenedApp.listen((message) {
       debugPrint('Opened from notification: ${message.messageId}');
       NotificationController.instance.addFromRemoteMessage(message);
     });
@@ -173,6 +158,10 @@ class NotificationService {
 
   Future<void> dispose() async {
     await _tokenRefreshSubscription?.cancel();
+    await _foregroundSubscription?.cancel();
+    await _openedAppSubscription?.cancel();
     _tokenRefreshSubscription = null;
+    _foregroundSubscription = null;
+    _openedAppSubscription = null;
   }
 }

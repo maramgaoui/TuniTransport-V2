@@ -10,6 +10,7 @@ import 'package:tuni_transport/admin/widgets/admin_soft_card.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/theme/app_theme.dart';
 import '../../services/admin_notification_service.dart';
+import '../../services/audit_log_service.dart';
 
 /// Filter applied to the route list.
 enum _RouteFilter { all, active, inactive }
@@ -196,6 +197,20 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
     unawaited(AdminNotificationService.notifyRouteToggled(
       routeLabel: routeLabel,
       isActive:   newActive,
+    ));
+
+    final currentUser = AuthController.instance.currentUser;
+    unawaited(AuditLogService().logAdminAction(
+      action: newActive ? 'route_activated' : 'route_deactivated',
+      targetUid: doc.id,
+      actorUid: currentUser?.uid,
+      actorEmail: currentUser?.email,
+      details: {
+        'routeDocId': doc.id,
+        'collection': _isTaxiAdmin ? Col.taxiCollectifRoutes : Col.routes,
+        'routeLabel': routeLabel,
+        'previousIsActive': current,
+      },
     ));
   }
 

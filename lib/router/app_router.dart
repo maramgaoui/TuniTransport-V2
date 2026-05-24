@@ -91,14 +91,19 @@ class AppRouter {
         }
 
         // Single resolveSession call covers user / admin / super_admin.
+        // On a transient Firestore failure (weak signal, cold start) keep the
+        // user where they are rather than kicking them to /auth. Splash is the
+        // only exception — it has no UI to show, so fall back to /auth there.
         SessionResult session;
         try {
           session = await authController.resolveSession(user);
         } catch (_) {
-          return '/auth';
+          return path == '/splash' ? '/auth' : null;
         }
 
-        if (session.isGuest) return '/auth';
+        if (session.isGuest) {
+          return path == '/splash' ? '/auth' : null;
+        }
 
         final actingAsUser = authController.isActingAsUser;
 

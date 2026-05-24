@@ -427,21 +427,12 @@ class AuthController {
       if (effectiveUsername != null) {
         final usernameValidation = ValidationUtils.validateUsername(effectiveUsername);
         if (usernameValidation != null) throw Exception(usernameValidation);
-
-        // Check if username is already taken (confirmed user or recent reservation)
-        late final bool taken;
-        try {
-          taken = await _isUsernameTaken(effectiveUsername);
-        } catch (e) {
-          if (_isTransientFirestoreError(e)) {
-            throw Exception('auth.error.firestore_unavailable');
-          }
-          rethrow;
-        }
-        if (taken) throw Exception('auth.error.username_taken');
+        // Uniqueness is checked AFTER auth creation because the users
+        // collection query requires an authenticated caller.
       }
 
-      // Create Firebase Auth account
+      // Create Firebase Auth account first so the caller is authenticated
+      // for the username uniqueness check that follows.
       final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: normalizedEmail,
         password: password,
@@ -452,25 +443,20 @@ class AuthController {
         throw Exception('auth.error.account_creation_failed');
       }
 
-      // Reserve username in Firestore immediately so no other user can claim it
-      // while this account awaits email verification.
+      // Check username uniqueness now that the caller is authenticated.
       if (effectiveUsername != null) {
+        late final bool taken;
         try {
-          await _firestore.collection(Col.usernames).doc(effectiveUsername).set({
-            'uid': firebaseUser.uid,
-            'reservedAt': FieldValue.serverTimestamp(),
-          });
-          developer.log('Username "$effectiveUsername" reserved for ${firebaseUser.uid}', name: 'AuthController');
+          taken = await _isUsernameTakenByOtherUser(effectiveUsername);
         } catch (e) {
-          // If reservation fails, delete the Auth account to avoid orphaned accounts.
-          developer.log('Username reservation failed, rolling back Auth account: $e', name: 'AuthController');
-          try {
-            await firebaseUser.delete();
-          } catch (_) {}
-
+          await firebaseUser.delete().catchError((_) {});
           if (_isTransientFirestoreError(e)) {
             throw Exception('auth.error.firestore_unavailable');
           }
+          rethrow;
+        }
+        if (taken) {
+          await firebaseUser.delete().catchError((_) {});
           throw Exception('auth.error.username_taken');
         }
       }
@@ -508,20 +494,10 @@ class AuthController {
         await _firestore
             .collection(Col.users)
             .doc(firebaseUser.uid)
-          .set(firestoreProfile, SetOptions(merge: true));
+            .set(firestoreProfile, SetOptions(merge: true));
       } catch (e) {
         developer.log('Failed to create user profile at signup: $e', name: 'AuthController');
-
-        // Roll back reservation and auth user to avoid partially created accounts.
-        if (effectiveUsername != null) {
-          await _firestore
-              .collection(Col.usernames)
-              .doc(effectiveUsername)
-              .delete()
-              .catchError((_) {});
-        }
         await firebaseUser.delete().catchError((_) {});
-
         if (_isTransientFirestoreError(e)) {
           throw Exception('auth.error.firestore_unavailable');
         }
@@ -564,25 +540,20 @@ class AuthController {
     }
   }
 
-  /// Returns true if [username] is already taken by a confirmed user or a
-  /// recent (< 24 h) reservation.
-  Future<bool> _isUsernameTaken(String username) async {
-    // Only query the `usernames` collection — it's publicly readable and holds
-    // both active reservations (pending unverified signups) and confirmed users
-    // (backfilled on first login). The `users` collection query is forbidden
-    // before the user is authenticated.
-    final reservationDoc = await _firestore
-        .collection(Col.usernames)
-        .doc(username)
+  /// Returns true if [username] is already used by any user other than
+  /// [excludeUid] (pass the caller's own UID when updating an existing profile).
+  Future<bool> _isUsernameTakenByOtherUser(
+    String username, {
+    String? excludeUid,
+  }) async {
+    final snapshot = await _firestore
+        .collection(Col.users)
+        .where('username', isEqualTo: username)
+        .limit(1)
         .get();
-    if (!reservationDoc.exists) return false;
-
-    final data = reservationDoc.data()!;
-    // A doc without a reservedAt timestamp means it's a backfilled confirmed
-    // username — always considered taken.
-    final reservedAt = (data['reservedAt'] as Timestamp?)?.toDate();
-    if (reservedAt == null) return true;
-    return DateTime.now().difference(reservedAt).inHours < 24;
+    if (snapshot.docs.isEmpty) return false;
+    if (excludeUid != null && snapshot.docs.first.id == excludeUid) return false;
+    return true;
   }
 
   // Sign in with email and password
@@ -625,17 +596,7 @@ class AuthController {
 
       if (userDoc.exists) {
         _invalidateSessionCache(uid: firebaseUser.uid);
-        final user = User.fromMap(userDoc.data() ?? {});
-        // Backfill usernames/{username} for confirmed users who pre-date the
-        // reservation system so username uniqueness checks stay accurate.
-        if (user.username != null && user.username!.isNotEmpty) {
-          final usernameRef = _firestore.collection(Col.usernames).doc(user.username);
-          final usernameDoc = await usernameRef.get();
-          if (!usernameDoc.exists) {
-            await usernameRef.set({'uid': firebaseUser.uid}).catchError((_) {});
-          }
-        }
-        return user;
+        return User.fromMap(userDoc.data() ?? {});
       }
 
       // Try to restore pending profile from SharedPreferences.
@@ -648,14 +609,6 @@ class AuthController {
           pendingData['banUntil'] = null;
           developer.log('Creating Firestore doc from pending profile for ${firebaseUser.uid}', name: 'AuthController');
           await userDocRef.set(pendingData);
-          // Update the reservation: remove reservedAt to mark username as
-          // permanently confirmed (won't expire on the 24-hour TTL check).
-          final confirmedUsername = pendingData['username'] as String?;
-          if (confirmedUsername != null && confirmedUsername.isNotEmpty) {
-            await _firestore.collection(Col.usernames).doc(confirmedUsername)
-                .set({'uid': firebaseUser.uid})
-                .catchError((_) {});
-          }
           await prefs.remove('pending_profile_${firebaseUser.uid}');
           _invalidateSessionCache(uid: firebaseUser.uid);
           return User.fromMap(pendingData);
@@ -788,10 +741,13 @@ class AuthController {
         final existingData = Map<String, dynamic>.from(userDoc.data() ?? {});
         // Backfill username for existing Google users who never had one set.
         if ((existingData['username'] ?? '').toString().isEmpty) {
-          final generated = _generateUsername(
+          var generated = _generateUsername(
             displayName: googleUser.displayName,
             email: firebaseUser.email ?? '',
           );
+          if (await _isUsernameTakenByOtherUser(generated, excludeUid: firebaseUser.uid)) {
+            generated = '${generated}_${firebaseUser.uid.substring(0, 4)}';
+          }
           await _firestore
               .collection(Col.users)
               .doc(firebaseUser.uid)
@@ -801,13 +757,17 @@ class AuthController {
         return User.fromMap(existingData);
       } else {
         // Create new user document
+        var generatedUsername = _generateUsername(
+          displayName: googleUser.displayName,
+          email: firebaseUser.email ?? '',
+        );
+        if (await _isUsernameTakenByOtherUser(generatedUsername)) {
+          generatedUsername = '${generatedUsername}_${firebaseUser.uid.substring(0, 4)}';
+        }
         final user = User(
           uid: firebaseUser.uid,
           email: firebaseUser.email ?? '',
-          username: _generateUsername(
-            displayName: googleUser.displayName,
-            email: firebaseUser.email ?? '',
-          ),
+          username: generatedUsername,
           firstName: googleUser.displayName?.split(' ').first ?? '',
           lastName: googleUser.displayName?.split(' ').skip(1).join(' ') ?? '',
           avatarId: 'avatar-01',
@@ -1062,25 +1022,6 @@ class AuthController {
     } catch (e) {
       developer.log('Update profile error: $e', name: 'AuthController');
       throw Exception('Failed to update profile');
-    }
-  }
-
-  // Delete account
-  Future<void> deleteAccount({required String uid}) async {
-    try {
-      // Delete Firebase Auth user
-      await _firebaseAuth.currentUser?.delete();
-
-      // Delete user data from Firestore only after auth deletion succeeds.
-      await _firestore.collection(Col.users).doc(uid).delete();
-    } on firebase_auth.FirebaseAuthException catch (e) {
-      if (e.code == 'requires-recent-login') {
-        rethrow;
-      }
-      throw _handleAuthException(e);
-    } catch (e) {
-      developer.log('Delete account error: $e', name: 'AuthController');
-      throw Exception('Failed to delete account');
     }
   }
 

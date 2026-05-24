@@ -85,7 +85,9 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
     required bool forLoadMore,
     bool preferServerPrefixSearch = true,
   }) {
-    Query<Map<String, dynamic>> query = _firestore.collection(_usersCollection);
+    Query<Map<String, dynamic>> query = _firestore
+        .collection(_usersCollection)
+        .where('role', isEqualTo: 'user');
 
     final statusFilter = _statusValueFilter;
     if (statusFilter != null) {

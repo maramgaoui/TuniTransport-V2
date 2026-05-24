@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,10 +7,9 @@ import 'package:tuni_transport/widgets/time_text.dart';
 import '../models/journey_model.dart';
 import '../models/metro_sahel_result.dart';
 import '../services/active_journey_service.dart';
-import '../services/rating_service.dart';
 import '../services/recommendation_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/star_rating_widget.dart';
+import '../widgets/rating_sheet.dart';
 
 class ActiveJourneyScreen extends StatefulWidget {
   final Journey journey;
@@ -149,7 +147,7 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       isDismissible: true,
-      builder: (_) => _RatingSheet(
+      builder: (_) => RatingSheet(
         journey:       widget.journey,
         fromStationId: widget.fromStationId ?? widget.metroResult?.fromStationId,
         toStationId:   widget.toStationId   ?? widget.metroResult?.toStationId,
@@ -393,246 +391,7 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
   }
 }
 
-// ── Rating bottom sheet ───────────────────────────────────────────────────────
-
-class _RatingSheet extends StatefulWidget {
-  final Journey journey;
-  final String? fromStationId;
-  final String? toStationId;
-  final String transportType;
-
-  const _RatingSheet({
-    required this.journey,
-    required this.transportType,
-    this.fromStationId,
-    this.toStationId,
-  });
-
-  @override
-  State<_RatingSheet> createState() => _RatingSheetState();
-}
-
-class _RatingSheetState extends State<_RatingSheet> {
-  final _ratingService = RatingService();
-  int _transportRating  = 0;
-  int _experienceRating = 0;
-  final _commentController = TextEditingController();
-  bool _submitting = false;
-
-  String? get _uid =>
-      firebase_auth.FirebaseAuth.instance.currentUser?.uid;
-
-  bool get _canSave =>
-      widget.fromStationId != null &&
-      widget.toStationId   != null &&
-      _uid != null;
-
-  @override
-  void dispose() {
-    _commentController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (_transportRating == 0 || _experienceRating == 0) return;
-    setState(() => _submitting = true);
-
-    // Average the two ratings and round to nearest int
-    final combined = ((_transportRating + _experienceRating) / 2).round();
-
-    if (_canSave) {
-      try {
-        await _ratingService.submitRating(
-          uid:           _uid!,
-          fromStationId: widget.fromStationId!,
-          toStationId:   widget.toStationId!,
-          transportType: widget.transportType,
-          rating:        combined,
-        );
-      } catch (e) {
-        debugPrint('[RatingSheet] submit failed: $e');
-      }
-    }
-
-    if (!mounted) return;
-    Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Merci pour votre évaluation !'),
-        duration: Duration(seconds: 3),
-      ),
-    );
-  }
-
-  Widget _starRow(String label, int current, ValueChanged<int> onChanged) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textDark,
-          ),
-        ),
-        const SizedBox(height: 8),
-        StarRatingWidget(
-          rating:  current,
-          starSize: 36,
-          onRated: onChanged,
-        ),
-      ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Container(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Handle
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: AppTheme.mediumGrey,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-
-            const Text(
-              'Évaluer le trajet',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textDark,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${widget.journey.departureStation} → ${widget.journey.arrivalStation}',
-              style: const TextStyle(fontSize: 13, color: AppTheme.darkGrey),
-            ),
-            const Divider(height: 24),
-
-            _starRow(
-              'Qualité du moyen de transport',
-              _transportRating,
-              (v) => setState(() => _transportRating = v),
-            ),
-            const SizedBox(height: 20),
-
-            _starRow(
-              'Expérience globale du trajet',
-              _experienceRating,
-              (v) => setState(() => _experienceRating = v),
-            ),
-            const SizedBox(height: 20),
-
-            const Text(
-              'Commentaire (optionnel)',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textDark,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _commentController,
-              maxLines: 3,
-              maxLength: 300,
-              decoration: InputDecoration(
-                hintText: 'Partagez votre expérience...',
-                hintStyle: const TextStyle(color: AppTheme.mediumGrey),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppTheme.lightGrey),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppTheme.lightGrey),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      const BorderSide(color: AppTheme.primaryTeal, width: 2),
-                ),
-                contentPadding: const EdgeInsets.all(12),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            Row(
-              children: [
-                // Skip button
-                Expanded(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.mediumGrey,
-                      side: const BorderSide(color: AppTheme.lightGrey),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Passer'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Submit button
-                Expanded(
-                  flex: 2,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryTeal,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: (_transportRating == 0 ||
-                            _experienceRating == 0 ||
-                            _submitting)
-                        ? null
-                        : _submit,
-                    child: _submitting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text(
-                            'Soumettre',
-                            style: TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w600),
-                          ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Supporting widgets (unchanged) ────────────────────────────────────────────
+// ── Supporting widgets ────────────────────────────────────────────────────────
 
 class _InfoCard extends StatelessWidget {
   final List<Widget> children;

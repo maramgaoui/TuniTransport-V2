@@ -297,6 +297,14 @@ class AdminAuthController {
       throw const FormatException('Current password and new password are required.');
     }
 
+    if (sanitizedNew.length < 6) {
+      throw const FormatException('New password must be at least 6 characters.');
+    }
+
+    if (sanitizedCurrent == sanitizedNew) {
+      throw const FormatException('New password must be different from the current one.');
+    }
+
     final email = user.email ??
         ((matricule != null && matricule.trim().isNotEmpty)
             ? '${matricule.trim().toLowerCase()}@admin.local'

@@ -6,6 +6,17 @@ import '../models/user_model.dart';
 import '../services/avatar_service.dart';
 import '../constants/firestore_collections.dart';
 
+// Fields that only privileged server-side code or admins may change.
+// Regular users must never write these through profile update paths.
+const _kProtectedFields = {
+  'uid',
+  'status',
+  'banUntil',
+  'role',
+  'adminType',
+  'permissions',
+};
+
 class ProfileController {
   final firebase_auth.FirebaseAuth _firebaseAuth =
       firebase_auth.FirebaseAuth.instance;
@@ -90,13 +101,14 @@ class ProfileController {
     if (firebaseUser == null) return false;
 
     try {
-      // Ensure UID matches current user
-      final updatedProfile = profile.copyWith(uid: firebaseUser.uid);
-      
+      final profileMap = Map<String, dynamic>.from(
+        profile.copyWith(uid: firebaseUser.uid).toMap(),
+      )..removeWhere((key, _) => _kProtectedFields.contains(key));
+
       await _firestore
           .collection(Col.users)
           .doc(firebaseUser.uid)
-          .set(updatedProfile.toMap(), SetOptions(merge: true));
+          .set(profileMap, SetOptions(merge: true));
       return true;
     } catch (e) {
       developer.log('Error updating profile: $e', name: 'ProfileController');
@@ -109,13 +121,8 @@ class ProfileController {
     final firebaseUser = _firebaseAuth.currentUser;
     if (firebaseUser == null) return false;
 
-    // Prevent UID spoofing
-    if (fields.containsKey('uid')) {
-      developer.log('Attempt to update UID blocked', name: 'ProfileController');
-      fields.remove('uid');
-    }
-
-    if (fields.isEmpty) return true; // Nothing to update
+    fields.removeWhere((key, _) => _kProtectedFields.contains(key));
+    if (fields.isEmpty) return true;
 
     try {
       await _firestore.collection(Col.users).doc(firebaseUser.uid).set(
@@ -234,36 +241,6 @@ class ProfileController {
     } catch (e) {
       // Non-critical, don't fail the password change
       developer.log('Failed to send password change notification: $e', name: 'ProfileController');
-    }
-  }
-
-  // Delete user account
-  Future<String?> deleteAccount() async {
-    final firebaseUser = _firebaseAuth.currentUser;
-    if (firebaseUser == null) {
-      return 'Utilisateur non connecté';
-    }
-
-    try {
-      // Delete user data from Firestore first
-      await _firestore.collection(Col.users).doc(firebaseUser.uid).delete();
-      
-      // Then delete the Firebase Auth user
-      await firebaseUser.delete();
-      
-      return null; // Success
-    } on firebase_auth.FirebaseAuthException catch (e) {
-      developer.log('Error deleting account (${e.code}): ${e.message}', name: 'ProfileController');
-      
-      switch (e.code) {
-        case 'requires-recent-login':
-          return 'Session expirée. Veuillez vous reconnecter puis réessayer';
-        default:
-          return 'Échec de la suppression du compte';
-      }
-    } catch (e) {
-      developer.log('Error deleting account: $e', name: 'ProfileController');
-      return 'Échec de la suppression du compte';
     }
   }
 

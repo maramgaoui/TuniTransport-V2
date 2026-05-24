@@ -89,6 +89,7 @@ class _SendNotificationsScreenState extends State<SendNotificationsScreen> {
         'message': messageCtrl.text.trim(),
         'target': selectedTarget,
         'recipientsCount': recipients,
+        'auto': false,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
