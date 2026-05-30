@@ -4,7 +4,7 @@ import '../constants/firestore_collections.dart';
 class RouteRepository {
   final FirebaseFirestore _firestore;
 
-  // ── In-memory route_stops cache (H-4 fix) ──────────────────────────────
+  // 15-min in-memory cache for route_stops — avoids repeated reads during a single search.
   final Map<String, List<Map<String, dynamic>>> _routeStopsCache = {};
   static const Duration _routeCacheTtl = Duration(minutes: 15);
   DateTime? _routeCacheTimestamp;
@@ -16,7 +16,6 @@ class RouteRepository {
 
   RouteRepository(this._firestore);
 
-  /// Fetches and caches route_stops for a given [referenceRouteId].
   Future<List<Map<String, dynamic>>> _getRouteStops(String referenceRouteId) async {
     final now = DateTime.now();
     if (_routeCacheTimestamp != null &&
@@ -65,7 +64,7 @@ class RouteRepository {
     return null; // same station
   }
 
-  // ── Public line-specific route finders ──────────────────────────────────
+  // Public line-specific route finders
 
   Future<String?> findMetroSahelRouteId(
     String fromStationId,
@@ -102,21 +101,6 @@ class RouteRepository {
         forwardRouteId: 'route_bs_south',
         reverseRouteId: 'route_bs_north',
       );
-
-  /// Returns the stopOrder and estimatedArrivalTimeMinutes for a
-  /// station on route_bs_south. Returns null if not found.
-  Future<Map<String, int>?> getBSStopInfo(String stationId) async {
-    final docs = await _getRouteStops('route_bs_south');
-    for (final data in docs) {
-      if (data['stationId'] == stationId) {
-        return {
-          'stopOrder': data['stopOrder'] as int,
-          'minutes': (data['estimatedArrivalTimeMinutes'] ?? 0) as int,
-        };
-      }
-    }
-    return null;
-  }
 
   Future<String?> findBanlieueERouteId(
     String fromStationId,

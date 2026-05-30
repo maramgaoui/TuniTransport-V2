@@ -45,7 +45,7 @@ void main() async {
   if (Firebase.apps.isEmpty) {
     try {
       await Firebase.initializeApp(options: activeOptions);
-      // Disable Firestore persistence to avoid old data issues
+      // Persistence disabled intentionally — stale Firestore cache caused hard-to-debug UI issues.
       dart_firestore.FirebaseFirestore.instance.settings = const dart_firestore.Settings(
         persistenceEnabled: false,
       );
@@ -66,30 +66,24 @@ void main() async {
   }
   await ActiveJourneyService.instance.init();
 
-  // Initialize Firestore with TRANSTU data
   try {
     await FirestoreInitializationService().initialize();
   } catch (e) {
-    debugPrint('Warning: Firestore initialization failed: $e');
+    if (kDebugMode) debugPrint('Warning: Firestore initialization failed: $e');
     // Continue anyway - data may already exist
   }
 
-  // Initialize settings service to load saved preferences
   final settingsService = SettingsService();
   await settingsService.init();
 
-  // Register singletons for dependency injection
   setupServiceLocator(settingsService: settingsService);
 
-  // Global error handlers (#26)
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
-    // TODO: forward to Crashlytics when integrated
-    debugPrint('FlutterError: ${details.exceptionAsString()}');
+    if (kDebugMode) debugPrint('FlutterError: ${details.exceptionAsString()}');
   };
   PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
-    debugPrint('Uncaught platform error: $error\n$stack');
-    // TODO: forward to Crashlytics when integrated
+    if (kDebugMode) debugPrint('Uncaught platform error: $error\n$stack');
     return true; // prevents the runtime from terminating
   };
 
@@ -118,7 +112,6 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _authController = AuthController.instance;
-    // Load saved theme preference
     final themeSetting = widget.settingsService.getThemeMode();
     _themeMode = switch (themeSetting) {
       'dark' => ThemeMode.dark,
@@ -147,7 +140,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   Locale _localeFromLanguage(String language) {
-    // Store locale as language code (en/fr/ar), while supporting old saved labels.
+    // Supports both language codes (en/fr/ar) and old saved full-name labels.
     switch (language) {
       case 'en':
       case 'English':

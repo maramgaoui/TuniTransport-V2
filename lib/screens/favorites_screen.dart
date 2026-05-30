@@ -33,7 +33,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           AppHeader(
             title: l10n.favorites,
             subtitle: l10n.savedJourneys,
-            leading: const Icon(Icons.favorite, color: Colors.white, size: 28),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => context.go('/home/journey-input'),
+            ),
           ),
           Expanded(
             child: AnimatedBuilder(

@@ -1,12 +1,17 @@
+import 'package:avatar_plus/avatar_plus.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import '../../constants/firestore_collections.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/admin/controllers/admin_auth_controller.dart';
+import 'package:tuni_transport/constants/avatar_options.dart';
 import 'package:tuni_transport/controllers/auth_controller.dart';
+import 'package:tuni_transport/controllers/profile_controller.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/models/session_result.dart';
 import 'package:tuni_transport/theme/app_theme.dart';
+import 'package:tuni_transport/utils/role_guard.dart';
 import 'package:tuni_transport/utils/validation_utils.dart';
 
 class AdminProfileScreen extends StatefulWidget {
@@ -17,9 +22,11 @@ class AdminProfileScreen extends StatefulWidget {
 }
 
 class _AdminProfileScreenState extends State<AdminProfileScreen> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore = GetIt.I<FirebaseFirestore>();
   final AdminAuthController _adminAuthController = AdminAuthController();
   SessionResult? _session;
+
+  final ProfileController _profileController = ProfileController();
 
   bool _isLoading = true;
   bool _isSigningOut = false;
@@ -27,6 +34,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   String? _name;
   String? _matricule;
   String? _role;
+  String? _avatarId;
   bool _isChangingPassword = false;
 
   void _goToAdminDashboard() {
@@ -82,7 +90,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
 
       if (currentUid != null) {
         final doc = await _firestore.collection(Col.users).doc(currentUid).get();
-        if (doc.exists && doc.data()?['role'] == 'admin') {
+        if (doc.exists && RoleGuard.isAdmin(doc.data()?['role'] as String?)) {
           directDoc = doc;
         }
       }
@@ -149,6 +157,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
             : _session?.adminType ??
                 (adminData['adminType'] as String?) ??
                 (adminData['role'] as String?);
+        _avatarId = adminData['avatarId'] as String?;
         _isLoading = false;
       });
     } on FirebaseException catch (e) {
@@ -232,6 +241,88 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     'louage' => 'Admin Louage',
     _ => type,
   };
+
+  Future<void> _showAvatarPicker() async {
+    final l10n = AppLocalizations.of(context)!;
+    String selectedAvatarId = _avatarId ?? avatarOptions.first;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(l10n.chooseAvatar),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: avatarOptions.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                ),
+                itemBuilder: (context, index) {
+                  final avatarId = avatarOptions[index];
+                  final isSelected = selectedAvatarId == avatarId;
+                  return GestureDetector(
+                    onTap: () => setDialogState(() => selectedAvatarId = avatarId),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected ? AppTheme.primaryTeal : Colors.transparent,
+                          width: 2.5,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(2),
+                      child: ClipOval(
+                        child: AvatarPlus(
+                          avatarId,
+                          width: 56,
+                          height: 56,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(l10n.cancel),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryTeal),
+              child: Text(l10n.save, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (saved == true) {
+      final success = await _profileController.updateProfileFields({
+        'avatarId': selectedAvatarId,
+        'customAvatarUrl': null,
+      });
+      if (!mounted) return;
+      setState(() {
+        if (success) _avatarId = selectedAvatarId;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success ? l10n.avatarUpdated : l10n.avatarUpdateFailed),
+          backgroundColor: success ? AppTheme.primaryTeal : Colors.red,
+        ),
+      );
+    }
+  }
 
   Future<void> _handleChangePassword() async {
     final currentPasswordController = TextEditingController();
@@ -471,16 +562,37 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          CircleAvatar(
-                            radius: 44,
-                            backgroundColor: AppTheme.primaryTeal.withValues(
-                              alpha: 0.14,
-                            ),
-                            child: const Icon(
-                              Icons.admin_panel_settings_outlined,
-                              size: 44,
-                              color: AppTheme.primaryTeal,
-                            ),
+                          Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              ClipOval(
+                                child: AvatarPlus(
+                                  _avatarId?.isNotEmpty == true
+                                      ? _avatarId!
+                                      : (_name?.isNotEmpty == true ? _name! : 'admin'),
+                                  width: 88,
+                                  height: 88,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: GestureDetector(
+                                  onTap: _showAvatarPicker,
+                                  child: Container(
+                                    width: 30,
+                                    height: 30,
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primaryTeal,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 2),
+                                    ),
+                                    child: const Icon(Icons.edit, color: Colors.white, size: 15),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 16),
                           Text(

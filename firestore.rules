@@ -139,12 +139,12 @@ service cloud.firestore {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // Transport data collections
-    match /journeys/{journeyId} {
-      allow read: if isSignedIn();
-      allow write: if isPrivileged();
+    match /users/{userId}/notifications/{notifId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if isSignedIn() && (request.auth.uid == userId || isPrivileged());
     }
 
+    // Transport data collections
     match /stations/{stationId} {
       allow read: if isSignedIn();
       allow write: if isSuperAdmin();
@@ -166,16 +166,6 @@ service cloud.firestore {
     }
 
     match /tariffs/{tariffId} {
-      allow read: if isSignedIn();
-      allow write: if isPrivileged();
-    }
-
-    match /transport_types/{typeId} {
-      allow read: if isSignedIn();
-      allow write: if isPrivileged();
-    }
-
-    match /operators/{operatorId} {
       allow read: if isSignedIn();
       allow write: if isPrivileged();
     }
@@ -208,7 +198,7 @@ service cloud.firestore {
         && request.resource.data.actorEmail is string
         && request.resource.data.details is map
         && request.resource.data.createdAt is timestamp;
-      allow read: if false;
+      allow read: if isSuperAdmin();
       allow update, delete: if false;
     }
 
@@ -216,6 +206,7 @@ service cloud.firestore {
       allow read: if canUseCommunityChat();
 
       allow create: if isSignedIn()
+        && callerIsActive()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasOnly([
           'uid',
@@ -250,7 +241,15 @@ service cloud.firestore {
           )
         );
 
-      allow update, delete: if isSignedIn()
+      allow update: if isSignedIn()
+        && (
+          (
+            resource.data.uid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text'])
+          )
+          || isPrivileged()
+        );
+      allow delete: if isSignedIn()
         && (resource.data.uid == request.auth.uid || isPrivileged());
     }
 
@@ -266,7 +265,16 @@ service cloud.firestore {
     }
 
     match /activity_logs/{logId} {
-      allow create: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly([
+          'userId', 'email', 'action', 'timestamp', 'metadata'
+        ])
+        && request.resource.data.userId  is string
+        && request.resource.data.email   is string
+        && request.resource.data.action  is string
+        && request.resource.data.timestamp is timestamp
+        && request.resource.data.metadata  is map
+        && request.resource.data.userId == request.auth.uid;
       allow read: if isSuperAdmin();
       allow update, delete: if false;
     }
@@ -318,27 +326,47 @@ service cloud.firestore {
       // Any signed-in user can read aggregates (needed for recommendations).
       allow read: if isSignedIn();
 
-      // Clients write via RatingService transactions — validate the fields.
+      // Clients write via RatingService transactions.
+      // Enforce schema, value ranges, and internal consistency so a rogue
+      // client cannot inflate averageRating without matching sum/total.
       allow create, update: if isSignedIn()
+        && request.resource.data.keys().hasOnly([
+          'routeKey', 'transportType', 'fromStationId', 'toStationId',
+          'averageRating', 'totalRatings', 'sumRatings', 'updatedAt'
+        ])
         && request.resource.data.averageRating is number
         && request.resource.data.averageRating >= 0
         && request.resource.data.averageRating <= 5
         && request.resource.data.totalRatings is int
         && request.resource.data.totalRatings >= 0
         && request.resource.data.sumRatings is number
-        && request.resource.data.sumRatings >= 0;
+        && request.resource.data.sumRatings >= 0
+        && (
+          request.resource.data.totalRatings == 0
+          || (
+            request.resource.data.averageRating * request.resource.data.totalRatings
+              >= request.resource.data.sumRatings - 0.5
+            && request.resource.data.averageRating * request.resource.data.totalRatings
+              <= request.resource.data.sumRatings + 0.5
+          )
+        );
 
       allow delete: if isSuperAdmin();
     }
 
     // Matricule → real Auth email mapping for promoted admins.
-    // get (single-doc by matricule ID) is public so the login screen can resolve
-    // a matricule → email before the user is authenticated.
+    // get (single-doc by matricule ID) requires authentication so that only
+    // signed-in users can resolve a matricule → email (prevents unauthenticated
+    // enumeration of admin email addresses).
     // list is blocked to prevent bulk enumeration of all admin matricules.
     match /admin_login_lookup/{matricule} {
-      allow get: if true;
+      allow get: if request.auth != null;
       allow list: if isSuperAdmin();
       allow write: if isSuperAdmin();
+    }
+
+    match /super_admin_stats/{doc} {
+      allow read, write: if isSuperAdmin();
     }
   }
 }

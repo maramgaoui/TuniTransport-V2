@@ -20,7 +20,7 @@ class StationDistance {
 class StationRepository {
   final FirebaseFirestore _firestore;
 
-  // ── In-memory station cache ─────────────────────────────────────────────
+  // 10-min in-memory cache — Firestore re-read is expensive and data changes rarely.
   static List<Station>? _cachedStations;
   static DateTime? _cacheTimestamp;
   static const Duration _cacheTtl = Duration(minutes: 10);
@@ -347,7 +347,7 @@ class StationRepository {
         }
       }
     } catch (e) {
-      debugPrint('[StationRepository] taxi_collectif_routes fetch failed: $e');
+      if (kDebugMode) debugPrint('[StationRepository] taxi_collectif_routes fetch failed: $e');
     }
 
     _cachedStations = stations;

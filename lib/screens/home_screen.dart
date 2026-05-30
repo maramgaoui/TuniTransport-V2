@@ -20,6 +20,11 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final List<Widget> _screens;
+  int _selectedIndex = 0;
+  // Tracks which tabs have been visited at least once.
+  // Only visited tabs are mounted — avoids a burst of 5 simultaneous
+  // Firestore queries that blocks the Android main thread (ANR on MIUI).
+  final Set<int> _mountedTabs = {0};
 
   @override
   void initState() {
@@ -33,7 +38,19 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
   }
 
-  int _tabIndexFromLocation(String path) {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Sync from URL only on deep-link / initial navigation — not on every tap.
+    final path = GoRouterState.of(context).uri.path;
+    final fromUrl = _tabIndexFromLocation(path);
+    if (fromUrl != _selectedIndex) {
+      _selectedIndex = fromUrl;
+      _mountedTabs.add(fromUrl);
+    }
+  }
+
+  static int _tabIndexFromLocation(String path) {
     if (path.startsWith('/home/favorites')) return 1;
     if (path.startsWith('/home/notifications')) return 2;
     if (path.startsWith('/home/chat')) return 3;
@@ -41,20 +58,13 @@ class _HomeScreenState extends State<HomeScreen> {
     return 0;
   }
 
-  String _pathForIndex(int index) {
-    switch (index) {
-      case 1:
-        return '/home/favorites';
-      case 2:
-        return '/home/notifications';
-      case 3:
-        return '/home/chat';
-      case 4:
-        return '/home/profile';
-      case 0:
-      default:
-        return '/home/journey-input';
-    }
+
+  void _onTabTapped(int index) {
+    if (index == _selectedIndex) return;
+    setState(() {
+      _selectedIndex = index;
+      _mountedTabs.add(index); // mount this tab for the first time
+    });
   }
 
   @override
@@ -62,13 +72,17 @@ class _HomeScreenState extends State<HomeScreen> {
     return Builder(
       builder: (innerContext) {
         final l10n = AppLocalizations.of(innerContext)!;
-        final path = GoRouterState.of(innerContext).uri.path;
-        final selectedIndex = _tabIndexFromLocation(path);
+        final selectedIndex = _selectedIndex;
 
     // Wrap the shell in inherited text direction to keep RTL/LTR behavior consistent.
     return Directionality(
       textDirection: Directionality.of(context),
-      child: Scaffold(
+      child: PopScope(
+        canPop: selectedIndex == 0,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) context.go('/home/journey-input');
+        },
+        child: Scaffold(
         key: const Key('home_screen'),
         body: Column(
           children: [
@@ -77,15 +91,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 isSuperAdmin: AuthController.instance.cachedSession?.isSuperAdmin ?? false,
                 onSwitch: () {
                   AuthController.instance.switchToAdminMode();
-                  // Let the router restore privileged home based on real role
-                  // (admin -> /admin, super_admin -> /super-admin/dashboard).
-                  context.go('/splash');
+                  final isSuperAdmin =
+                      AuthController.instance.cachedSession?.isSuperAdmin ?? false;
+                  context.go(isSuperAdmin ? '/super-admin/dashboard' : '/admin');
                 },
               ),
             Expanded(
               child: IndexedStack(
                 index: selectedIndex,
-                children: _screens,
+                children: List.generate(
+                  _screens.length,
+                  (i) => _mountedTabs.contains(i)
+                      ? _screens[i]
+                      : const SizedBox.shrink(),
+                ),
               ),
             ),
           ],
@@ -104,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.only(bottom: 8),
               child: FloatingActionButton.extended(
                 heroTag: 'active-journey-shortcut',
-                onPressed: () => context.go(
+                onPressed: () => context.push(
                   '/home/active-journey',
                   extra: activeJourney,
                 ),
@@ -126,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
         bottomNavigationBar: BottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           currentIndex: selectedIndex,
-          onTap: (index) => context.go(_pathForIndex(index)),
+          onTap: _onTabTapped,
           backgroundColor: Theme.of(context).colorScheme.surface,
           selectedItemColor: Theme.of(context).colorScheme.primary,
           unselectedItemColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
@@ -165,6 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
       },
@@ -218,3 +238,4 @@ class _AdminModeBanner extends StatelessWidget {
     );
   }
 }
+

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:get_it/get_it.dart';
 import '../../constants/firestore_collections.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:go_router/go_router.dart';
@@ -31,16 +32,58 @@ class ManageJourneysScreen extends StatefulWidget {
 }
 
 class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
-  // Routes collection switches based on admin type:
-  // taxicollectifs admin reads from taxi_collectif_routes; all others read from routes.
-  CollectionReference<Map<String, dynamic>> get _routesRef {
-    if (!_isSuperAdmin && _adminType == 'taxicollectifs') {
-      return FirebaseFirestore.instance.collection(Col.taxiCollectifRoutes);
-    }
-    return FirebaseFirestore.instance.collection(Col.routes);
-  }
+  FirebaseFirestore get _db => GetIt.I<FirebaseFirestore>();
 
   bool get _isTaxiAdmin => !_isSuperAdmin && _adminType == 'taxicollectifs';
+
+  CollectionReference<Map<String, dynamic>> get _routesRef {
+    if (_isTaxiAdmin) return _db.collection(Col.taxiCollectifRoutes);
+    return _db.collection(Col.routes);
+  }
+
+  // Super admin: merge both collections into a single list stream.
+  // Other admins: stream only their own collection.
+  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> get _routeStream {
+    if (!_isSuperAdmin) {
+      return _singleCollectionStream(_routesRef);
+    }
+    // Merge Col.routes + Col.taxiCollectifRoutes for super admin.
+    final s1 = _singleCollectionStream(_db.collection(Col.routes));
+    final s2 = _singleCollectionStream(_db.collection(Col.taxiCollectifRoutes));
+    return _mergeRouteStreams(s1, s2);
+  }
+
+  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _singleCollectionStream(
+    CollectionReference<Map<String, dynamic>> ref,
+  ) {
+    switch (_activeFilter) {
+      case _RouteFilter.active:
+        return ref.where('isActive', isEqualTo: true).snapshots()
+            .map((s) => s.docs);
+      case _RouteFilter.inactive:
+        return ref.where('isActive', isEqualTo: false).snapshots()
+            .map((s) => s.docs);
+      case _RouteFilter.all:
+        return ref.snapshots().map((s) => s.docs);
+    }
+  }
+
+  // Emits a combined list whenever either sub-stream fires.
+  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _mergeRouteStreams(
+    Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> s1,
+    Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> s2,
+  ) {
+    final controller = StreamController<List<QueryDocumentSnapshot<Map<String, dynamic>>>>();
+    List<QueryDocumentSnapshot<Map<String, dynamic>>>? d1;
+    List<QueryDocumentSnapshot<Map<String, dynamic>>>? d2;
+    void emit() {
+      if (d1 != null && d2 != null) controller.add([...d1!, ...d2!]);
+    }
+    final sub1 = s1.listen((docs) { d1 = docs; emit(); });
+    final sub2 = s2.listen((docs) { d2 = docs; emit(); });
+    controller.onCancel = () { sub1.cancel(); sub2.cancel(); };
+    return controller.stream;
+  }
 
   final TextEditingController _departureController = TextEditingController();
   final TextEditingController _arrivalController = TextEditingController();
@@ -51,15 +94,40 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
   String? _adminType;
   String _departureQuery = '';
   String _arrivalQuery = '';
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _scopeSub;
 
   @override
   void initState() {
     super.initState();
     _resolveScope();
+    _listenForScopeChanges();
+  }
+
+  void _listenForScopeChanges() {
+    final uid = AuthController.instance.currentUser?.uid;
+    if (uid == null) return;
+    _scopeSub = GetIt.I<FirebaseFirestore>()
+        .collection(Col.users)
+        .doc(uid)
+        .snapshots()
+        .listen((snap) {
+      if (!snap.exists || !mounted) return;
+      final data = snap.data() ?? {};
+      final newRole      = (data['role'] ?? 'user').toString();
+      final newAdminType = data['adminType'] as String?;
+      final newIsSuperAdmin = newRole == 'super_admin';
+      if (newAdminType != _adminType || newIsSuperAdmin != _isSuperAdmin) {
+        setState(() {
+          _isSuperAdmin = newIsSuperAdmin;
+          _adminType    = newAdminType;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _scopeSub?.cancel();
     _departureController.dispose();
     _arrivalController.dispose();
     super.dispose();
@@ -99,14 +167,18 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
     if (_isTaxiAdmin) return true;
 
     final operatorId = (data['operatorId'] ?? '').toString().toLowerCase();
-    final typeIdRaw = data['typeId'];
+    // Some seeded collections store the transport category in `typeId`,
+    // others (metro sahel, banlieue, sncft) use `transportType`. Check both.
+    final typeIdRaw = data['typeId'] ?? data['transportType'];
     final typeId = typeIdRaw is Iterable
         ? typeIdRaw.join(' ').toLowerCase()
-        : typeIdRaw.toString().toLowerCase();
+        : (typeIdRaw?.toString() ?? '').toLowerCase();
 
     return switch (_adminType) {
       'bus' => operatorId == 'transtu' || typeId.contains('bus'),
-      'metro_train' => typeId.contains('metro') || typeId.contains('train'),
+      'metro_train' => typeId.contains('metro') || typeId.contains('train')
+          || operatorId.contains('sncft') || operatorId.contains('sahel')
+          || operatorId.contains('banlieue'),
       'louage' => typeId.contains('louage'),
       _ => false,
     };
@@ -134,7 +206,9 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
     final String origin;
     final String destination;
     final String routeName;
-    if (_isTaxiAdmin) {
+    final isTaxiDoc = _isTaxiAdmin ||
+        data.containsKey('fromCityId') || data.containsKey('fromCityName');
+    if (isTaxiDoc) {
       origin = _normalize(
           (data['fromCityName'] ?? data['fromCityId'] ?? '').toString());
       destination = _normalize(
@@ -172,19 +246,41 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
   ) async {
     final newActive = !current;
 
-    await _routesRef.doc(doc.id).update({
-      'isActive': newActive,
-      if (!_isTaxiAdmin) 'searchVisibilityManaged': true,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    final data = doc.data();
+    final isTaxiDoc = _isTaxiAdmin ||
+        data.containsKey('fromCityId') || data.containsKey('fromCityName');
+    try {
+      // Use doc.reference directly — it already points to the correct collection.
+      await doc.reference.update({
+        'isActive': newActive,
+        if (!isTaxiDoc) 'searchVisibilityManaged': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur lors de la mise à jour : $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
 
     // Bus service propagation only applies to TRANSTU routes.
-    if (!_isTaxiAdmin) _propagateToBusServices(doc.id, newActive);
+    if (!isTaxiDoc) {
+      unawaited(
+        _propagateToBusServices(doc.id, newActive).onError(
+          (Object e, _) => debugPrint('[ManageJourneys] Bus propagation failed: $e'),
+        ),
+      );
+    }
 
     // Notify all users about the availability change.
-    final data = doc.data();
     final String routeLabel;
-    if (_isTaxiAdmin) {
+    if (isTaxiDoc) {
       final from = (data['fromCityName'] ?? data['fromCityId'] ?? '').toString();
       final to   = (data['toCityName']   ?? data['toCityId']   ?? '').toString();
       routeLabel = '$from → $to';
@@ -207,7 +303,7 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
       actorEmail: currentUser?.email,
       details: {
         'routeDocId': doc.id,
-        'collection': _isTaxiAdmin ? Col.taxiCollectifRoutes : Col.routes,
+        'collection': isTaxiDoc ? Col.taxiCollectifRoutes : Col.routes,
         'routeLabel': routeLabel,
         'previousIsActive': current,
       },
@@ -220,12 +316,13 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
     String routeDocId,
     bool isActive,
   ) async {
-    final busSnap = await FirebaseFirestore.instance
+    final db = GetIt.I<FirebaseFirestore>();
+    final busSnap = await db
         .collection(Col.busServices)
         .where('routeId', isEqualTo: routeDocId)
         .get();
     if (busSnap.docs.isEmpty) return;
-    final batch = FirebaseFirestore.instance.batch();
+    final batch = db.batch();
     for (final busDoc in busSnap.docs) {
       batch.update(busDoc.reference, {'isActive': isActive});
     }
@@ -254,8 +351,8 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
       ),
       body: _isResolvingScope
           ? const Center(child: CircularProgressIndicator())
-          : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: _routesRef.snapshots(),
+          : StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+              stream: _routeStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -264,8 +361,9 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                   return Center(child: Text(l10n.journeysLoadError));
                 }
 
-                final allDocs = snapshot.data?.docs ?? [];
-                allDocs.sort((a, b) {
+                final allDocs = List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(
+                  snapshot.data ?? const [],
+                )..sort((a, b) {
                   final aTs = a.data()['createdAt'] as Timestamp?;
                   final bTs = b.data()['createdAt'] as Timestamp?;
                   if (aTs == null && bTs == null) return 0;
@@ -275,8 +373,6 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                 });
 
                 // Role-based scope: each admin sees only their transport type.
-                // An admin with no adminType sees nothing (empty list) rather
-                // than leaking all routes.
                 final List<QueryDocumentSnapshot<Map<String, dynamic>>> scopedDocs;
                 if (_isSuperAdmin) {
                   scopedDocs = allDocs;
@@ -299,29 +395,23 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                   );
                 }
 
-                // Apply search + active filter on top of scoped list.
-                final docs = scopedDocs.where((doc) {
-                  if (!_matchesSearch(doc.data())) return false;
-                  final isActive = (doc.data()['isActive'] ?? true) == true;
-                  return switch (_activeFilter) {
-                    _RouteFilter.active => isActive,
-                    _RouteFilter.inactive => !isActive,
-                    _RouteFilter.all => true,
-                  };
-                }).toList();
+                // Apply search filter — isActive is already filtered by Firestore.
+                final docs = scopedDocs
+                    .where((doc) => _matchesSearch(doc.data()))
+                    .toList();
 
                 return Column(
                   children: [
-                    // ── Filter chips ──────────────────────────────────────
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
                       child: Row(
                         children: _RouteFilter.values.map((filter) {
+                          final l10n = AppLocalizations.of(context)!;
                           final label = switch (filter) {
-                            _RouteFilter.all => 'Tous',
-                            _RouteFilter.active => 'Actif',
-                            _RouteFilter.inactive => 'Désactivé',
+                            _RouteFilter.all => l10n.filterAll,
+                            _RouteFilter.active => l10n.filterActive,
+                            _RouteFilter.inactive => l10n.filterInactive,
                           };
                           final color = switch (filter) {
                             _RouteFilter.active => Colors.green.shade700,
@@ -351,7 +441,6 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                     ),
                     const Divider(height: 1),
 
-                    // ── Search fields ─────────────────────────────────────
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
                       child: TextField(
@@ -396,17 +485,16 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                     ),
 
                     if (docs.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(16, 4, 16, 12),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            'Aucun trajet trouvé pour cette recherche.',
+                            AppLocalizations.of(context)!.noJourneysMatchFilter,
                           ),
                         ),
                       ),
 
-                    // ── Route list ────────────────────────────────────────
                     Expanded(
                       child: ListView.builder(
                         padding: const EdgeInsets.all(16),
@@ -416,26 +504,30 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                           final data = doc.data();
                           final isActive = (data['isActive'] ?? true) == true;
 
-                          // Taxi collectif schema differs from routes schema.
+                          // Detect taxi collectif docs by their field names
+                          // (works for both taxi admins and super admin viewing taxi routes).
+                          final isTaxiDoc = _isTaxiAdmin ||
+                              data.containsKey('fromCityId') ||
+                              data.containsKey('fromCityName');
                           final String name;
                           final String origin;
                           final String destination;
                           final String subtitle;
-                          if (_isTaxiAdmin) {
+                          if (isTaxiDoc) {
                             origin = (data['fromCityName'] ?? data['fromCityId'] ?? '').toString();
                             destination = (data['toCityName'] ?? data['toCityId'] ?? '').toString();
                             name = '$origin → $destination';
                             final fare = (data['fare'] as num?)?.toStringAsFixed(3) ?? '—';
                             final dist = (data['distanceKm'] as num?)?.toStringAsFixed(1) ?? '—';
-                            subtitle = '$fare TND • $dist km';
+                            subtitle = 'Taxi Collectif • $fare TND • $dist km';
                           } else {
                             final lineNumber = (data['lineNumber'] ?? '').toString();
                             final operatorId = (data['operatorId'] ?? '').toString();
-                            final typeId = (data['typeId'] ?? '').toString();
+                            final transportType = (data['typeId'] ?? data['transportType'] ?? '').toString();
                             origin = (data['originStationId'] ?? '').toString();
                             destination = (data['destinationStationId'] ?? '').toString();
                             name = (data['name'] ?? 'Route $lineNumber').toString();
-                            subtitle = '$operatorId • $typeId'
+                            subtitle = '$operatorId • $transportType'
                                 '${lineNumber.isNotEmpty ? ' • Ligne $lineNumber' : ''}';
                           }
 
@@ -446,7 +538,6 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // ── Route info ────────────────────────
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -460,7 +551,7 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                                           ),
                                         ),
                                         const SizedBox(height: 2),
-                                        if (!_isTaxiAdmin)
+                                        if (!isTaxiDoc)
                                           Text(
                                             '$origin → $destination',
                                             style: const TextStyle(fontSize: 12),
@@ -504,7 +595,6 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                                     ),
                                   ),
 
-                                  // ── Active/inactive toggle ────────────
                                   Tooltip(
                                     message: isActive
                                         ? 'Désactiver le trajet'

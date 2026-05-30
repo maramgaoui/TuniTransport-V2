@@ -7,7 +7,6 @@ import '../constants/firestore_collections.dart';
 class BusServiceRepository {
   final FirebaseFirestore _firestore;
 
-  // List of all TRANSTU hub station IDs
   static const Set<String> _transtuHubIds = {
     'transtu_hub_10_decembre',
     'transtu_hub_barcelone',
@@ -85,7 +84,6 @@ class BusServiceRepository {
     return services.where((s) => !inactiveIds.contains(s.routeId)).toList();
   }
 
-  /// Get bus services from a hub that match a specific destination query.
   Future<List<BusService>> getServicesForHubFiltered({
     required String hubStationId,
     String? destinationQuery,
@@ -154,17 +152,14 @@ class BusServiceRepository {
     return result;
   }
 
-  /// Check if a station ID is a TRANSTU hub
   bool isTranstuHub(String stationId) {
     return _transtuHubIds.contains(stationId);
   }
 
-  /// Get the hub station ID from a destination station ID
-  /// This maps destination stations to their hub
+  // Maps destination station IDs to their hub — needed when searching from a suburb.
   String? getHubForDestination(String destinationId) {
-    // Map of destination station IDs to their hub
     const destinationToHub = {
-      // ── 10 Décembre hub ──────────────────────────────────────────────────
+      // 10 Décembre hub
       'transtu_dest_sidi_sofiane':        'transtu_hub_10_decembre',
       'transtu_dest_cite_mellaha':        'transtu_hub_10_decembre',
       'transtu_dest_raoued_plage':        'transtu_hub_10_decembre',
@@ -189,7 +184,7 @@ class BusServiceRepository {
       'transtu_dest_ariana_brarjia':      'transtu_hub_10_decembre',
       'transtu_dest_cité_bakri':          'transtu_hub_10_decembre',
 
-      // ── Barcelone hub ─────────────────────────────────────────────────────
+      // Barcelone hub
       'transtu_dest_medina_jdida':        'transtu_hub_barcelone',
       'transtu_dest_hay_thameur':         'transtu_hub_barcelone',
       'transtu_dest_mornag':              'transtu_hub_barcelone',
@@ -209,7 +204,7 @@ class BusServiceRepository {
       'transtu_dest_jaama_el_houda':      'transtu_hub_barcelone',
       'transtu_hub_morneg':               'transtu_hub_barcelone',
 
-      // ── Ariana hub ────────────────────────────────────────────────────────
+      // Ariana hub
       'transtu_dest_manji_salim':         'transtu_hub_ariana',
       'transtu_dest_hay_manji_salim':     'transtu_hub_ariana',
       'transtu_dest_cite_mongi_slim':     'transtu_hub_ariana',
@@ -220,12 +215,12 @@ class BusServiceRepository {
       'transtu_dest_manouba_ar':          'transtu_hub_ariana',
       'transtu_dest_kalaat_ar':           'transtu_hub_ariana',
 
-      // ── Bellevue hub ──────────────────────────────────────────────────────
+      // Bellevue hub
       'transtu_dest_centre_capitale_moh5':   'transtu_hub_bellevue',
       'transtu_dest_centre_capitale_9avril': 'transtu_hub_bellevue',
       'transtu_dest_salambo':                'transtu_hub_bellevue',
 
-      // ── Bab Alioua hub ───────────────────────────────────────────────────
+      // Bab Alioua hub
       'transtu_dest_sidi_hassine':           'transtu_hub_bab_alioua',
       'transtu_dest_sidi_hassine_thamer':    'transtu_hub_hadiqat_thamer',
       'transtu_dest_cite_ezzouhour5':        'transtu_hub_bab_alioua',
@@ -235,7 +230,7 @@ class BusServiceRepository {
       // Hub alias for searches that select hub_tbourba directly.
       'transtu_hub_tbourba':                 'transtu_hub_bab_alioua',
 
-      // ── Hadiqat Thamer hub ───────────────────────────────────────────────
+      // Hadiqat Thamer hub
       'transtu_dest_el_hararia':             'transtu_hub_hadiqat_thamer',
       'transtu_dest_hararia':                'transtu_hub_hadiqat_thamer',
       'transtu_dest_hrairia':                'transtu_hub_hadiqat_thamer',
@@ -243,7 +238,7 @@ class BusServiceRepository {
       // Legacy hub alias for the same place.
       'transtu_hub_jardin_thameur':          'transtu_hub_hadiqat_thamer',
 
-      // ── Carthage hub ──────────────────────────────────────────────────────
+      // Carthage hub
       'transtu_dest_souk_merkezi':        'transtu_hub_carthage',
       'transtu_dest_farch_enneyebi':      'transtu_hub_carthage',
       'transtu_dest_cite_riadh':          'transtu_hub_carthage',
@@ -252,14 +247,14 @@ class BusServiceRepository {
       'transtu_dest_cite_salam':          'transtu_hub_carthage',
       'transtu_dest_moustawdaa_zahrouni': 'transtu_hub_carthage',
 
-      // ── Khaireddine hub ───────────────────────────────────────────────────
+      // Khaireddine hub
       'transtu_dest_cite_el_warda':       'transtu_hub_khaireddine',
       'transtu_dest_sanhaja':             'transtu_hub_khaireddine',
       'transtu_dest_el_kabaa':            'transtu_hub_khaireddine',
       'transtu_dest_cite_en_nassim':      'transtu_hub_khaireddine',
       'transtu_dest_jellou':              'transtu_hub_khaireddine',
 
-      // ── Tunis Marine hub ──────────────────────────────────────────────────
+      // Tunis Marine hub
       'transtu_dest_charguia':                      'transtu_hub_tunis_marine',
       'transtu_dest_menzah6':                       'transtu_hub_tunis_marine',
       'transtu_dest_cite_nasr':                     'transtu_hub_tunis_marine',
@@ -279,7 +274,7 @@ class BusServiceRepository {
       'transtu_dest_sidi_salah_ettabaa':            'transtu_hub_tunis_marine',
       'transtu_dest_intilaka':                      'transtu_hub_tunis_marine',
 
-      // ── Tbourba hub ───────────────────────────────────────────────────────
+      // Tbourba hub
       'transtu_dest_zone_industrielle': 'transtu_hub_tbourba',
       'transtu_dest_borj_toumi':        'transtu_hub_tbourba',
       'transtu_dest_edkhila':           'transtu_hub_tbourba',
@@ -291,7 +286,7 @@ class BusServiceRepository {
       // for routes originating from tbourba
       'transtu_hub_khaireddine':        'transtu_hub_tbourba',
 
-      // ── Ali Belhouane (Bel Houan) hub ─────────────────────────────────────
+      // Ali Belhouane (Bel Houan) hub
       'transtu_dest_ksar_said2':        'transtu_hub_bel_houan',
       'transtu_dest_tadhamon':          'transtu_hub_bel_houan',
       'transtu_dest_cite_bassatine':    'transtu_hub_bel_houan',
@@ -816,44 +811,4 @@ class BusServiceRepository {
     return destinationId.toLowerCase();
   }
 
-  /// Get all available destinations from a hub
-  Future<List<Map<String, String>>> getDestinationsFromHub(String hubId) async {
-    final services = await getServicesForHub(hubId);
-    final destinations = <Map<String, String>>[];
-    final seen = <String>{};
-    
-    for (final service in services) {
-      final destName = service.destinationNameFr ?? service.directionAr;
-      if (destName.isNotEmpty && !seen.contains(destName)) {
-        seen.add(destName);
-        destinations.add({
-          'name': destName,
-          'lineNumber': service.lineNumber,
-          'directionAr': service.directionAr,
-        });
-      }
-    }
-    
-    return destinations;
-  }
-
-  /// Validate that a hub has services configured
-  Future<bool> validateHubServices(String hubId) async {
-    final services = await getServicesForHub(hubId);
-    if (services.isEmpty) {
-      if (kDebugMode) {
-        debugPrint('[BusServiceRepo] ⚠️ No services found for hub: $hubId');
-      }
-      return false;
-    }
-    
-    if (kDebugMode) {
-      debugPrint('[BusServiceRepo] ✅ Hub $hubId has ${services.length} services');
-      for (final service in services) {
-        debugPrint('  - Line ${service.lineNumber}: ${service.destinationNameFr}');
-      }
-    }
-    
-    return true;
-  }
 }

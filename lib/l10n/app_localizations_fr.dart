@@ -567,6 +567,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get filterActive => 'Actif';
 
   @override
+  String get filterInactive => 'Désactivé';
+
+  @override
   String get filterBanned => 'Banni';
 
   @override
@@ -577,6 +580,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get noUsersMatchFilter => 'Aucun utilisateur ne correspond au filtre actuel.';
+
+  @override
+  String get noJourneysMatchFilter => 'Aucun trajet trouvé pour cette recherche.';
 
   @override
   String get statusActive => 'Statut : Actif';
@@ -924,6 +930,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get authErrorPasswordResetFailed => 'Impossible d\'envoyer l\'e-mail. Vérifiez que votre adresse e-mail est correcte.';
 
   @override
+  String get authErrorAccountDeactivated => 'Votre compte a été désactivé par un administrateur. Contactez le support pour plus d\'informations.';
+
+  @override
   String get useCurrentLocationButton => 'Utiliser ma position actuelle';
 
   @override
@@ -950,4 +959,68 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get results => 'Résultats';
+
+  @override
+  String get routeMap => 'Carte du trajet';
+
+  @override
+  String get lineLabel => 'Ligne';
+
+  @override
+  String get legendStart => 'Départ';
+
+  @override
+  String get legendStop => 'Arrêt';
+
+  @override
+  String get legendEnd => 'Arrivée';
+
+  @override
+  String get failedToLoadOlderMessages => 'Impossible de charger les messages plus anciens.';
+
+  @override
+  String get reasonBestPrice => 'Meilleur prix';
+
+  @override
+  String get reasonFastest => 'Le plus rapide';
+
+  @override
+  String get reasonBestOverall => 'Meilleur rapport';
+
+  @override
+  String get departureStationLabel => 'Station de départ';
+
+  @override
+  String get arrivalStationLabel => 'Station d\'arrivée';
+
+  @override
+  String get tripDurationLabel => 'Durée du trajet';
+
+  @override
+  String get tariffLabel => 'Tarif';
+
+  @override
+  String get onDemand => 'À la demande';
+
+  @override
+  String get noServiceTonightPrefix => 'Aucun service ce soir. Prochain départ demain à ';
+
+  @override
+  String get routeTemporarilyDisabled => 'Trajet temporairement désactivé';
+
+  @override
+  String get moreDetails => 'Plus de détails';
+
+  @override
+  String get sendTooFast => 'Veuillez patienter avant de renvoyer.';
+
+  @override
+  String sendNotificationCooldown(int seconds) {
+    return 'Veuillez attendre $seconds secondes avant de renvoyer.';
+  }
+
+  @override
+  String sendNotificationResend(int seconds) {
+    return 'Renvoyer dans ${seconds}s';
+  }
 }

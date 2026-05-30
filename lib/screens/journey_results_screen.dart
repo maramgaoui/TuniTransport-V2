@@ -39,44 +39,55 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
 
   UserProfile _profile = UserProfile.balanced;
   JourneyRecommendation? _recommendation;
+  Map<String, ({double avg, int count})> _communityByType = {};
 
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    _searchController.addListener(_onSearchStateChanged);
+    _initWithProfile();
+  }
+
+  // Load the saved profile first, then start the search so that when results
+  // arrive _profile is already correct and no recommendation flip occurs.
+  Future<void> _initWithProfile() async {
+    final p = await UserPreferenceService.instance.getProfile();
+    if (!mounted) return;
+    setState(() => _profile = p);
     if (widget.fromStationId != null && widget.toStationId != null) {
       _searchController.search(
         fromStationId: widget.fromStationId!,
         toStationId:   widget.toStationId!,
       );
     }
-    _searchController.addListener(_onSearchStateChanged);
-  }
-
-  Future<void> _loadProfile() async {
-    final p = await UserPreferenceService.instance.getProfile();
-    if (!mounted) return;
-    setState(() => _profile = p);
-    // Re-run so the recommendation matches the actual saved profile.
-    // Without this call, the balanced default recommendation set while
-    // the async load was in-flight would remain visible even after the
-    // profile tab switches to the user's real preference.
-    _rerunRecommendation(p);
   }
 
   void _onSearchStateChanged() {
     if (!mounted) return;
-    final controllerRec = _searchController.state.recommendation;
-
-    // Controller produced a result for exactly our active profile — adopt it.
-    if (controllerRec != null && controllerRec.profile == _profile) {
-      setState(() => _recommendation = controllerRec);
-      return;
-    }
-
-    // Results arrived (or changed) but controller's profile differs from ours.
-    // Recompute rather than showing a mismatched recommendation.
     _rerunRecommendation(_profile);
+    _fetchCommunityStats();
+  }
+
+  Future<void> _fetchCommunityStats() async {
+    final fromId = widget.fromStationId;
+    final toId   = widget.toStationId;
+    if (fromId == null || toId == null) return;
+
+    final s = _searchController.state;
+    final types = <String>[
+      if (s.trainResults.isNotEmpty)
+        RecommendationService.lineTypeToTransportType(s.trainResults.first.lineType),
+      if (s.bestBusService != null) 'transtu_bus',
+      if (s.taxiCollectifResult != null) 'taxi_collectif',
+    ];
+    if (types.isEmpty) return;
+
+    final ratings = await _recommendationService.getCommunityRatings(
+      fromStationId: fromId,
+      toStationId:   toId,
+      transportTypes: types,
+    );
+    if (mounted) setState(() => _communityByType = ratings);
   }
 
   Future<void> _changeProfile(UserProfile newProfile) async {
@@ -86,6 +97,7 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
   }
 
   Future<void> _rerunRecommendation(UserProfile profile) async {
+    if (widget.fromStationId == null || widget.toStationId == null) return;
     final s = _searchController.state;
     if (!s.hasResult) return;
 
@@ -114,21 +126,26 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
             allScores:        relativeScores,
             isHighConfidence: n > 1,
             profile:          profile,
+            priceByType:    {for (final e in entries) e.transportKey: e.price},
+            durationByType: {for (final e in entries) e.transportKey: e.durationMin},
           );
         });
       }
       return;
     }
 
-    // Équilibré: use the controller's recommendation immediately if it was
-    // already computed for the balanced profile (no async wait needed).
-    final controllerRec = _searchController.state.recommendation;
-    if (controllerRec != null && controllerRec.profile == UserProfile.balanced) {
-      if (mounted) setState(() => _recommendation = controllerRec);
-      return;
-    }
+    // Show instant result (no Firestore) so the banner appears immediately.
+    final syncRec = _recommendationService.recommendSync(
+      trainResults:  s.trainResults,
+      busService:    s.bestBusService,
+      taxiResult:    s.taxiCollectifResult,
+      fromStationId: widget.fromStationId ?? '',
+      toStationId:   widget.toStationId   ?? '',
+      profile:       profile,
+    );
+    if (mounted && syncRec != null) setState(() => _recommendation = syncRec);
 
-    // Otherwise run the ML model (Firestore + scoring ~300 ms).
+    // Then silently update with community reviews blended in.
     final rec = await _recommendationService.recommend(
       trainResults:  s.trainResults,
       busService:    s.bestBusService,
@@ -137,7 +154,7 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
       toStationId:   widget.toStationId   ?? '',
       profile:       profile,
     );
-    if (mounted) setState(() => _recommendation = rec);
+    if (mounted && rec != null) setState(() => _recommendation = rec);
   }
 
   @override
@@ -188,12 +205,8 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
     );
   }
 
-  // ── Which transport type won? ─────────────────────────────────────────────
-
   bool _isRecommended(String transportType) =>
       _recommendation?.winnerTransportType == transportType;
-
-  // ── Build a flat sorted list of all available result cards ────────────────
 
   List<_ResultEntry> _buildSortedEntries(JourneySearchState state) {
     final entries = <_ResultEntry>[];
@@ -267,8 +280,6 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
     return entries;
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final state        = _searchController.state;
@@ -304,7 +315,7 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(32),
                             child: Text(
-                              error ?? 'Aucun trajet trouvé pour cette recherche.',
+                              error ?? AppLocalizations.of(context)!.noJourneysMatchFilter,
                               textAlign: TextAlign.center,
                               style: TextStyle(fontSize: 15, color: Colors.grey[600]),
                             ),
@@ -314,24 +325,26 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                           children: [
 
-                            // ── Profile selector ──────────────────────────────
                             _ProfileSelector(
                               current: _profile,
                               onChanged: _changeProfile,
                             ),
                             const SizedBox(height: 16),
 
-                            // ── Recommendation banner ─────────────────────────
                             if (_recommendation != null)
-                              _RecommendationBanner(rec: _recommendation!, profile: _profile),
+                              _RecommendationBanner(
+                                rec:            _recommendation!,
+                                profile:        _profile,
+                                communityByType: _communityByType,
+                              ),
                             if (_recommendation != null) const SizedBox(height: 16),
 
-                            // ── Sorted transport options ──────────────────────
                             for (final entry in _buildSortedEntries(state)) ...[
                               _sectionLabel(entry.label),
                               const SizedBox(height: 8),
                               _CardWrapper(
                                 isRecommended: _isRecommended(entry.transportKey),
+                                communityData: _communityByType[entry.transportKey],
                                 onTap: entry.onTap,
                                 child: entry.card,
                               ),
@@ -370,8 +383,6 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
   }
 }
 
-// ── Result entry model ────────────────────────────────────────────────────────
-
 class _ResultEntry {
   final String label;
   final String transportKey;
@@ -391,8 +402,6 @@ class _ResultEntry {
     required this.onTap,
   });
 }
-
-// ── Profile selector ──────────────────────────────────────────────────────────
 
 class _ProfileSelector extends StatelessWidget {
   final UserProfile current;
@@ -418,6 +427,13 @@ class _ProfileSelector extends StatelessWidget {
     );
   }
 
+  // Suggestion 2: subtitle shown under the active tab.
+  static String _subtitle(UserProfile profile) => switch (profile) {
+    UserProfile.price    => 'Le moins cher',
+    UserProfile.balanced => 'Confort · Prix · Durée',
+    UserProfile.speed    => 'Le plus direct',
+  };
+
   Widget _tab(UserProfile profile, String label, IconData icon) {
     final active = current == profile;
     return Expanded(
@@ -433,14 +449,27 @@ class _ProfileSelector extends StatelessWidget {
                 ? [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 4)]
                 : null,
           ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-              color: active ? const Color(0xFF1A3A6B) : Colors.grey.shade500,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                  color: active ? const Color(0xFF1A3A6B) : Colors.grey.shade500,
+                ),
+              ),
+              if (active) ...[
+                const SizedBox(height: 2),
+                Text(
+                  _subtitle(profile),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 9, color: Colors.grey.shade500),
+                ),
+              ],
+            ],
           ),
         ),
       ),
@@ -448,47 +477,204 @@ class _ProfileSelector extends StatelessWidget {
   }
 }
 
-// ── Recommendation banner ─────────────────────────────────────────────────────
-
 class _RecommendationBanner extends StatelessWidget {
   final JourneyRecommendation rec;
   final UserProfile profile;
+  final Map<String, ({double avg, int count})> communityByType;
 
-  const _RecommendationBanner({required this.rec, required this.profile});
+  const _RecommendationBanner({
+    required this.rec,
+    required this.profile,
+    required this.communityByType,
+  });
 
-  String get _transportLabel {
-    switch (rec.winnerTransportType) {
-      case 'metro_sahel':     return 'Métro du Sahel';
-      case 'banlieue_nabeul': return 'Banlieue Nabeul';
-      case 'banlieue_sud':    return 'Banlieue Sud';
-      case 'sncft':           return 'SNCFT';
-      case 'sts_sahel':       return 'STS Sahel';
-      case 'transtu_bus':     return 'Bus TRANSTU';
-      case 'taxi_collectif':  return 'Taxi Collectif';
-      default:                return rec.winnerTransportType;
+  String _effectiveReasonLabel(AppLocalizations l10n) {
+    switch (profile) {
+      case UserProfile.price:   return l10n.reasonBestPrice;
+      case UserProfile.speed:   return l10n.reasonFastest;
+      case UserProfile.balanced:
+        switch (rec.reason) {
+          case RecommendationReason.bestPrice:   return l10n.reasonBestPrice;
+          case RecommendationReason.fastest:     return l10n.reasonFastest;
+          case RecommendationReason.bestOverall: return l10n.reasonBestOverall;
+        }
     }
   }
 
-  /// Reason label driven by the active filter tab, not the ML model.
-  /// When the user explicitly picks Prix or Rapide, the reason is obvious.
-  String get _effectiveReasonLabel {
-    switch (profile) {
-      case UserProfile.price:    return 'Meilleur prix';
-      case UserProfile.speed:    return 'Le plus rapide';
-      case UserProfile.balanced: return rec.reasonLabel();
+  // Concrete savings or time-gain label shown under the reason.
+  String? get _concreteDetail {
+    final winner = rec.winnerTransportType;
+    if (profile == UserProfile.price) {
+      final prices = rec.priceByType;
+      if (prices == null || prices.length < 2) return null;
+      final winnerPrice = prices[winner];
+      if (winnerPrice == null) return null;
+      final cheapestOther = prices.entries
+          .where((e) => e.key != winner)
+          .map((e) => e.value)
+          .reduce((a, b) => a < b ? a : b);
+      final savings = cheapestOther - winnerPrice;
+      if (savings > 0.05) return 'Économisez ~${savings.toStringAsFixed(3)} TND';
     }
+    if (profile == UserProfile.speed) {
+      final durations = rec.durationByType;
+      if (durations == null || durations.length < 2) return null;
+      final winnerDur = durations[winner];
+      if (winnerDur == null) return null;
+      final slowestOther = durations.entries
+          .where((e) => e.key != winner)
+          .map((e) => e.value)
+          .reduce((a, b) => a < b ? a : b);
+      final gained = slowestOther - winnerDur;
+      if (gained > 1) return '~${gained.round()} min plus rapide';
+    }
+    return null;
+  }
+
+  Widget _stars(double score) {
+    final filled = score.round().clamp(1, 5);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (i) => Icon(
+        i < filled ? Icons.star_rounded : Icons.star_outline_rounded,
+        size: 13,
+        color: i < filled ? const Color(0xFFFFB300) : Colors.grey.shade400,
+      )),
+    );
+  }
+
+  // Contextual "why" sentence for the balanced profile.
+  String _balancedWhy({({double avg, int count})? community}) {
+    final winner   = rec.winnerTransportType;
+    final prices   = rec.priceByType;
+    final durations = rec.durationByType;
+
+    if (prices == null || prices.length < 2) {
+      return community != null
+          ? 'Mieux noté par les voyageurs'
+          : 'Meilleur équilibre prix · durée';
+    }
+
+    final winnerPrice = prices[winner] ?? 0;
+    final winnerDur   = durations?[winner] ?? 0;
+
+    final otherPrices = prices.entries.where((e) => e.key != winner).map((e) => e.value);
+    final otherDurs   = durations == null
+        ? <double>[]
+        : durations.entries.where((e) => e.key != winner).map((e) => e.value).toList();
+
+    if (otherPrices.isEmpty) return 'Seule option disponible';
+
+    final cheapestOther = otherPrices.reduce((a, b) => a < b ? a : b);
+    final fastestOther  = otherDurs.isNotEmpty
+        ? otherDurs.reduce((a, b) => a < b ? a : b)
+        : null;
+
+    final isMoreExpensive = winnerPrice > cheapestOther * 1.08;
+    final isSlower = fastestOther != null && winnerDur > fastestOther * 1.08;
+
+    if (!isMoreExpensive && !isSlower) {
+      return 'Meilleur prix et durée réunis — option idéale';
+    }
+    if (isMoreExpensive && isSlower) {
+      if (community != null) {
+        return 'Très apprécié des voyageurs (★${community.avg.toStringAsFixed(1)}) malgré prix et durée supérieurs';
+      }
+      return 'Très apprécié selon notre modèle malgré prix et durée supérieurs';
+    }
+    if (isMoreExpensive) {
+      final timeSaved = fastestOther != null ? (fastestOther - winnerDur) : 0.0;
+      if (timeSaved > 5) return 'Plus rapide (~${timeSaved.round()} min) · prix légèrement supérieur';
+      if (community != null) return 'Bien noté par les voyageurs · prix légèrement plus élevé';
+      return 'Option bien notée · prix légèrement plus élevé';
+    }
+    // Winner is cheaper but slower
+    final savings = cheapestOther - winnerPrice;
+    if (savings > 0.1) return 'Plus économique (~${savings.toStringAsFixed(3)} TND) · durée légèrement supérieure';
+    return 'Meilleur prix pour une durée comparable';
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n       = AppLocalizations.of(context)!;
+    final community  = communityByType[rec.winnerTransportType];
+    final isBalanced = profile == UserProfile.balanced;
+
+    // Low-confidence: balanced gets a why sentence; prix/rapide get a neutral note.
+    if (!rec.isHighConfidence) {
+      if (isBalanced) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline_rounded, size: 16, color: Colors.grey.shade500),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Notre suggestion',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _balancedWhy(community: community),
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline_rounded, size: 16, color: Colors.grey.shade500),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Options similaires — voici notre suggestion',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Stars only for balanced (rank-based scores for prix/rapide are meaningless as stars).
+    Widget? starsWidget;
+    if (isBalanced) {
+      starsWidget = _stars(community != null ? community.avg : rec.winnerScore);
+    }
+
+    final detail = _concreteDetail;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xFF1A3A6B).withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFF1A3A6B).withValues(alpha: 0.18),
-        ),
+        border: Border.all(color: const Color(0xFF1A3A6B).withValues(alpha: 0.18)),
       ),
       child: Row(
         children: [
@@ -498,110 +684,147 @@ class _RecommendationBanner extends StatelessWidget {
               color: const Color(0xFF1A3A6B).withValues(alpha: 0.10),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.auto_awesome_rounded,
-              size: 16,
-              color: Color(0xFF1A3A6B),
-            ),
+            child: const Icon(Icons.auto_awesome_rounded, size: 16, color: Color(0xFF1A3A6B)),
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(fontSize: 13, color: Color(0xFF1A3A6B)),
-                children: [
-                  const TextSpan(
-                    text: 'Recommandé  ',
-                    style: TextStyle(fontWeight: FontWeight.w700),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _effectiveReasonLabel(l10n),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A3A6B),
                   ),
-                  TextSpan(text: _transportLabel),
-                  TextSpan(
-                    text: '  ·  $_effectiveReasonLabel',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF5C7AAA),
-                    ),
+                ),
+                // Prix/Rapide: show concrete number (savings / time gained).
+                if (!isBalanced && detail != null) ...[
+                  const SizedBox(height: 2),
+                  Text(detail, style: const TextStyle(fontSize: 12, color: Color(0xFF5C7AAA))),
+                ],
+                // Balanced: always show why sentence.
+                if (isBalanced) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    _balancedWhy(community: community),
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF5C7AAA)),
                   ),
                 ],
-              ),
+                // Balanced: stars + "selon X avis" when community data exists.
+                if (isBalanced && community != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (starsWidget != null) starsWidget,
+                      const SizedBox(width: 5),
+                      Text(
+                        'selon ${community.count} avis',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF5C7AAA),
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else if (isBalanced && starsWidget != null) ...[
+                  const SizedBox(height: 3),
+                  starsWidget,
+                ],
+              ],
             ),
           ),
-          if (rec.isHighConfidence)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A3A6B).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '${(rec.winnerScore / 5 * 100).round()}%',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A3A6B),
-                ),
-              ),
-            ),
         ],
       ),
     );
   }
 }
 
-// ── Card wrapper with recommended badge ───────────────────────────────────────
-
 class _CardWrapper extends StatelessWidget {
   final bool isRecommended;
   final VoidCallback onTap;
   final Widget child;
+  // Suggestion 4: community rating shown below the recommended card.
+  final ({double avg, int count})? communityData;
 
   const _CardWrapper({
     required this.isRecommended,
     required this.onTap,
     required this.child,
+    this.communityData,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Stack(
-        clipBehavior: Clip.none,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          child,
-          if (isRecommended)
-            Positioned(
-              top: -10,
-              right: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1A3A6B),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF1A3A6B).withValues(alpha: 0.35),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              child,
+              if (isRecommended)
+                Positioned(
+                  top: -10,
+                  right: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A3A6B),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF1A3A6B).withValues(alpha: 0.35),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.auto_awesome_rounded, size: 12, color: Colors.white),
-                    SizedBox(width: 4),
-                    Text(
-                      'Recommandé',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.2,
-                      ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.auto_awesome_rounded, size: 12, color: Colors.white),
+                        SizedBox(width: 4),
+                        Text(
+                          'Meilleur choix',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
+            ],
+          ),
+          // Suggestion 4: community chip below the winning card only.
+          if (isRecommended && communityData != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6, left: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.star_rounded, size: 13, color: Color(0xFFFFB300)),
+                  const SizedBox(width: 3),
+                  Text(
+                    '${communityData!.avg.toStringAsFixed(1)}  ·  ${communityData!.count} avis',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF5C7AAA),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
         ],
@@ -609,8 +832,6 @@ class _CardWrapper extends StatelessWidget {
     );
   }
 }
-
-// ── _BestBusCard ──────────────────────────────────────────────────────────────
 
 class _BestBusCard extends StatelessWidget {
   final BusService service;

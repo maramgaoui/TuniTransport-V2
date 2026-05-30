@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 enum NotificationType { chat, journey, system }
 
 class NotificationModel {
@@ -44,6 +46,8 @@ class NotificationModel {
       parsedTime = timestampValue;
     } else if (timestampValue is int) {
       parsedTime = DateTime.fromMillisecondsSinceEpoch(timestampValue);
+    } else if (timestampValue is Timestamp) {
+      parsedTime = timestampValue.toDate();
     } else if (timestampValue is String) {
       parsedTime = DateTime.tryParse(timestampValue) ?? DateTime.now();
     } else {

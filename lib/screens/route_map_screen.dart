@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import '../l10n/app_localizations.dart';
 import '../models/station_model.dart';
 import '../services/station_repository.dart';
 import '../widgets/route_map_widget.dart';
@@ -37,30 +39,29 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
   }
 
   Future<List<Station>> _loadStations() async {
-    final stations = <Station>[];
-    for (final stationId in widget.stationIds) {
+    Future<Station?> safeLoad(String id) async {
       try {
-        final station = await _stationRepository.getStationById(stationId);
-        if (station != null) {
-          stations.add(station);
-        }
+        return await _stationRepository.getStationById(id);
       } catch (e) {
-        debugPrint('Error loading station $stationId: $e');
+        if (kDebugMode) debugPrint('Error loading station $id: $e');
+        return null;
       }
     }
-    return stations;
+    final results = await Future.wait(widget.stationIds.map(safeLoad));
+    return results.whereType<Station>().toList();
   }
 
-  String _buildTitle() {
+  String _buildTitle(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final buf = StringBuffer();
     if (widget.lineNumber != null) {
-      buf.write('Line ${widget.lineNumber}');
+      buf.write('${l10n.lineLabel} ${widget.lineNumber}');
     }
     if (widget.routeTitle != null) {
       if (buf.isNotEmpty) buf.write(' - ');
       buf.write(widget.routeTitle);
     }
-    return buf.toString().isNotEmpty ? buf.toString() : 'Route Map';
+    return buf.toString().isNotEmpty ? buf.toString() : l10n.routeMap;
   }
 
   @override
@@ -70,7 +71,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
         child: Column(
           children: [
             AppHeader(
-              title: 'Route Map',
+              title: _buildTitle(context),
             ),
             Expanded(
               child: FutureBuilder<List<Station>>(
@@ -87,10 +88,17 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.error_outline,
+                          const Icon(Icons.error_outline,
                               size: 48, color: Colors.red),
                           const SizedBox(height: 16),
                           Text('Error loading map: ${snapshot.error}'),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () =>
+                                setState(() => _stationsFuture = _loadStations()),
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Réessayer'),
+                          ),
                         ],
                       ),
                     );
@@ -113,10 +121,10 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                   final stations = snapshot.data!;
                   return RouteMapWidget(
                     stations: stations,
-                    title: _buildTitle(),
+                    title: _buildTitle(context),
                     onStationTapped: (station) {
                       // Optional: Handle station tap
-                      debugPrint('Tapped station: ${station.name}');
+                      if (kDebugMode) debugPrint('Tapped station: ${station.name}');
                     },
                   );
                 },
@@ -133,11 +141,11 @@ class _RouteMapScreenState extends State<RouteMapScreen> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildLegendItem(Colors.green, 'Start'),
+                    _buildLegendItem(Colors.green, AppLocalizations.of(context)!.legendStart),
                     const SizedBox(width: 16),
-                    _buildLegendItem(Colors.blue, 'Stop'),
+                    _buildLegendItem(Colors.blue, AppLocalizations.of(context)!.legendStop),
                     const SizedBox(width: 16),
-                    _buildLegendItem(Colors.red, 'End'),
+                    _buildLegendItem(Colors.red, AppLocalizations.of(context)!.legendEnd),
                   ],
                 ),
               ),

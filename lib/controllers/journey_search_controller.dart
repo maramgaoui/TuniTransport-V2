@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:get_it/get_it.dart';
 import 'journey_search_state.dart';
 import '../models/bus_service_model.dart';
 import '../models/metro_sahel_result.dart';
@@ -33,16 +34,16 @@ class JourneySearchController extends ChangeNotifier {
     TaxiCollectifService? taxiCollectifService,
     RecommendationService? recommendationService,
   })  : _stationRepository = stationRepository ??
-            StationRepository(FirebaseFirestore.instance),
+            StationRepository(GetIt.I<FirebaseFirestore>()),
         _journeyRepository = journeyRepository ??
             JourneyRepository(
-              FirebaseFirestore.instance,
-              RouteRepository(FirebaseFirestore.instance),
+              GetIt.I<FirebaseFirestore>(),
+              RouteRepository(GetIt.I<FirebaseFirestore>()),
             ),
         _busServiceRepository =
             busServiceRepository ?? BusServiceRepository(),
         _taxiCollectifService =
-            taxiCollectifService ?? TaxiCollectifService(FirebaseFirestore.instance),
+            taxiCollectifService ?? TaxiCollectifService(GetIt.I<FirebaseFirestore>()),
         _recommendationService =
             recommendationService ?? RecommendationService();
 
@@ -239,7 +240,6 @@ class JourneySearchController extends ChangeNotifier {
       isLoading: true,
       clearTrainResults: true,
       clearError: true,
-      clearBus: true,
       clearBestBus: true,
       clearTaxi: true,
     ));
@@ -284,16 +284,12 @@ class JourneySearchController extends ChangeNotifier {
       // Capture search time once so all branches use the same reference time.
       final searchDateTime = DateTime.now();
 
-      // ═══════════════════════════════════════════════════════════════════════
-      // All branches run — results are collected and emitted together so the
-      // UI can show every available transport mode for this A→B pair.
-      // Banlieue Nabeul is still checked first and gates Banlieue Sud to avoid
-      // duplicates for their overlapping physical station set.
-      // ═══════════════════════════════════════════════════════════════════════
+      // All branches run concurrently — results collected and emitted together.
+      // BN checked first and gates BS to prevent duplicates on shared stations.
 
       final List<MetroSahelResult> collectedTrainResults = [];
 
-      // Banlieue Nabeul — priority; if it matches, skip Banlieue Sud.
+      // BN matched → skip BS; they share physical stations and would duplicate results.
       bool bnMatched = false;
       if (_isBnStationSet(fromStation.id, toStation.id)) {
         if (kDebugMode) {
@@ -323,8 +319,6 @@ class JourneySearchController extends ChangeNotifier {
         if (metroResult != null) collectedTrainResults.add(metroResult);
       }
 
-      // Banlieue Sud — skipped when Banlieue Nabeul already matched to avoid
-      // duplicate results for their shared station set.
       if (!bnMatched &&
           _stationRepository.isBanlieueSudStation(fromStation) &&
           _stationRepository.isBanlieueSudStation(toStation)) {
@@ -358,9 +352,8 @@ class JourneySearchController extends ChangeNotifier {
         if (beResult != null) collectedTrainResults.add(beResult);
       }
 
-      // SNCFT Grandes Lignes (L5, Kef, Bizerte, Annaba…).
-      // If either station is a cross-network hub (e.g. ms_sousse_bab_jedid),
-      // resolve its SNCFT mainline equivalent before running the branch.
+      // SNCFT Grandes Lignes — resolve cross-network hub aliases first
+      // (e.g. ms_sousse_bab_jedid → sncft_sousse_voyageurs).
       {
         final sncftFromId = _resolveSncftRouteStationId(fromStation.id);
         final sncftToId = _resolveSncftRouteStationId(toStation.id);
@@ -396,7 +389,7 @@ class JourneySearchController extends ChangeNotifier {
         if (stsResult != null) collectedTrainResults.add(stsResult);
       }
 
-      // ─── TRANSTU bus — departure must be a TRANSTU hub. ──────────────────
+      // TRANSTU bus — departure must be a TRANSTU hub station.
       BusService? bestBusService;
       String? bestBusDepartureTime;
       String? busHubName;
@@ -417,16 +410,13 @@ class JourneySearchController extends ChangeNotifier {
         if (busServices.isNotEmpty) {
           int bestMinutes = -1;
 
-            // Detect reverse direction (suburb→hub). Keep hub↔hub deterministic
-            // by preferring forward unless all returned services indicate reverse.
+            // Reverse direction: suburb→hub. Hub↔hub stays forward unless all
+            // returned services indicate they originate at the destination hub.
             final hubIsDestination =
               _busServiceRepository.isTranstuHub(toStation.id) &&
               !_busServiceRepository.isTranstuHub(fromStation.id);
-            // servicesRunFromDest: true when all returned services originate at a
-            // hub that is NOT the fromStation — meaning we got reverse-mode results.
-            // Compare hubStationId (not destinationStationId) to fromStation.id;
-            // using destinationStationId was wrong because destination ≠ departure
-            // is always true for any forward search too.
+            // Compare hubStationId (not destinationStationId) to fromStation.id —
+            // using destinationStationId was wrong (always differs in forward mode too).
             final servicesRunFromDest =
               busServices.isNotEmpty &&
               busServices.every(
@@ -466,7 +456,7 @@ class JourneySearchController extends ChangeNotifier {
           }
 
           if (bestBusService == null) {
-            // All services ended for today — pick the earliest for tomorrow.
+            // All departures passed — show the earliest tomorrow.
             final sorted = List<BusService>.from(busServices)
               ..sort((BusService a, BusService b) =>
                   (a.parseTimePublic(isReverse
@@ -487,8 +477,8 @@ class JourneySearchController extends ChangeNotifier {
           busHubName =
               '${fromStation.localizedName('fr')} → ${toStation.localizedName('fr')}';
         } else if (collectedTrainResults.isEmpty) {
-          // Hub found but no connecting lines — only surface error when there
-          // are no train results either.
+          // Hub matched but no connecting line — only surface this error when
+          // no train results exist either (avoids false negatives on multimodal routes).
           if (kDebugMode) {
             debugPrint(
               '[JourneySearch] No connecting lines found from '
@@ -500,16 +490,13 @@ class JourneySearchController extends ChangeNotifier {
         }
       }
 
-      // ─── Taxi collectif — runs for every search, independent of other modes ─
-      // Use cityId (e.g. "sousse", "monastir") which already matches the seed
-      // script's normalization, rather than the full station name which may
-      // contain suffixes like " - Bab Jedid" that break the lookup.
+      // Taxi always runs. Uses cityId (not station name) to match seed data —
+      // station names contain suffixes like " - Bab Jedid" that break the lookup.
       final taxiResult = await _taxiCollectifService.findRoute(
         fromCityId: fromStation.cityId,
         toCityId: toStation.cityId,
       );
 
-      // ─── Emit combined results ────────────────────────────────────────────
       if (collectedTrainResults.isEmpty &&
           bestBusService == null &&
           taxiResult == null) {
@@ -554,8 +541,7 @@ class JourneySearchController extends ChangeNotifier {
         );
       }
     } catch (e, st) {
-      // Map exceptions to user-friendly French messages.
-      // Raw exception text is only visible in debug logs, never shown in the UI.
+      // Raw exception text goes to debug logs only; UI always gets French prose.
       final userMessage = switch (e) {
         final FirebaseException e => switch (e.code) {
             'unavailable' || 'network-request-failed' || 'failed' =>
@@ -600,7 +586,7 @@ class JourneySearchController extends ChangeNotifier {
 
       _emit(_state.copyWith(recommendation: recommendation));
     } catch (e) {
-      debugPrint('[JourneySearch] recommendation failed: $e');
+      if (kDebugMode) debugPrint('[JourneySearch] recommendation failed: $e');
     }
   }
 }

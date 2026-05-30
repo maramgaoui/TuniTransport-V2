@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -8,6 +9,7 @@ import '../models/station_model.dart';
 import '../services/station_repository.dart';
 import '../theme/app_theme.dart';
 import '../constants/firestore_collections.dart';
+import '../utils/text_normalizer.dart';
 
 class StationSearchPicker extends StatefulWidget {
   final String label;
@@ -92,7 +94,7 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
         .where((item) {
           if (item.station.name.trim().isEmpty) return false;
           final key =
-              '${_normalize(item.station.name)}|${item.station.cityId.toLowerCase().trim()}';
+              '${TextNormalizer.normalize(item.station.name)}|${item.station.cityId.toLowerCase().trim()}';
           return seen.add(key);
         })
         .toList();
@@ -124,7 +126,7 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
           if (city.name.isEmpty || city.id.isEmpty) continue;
           // Skip if a real station already covers this city by cityId or name.
           if (existingCityIds.contains(city.id.toLowerCase())) continue;
-          final key = '${_normalize(city.name)}|${city.id}';
+          final key = '${TextNormalizer.normalize(city.name)}|${city.id}';
           if (!seen.add(key)) continue;
           existingCityIds.add(city.id.toLowerCase());
           items.add(_StationSearchItem.taxiCity(
@@ -135,7 +137,7 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
         }
       }
     } catch (e) {
-      debugPrint('[StationSearchPicker] taxi_collectif_routes fetch failed: $e');
+      if (kDebugMode) debugPrint('[StationSearchPicker] taxi_collectif_routes fetch failed: $e');
     }
 
     return items;
@@ -159,7 +161,7 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
   }
 
   Future<void> _runSearch(String rawQuery) async {
-    final query = _normalize(rawQuery);
+    final query = TextNormalizer.normalize(rawQuery);
     if (query.length < 2) return;
 
     setState(() {
@@ -201,14 +203,14 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
 
   double _scoreMatch(_StationSearchItem item, String query) {
     final fields = <String>[
-      _normalize(item.station.name),
-      _normalize(item.nameAr ?? ''),
-      _normalize(item.nameEn ?? ''),
+      TextNormalizer.normalize(item.station.name),
+      TextNormalizer.normalize(item.nameAr ?? ''),
+      TextNormalizer.normalize(item.nameEn ?? ''),
     ].where((f) => f.isNotEmpty).toList();
 
     // Add static aliases for this station.
     final aliases = _aliasesFor(item.station.id);
-    fields.addAll(aliases.map(_normalize));
+    fields.addAll(aliases.map(TextNormalizer.normalize));
 
     var score = 0.0;
     for (final field in fields) {
@@ -314,33 +316,6 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
     }
   }
 
-  String _normalize(String value) {
-    var text = value.toLowerCase().trim();
-
-    const replacements = <String, String>{
-      'à': 'a', 'á': 'a', 'â': 'a', 'ä': 'a', 'ã': 'a', 'å': 'a',
-      'ç': 'c',
-      'è': 'e', 'é': 'e', 'ê': 'e', 'ë': 'e',
-      'ì': 'i', 'í': 'i', 'î': 'i', 'ï': 'i',
-      'ñ': 'n',
-      'ò': 'o', 'ó': 'o', 'ô': 'o', 'ö': 'o', 'õ': 'o',
-      'ù': 'u', 'ú': 'u', 'û': 'u', 'ü': 'u',
-      'ý': 'y', 'ÿ': 'y',
-      'œ': 'oe', 'æ': 'ae',
-      '\u2018': "'", '\u2019': "'", '`': "'",
-    };
-
-    replacements.forEach((from, to) {
-      text = text.replaceAll(from, to);
-    });
-
-    text = text.replaceAll(RegExp('[\u064B-\u065F\u0670\u06D6-\u06ED]'), '');
-    text = text.replaceAll(RegExp('[^\u0600-\u06FFa-z0-9\\s\']'), ' ');
-    text = text.replaceAll(RegExp('\\s+'), ' ');
-
-    return text.trim();
-  }
-
   String _normalizeLabel(String value) {
     return value.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
   }
@@ -434,13 +409,13 @@ class _StationSearchPickerState extends State<StationSearchPicker> {
               style: TextStyle(color: AppTheme.mediumGrey),
             )
           else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _nearbyStations.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (_, index) =>
-                  _buildResultTile(_nearbyStations[index]),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 300),
+              child: ListView.separated(
+                itemCount: _nearbyStations.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (_, index) => _buildResultTile(_nearbyStations[index]),
+              ),
             ),
         ],
       );
@@ -551,12 +526,12 @@ class _StationSearchItem {
       longitude: longitude.toDouble(),
       address: data['address']?.toString(),
       transportTypes:
-          List<String>.from(data['transportTypes'] ?? const []),
+          List<String>.from(data['transportTypes'] as List? ?? const []),
       operatorsHere:
-          List<String>.from(data['operatorsHere'] ?? const []),
+          List<String>.from(data['operatorsHere'] as List? ?? const []),
       services: StationServices.fromMap(
         Map<String, dynamic>.from(
-            data['services'] ?? const <String, dynamic>{}),
+            data['services'] as Map? ?? const <String, dynamic>{}),
       ),
       isMainHub: data['isMainHub'] == true,
       createdAt:

@@ -213,10 +213,12 @@
   "searchByNameOrEmail": "Search by name or email…",
   "filterAll": "All",
   "filterActive": "Active",
+  "filterInactive": "Inactive",
   "filterBanned": "Banned",
   "filterBlocked": "Blocked",
   "noUsersFound": "No users found.",
   "noUsersMatchFilter": "No users match the current filter.",
+  "noJourneysMatchFilter": "No journeys match this search.",
   "statusActive": "Status: Active",
   "statusBlocked": "Status: Blocked",
   "statusBannedUntil": "Status: Banned until {date}",
@@ -383,6 +385,7 @@
   "authErrorGeneric": "An authentication error occurred. Please try again.",
   "authErrorAccountCreationFailed": "Unable to create user account.",
   "authErrorPasswordResetFailed": "Unable to send email. Please check your email address.",
+  "authErrorAccountDeactivated": "Your account has been deactivated by an administrator. Please contact support for more information.",
   "useCurrentLocationButton": "Use my current location",
   "disableCurrentLocation": "Disable current location",
   "journeySearchResolutionFailed": "Search failed. Please check the stations you entered.",
@@ -401,5 +404,35 @@
       "suggestions": {}
     }
   },
-  "results": "Results"
+  "results": "Results",
+  "routeMap": "Route Map",
+  "lineLabel": "Line",
+  "legendStart": "Start",
+  "legendStop": "Stop",
+  "legendEnd": "End",
+  "failedToLoadOlderMessages": "Failed to load older messages.",
+  "reasonBestPrice": "Best price",
+  "reasonFastest": "Fastest",
+  "reasonBestOverall": "Best overall",
+  "departureStationLabel": "Departure station",
+  "arrivalStationLabel": "Arrival station",
+  "tripDurationLabel": "Trip duration",
+  "tariffLabel": "Fare",
+  "onDemand": "On demand",
+  "noServiceTonightPrefix": "No service tonight. Next departure tomorrow at ",
+  "routeTemporarilyDisabled": "Route temporarily disabled",
+  "moreDetails": "More details",
+  "sendTooFast": "Please wait before sending again.",
+  "sendNotificationCooldown": "Please wait {seconds} seconds before sending again.",
+  "@sendNotificationCooldown": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
+  "sendNotificationResend": "Resend in {seconds}s",
+  "@sendNotificationResend": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  }
 }

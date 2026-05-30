@@ -567,6 +567,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get filterActive => 'نشط';
 
   @override
+  String get filterInactive => 'غير نشط';
+
+  @override
   String get filterBanned => 'محظور مؤقت';
 
   @override
@@ -577,6 +580,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get noUsersMatchFilter => 'لا يوجد مستخدمون يطابقون الفلتر الحالي.';
+
+  @override
+  String get noJourneysMatchFilter => 'لا توجد رحلات تطابق هذا البحث.';
 
   @override
   String get statusActive => 'الحالة: نشط';
@@ -924,6 +930,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get authErrorPasswordResetFailed => 'تعذر إرسال البريد الإلكتروني. يرجى التحقق من عنوان بريدك الإلكتروني.';
 
   @override
+  String get authErrorAccountDeactivated => 'تم تعطيل حسابك من قبل المسؤول. يرجى التواصل مع الدعم للمزيد من المعلومات.';
+
+  @override
   String get useCurrentLocationButton => 'استخدم موقعي الحالي';
 
   @override
@@ -950,4 +959,68 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get results => 'النتائج';
+
+  @override
+  String get routeMap => 'خريطة المسار';
+
+  @override
+  String get lineLabel => 'خط';
+
+  @override
+  String get legendStart => 'بداية';
+
+  @override
+  String get legendStop => 'محطة';
+
+  @override
+  String get legendEnd => 'نهاية';
+
+  @override
+  String get failedToLoadOlderMessages => 'تعذّر تحميل الرسائل القديمة.';
+
+  @override
+  String get reasonBestPrice => 'أفضل سعر';
+
+  @override
+  String get reasonFastest => 'الأسرع';
+
+  @override
+  String get reasonBestOverall => 'الأفضل عموماً';
+
+  @override
+  String get departureStationLabel => 'محطة المغادرة';
+
+  @override
+  String get arrivalStationLabel => 'محطة الوصول';
+
+  @override
+  String get tripDurationLabel => 'مدة الرحلة';
+
+  @override
+  String get tariffLabel => 'التعريفة';
+
+  @override
+  String get onDemand => 'عند الطلب';
+
+  @override
+  String get noServiceTonightPrefix => 'لا خدمة الليلة. الرحلة القادمة غداً في ';
+
+  @override
+  String get routeTemporarilyDisabled => 'المسار معطّل مؤقتاً';
+
+  @override
+  String get moreDetails => 'مزيد من التفاصيل';
+
+  @override
+  String get sendTooFast => 'يرجى الانتظار قبل الإرسال مجدداً.';
+
+  @override
+  String sendNotificationCooldown(int seconds) {
+    return 'يرجى الانتظار $seconds ثوانٍ قبل الإرسال.';
+  }
+
+  @override
+  String sendNotificationResend(int seconds) {
+    return 'إعادة الإرسال خلال $secondsث';
+  }
 }

@@ -8,7 +8,6 @@ class JourneySearchState extends Equatable {
   final bool isLoading;
   final String? error;
   final List<MetroSahelResult> trainResults;
-  final List<BusService>? busServices;
   final BusService? bestBusService;
   final String? bestBusDepartureTime;
   final String? busHubName;
@@ -20,7 +19,6 @@ class JourneySearchState extends Equatable {
     this.isLoading = false,
     this.error,
     this.trainResults = const [],
-    this.busServices,
     this.bestBusService,
     this.bestBusDepartureTime,
     this.busHubName,
@@ -29,10 +27,7 @@ class JourneySearchState extends Equatable {
     this.recommendation,
   });
 
-  // ── Convenience getters for UI state checks ──────────────────────────────
-
-  /// First train result, or null — for backward-compat with any callers
-  /// that still reference a single metroSahelResult.
+  /// First train result — backward-compat alias for callers predating multi-result support.
   MetroSahelResult? get metroSahelResult =>
       trainResults.isNotEmpty ? trainResults.first : null;
 
@@ -48,14 +43,11 @@ class JourneySearchState extends Equatable {
   /// True when an error message is present.
   bool get hasError => error != null;
 
-  // ── Equatable ─────────────────────────────────────────────────────────────
-
   @override
   List<Object?> get props => [
         isLoading,
         error,
         trainResults,
-        busServices,
         bestBusService,
         bestBusDepartureTime,
         busHubName,
@@ -68,8 +60,6 @@ class JourneySearchState extends Equatable {
   @override
   bool get stringify => true;
 
-  // ── copyWith ──────────────────────────────────────────────────────────────
-
   /// The clearX flags exist because null is a valid target value for nullable
   /// fields — without them there is no way to distinguish "set to null" from
   /// "keep existing value" through a nullable parameter alone.
@@ -77,7 +67,6 @@ class JourneySearchState extends Equatable {
   /// Grouping:
   ///   clearError        → clears error only
   ///   clearTrainResults → clears trainResults list
-  ///   clearBus          → clears busServices only
   ///   clearBestBus      → clears bestBusService + bestBusDepartureTime + busHubName
   JourneySearchState copyWith({
     bool? isLoading,
@@ -85,8 +74,6 @@ class JourneySearchState extends Equatable {
     bool clearError = false,
     List<MetroSahelResult>? trainResults,
     bool clearTrainResults = false,
-    List<BusService>? busServices,
-    bool clearBus = false,
     BusService? bestBusService,
     String? bestBusDepartureTime,
     bool clearBestBus = false,
@@ -101,7 +88,6 @@ class JourneySearchState extends Equatable {
       isLoading:    isLoading ?? this.isLoading,
       error:        clearError ? null : (error ?? this.error),
       trainResults: clearTrainResults ? const [] : (trainResults ?? this.trainResults),
-      busServices:  clearBus ? null : (busServices ?? this.busServices),
       bestBusService: clearBestBus ? null : (bestBusService ?? this.bestBusService),
       bestBusDepartureTime: clearBestBus
           ? null

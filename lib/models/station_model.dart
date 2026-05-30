@@ -33,29 +33,28 @@ class Station {
     required this.createdAt,
   });
 
-  /// Convert from Firestore document
   factory Station.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data()!;
+    final data = doc.data();
+    if (data == null) throw StateError('Station document ${doc.id} has no data');
     return Station(
       id: doc.id,
-      name: data['name'] ?? '',
+      name: (data['name'] as String?) ?? '',
       nameAr: data['nameAr']?.toString(),
       nameEn: data['nameEn']?.toString(),
-      cityId: data['cityId'] ?? '',
-      latitude: (data['latitude'] ?? 0.0).toDouble(),
-      longitude: (data['longitude'] ?? 0.0).toDouble(),
-      address: data['address'],
-      transportTypes: List<String>.from(data['transportTypes'] ?? []),
-      operatorsHere: List<String>.from(data['operatorsHere'] ?? []),
+      cityId: (data['cityId'] as String?) ?? '',
+      latitude: (data['latitude'] as num?)?.toDouble() ?? 0.0,
+      longitude: (data['longitude'] as num?)?.toDouble() ?? 0.0,
+      address: data['address'] as String?,
+      transportTypes: List<String>.from(data['transportTypes'] as List? ?? []),
+      operatorsHere: List<String>.from(data['operatorsHere'] as List? ?? []),
       services: data['services'] != null
-          ? StationServices.fromMap(Map<String, dynamic>.from(data['services']))
+          ? StationServices.fromMap(Map<String, dynamic>.from(data['services'] as Map))
           : null,
-      isMainHub: data['isMainHub'] ?? false,
+      isMainHub: (data['isMainHub'] as bool?) ?? false,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
-  /// Convert to Firestore document
   Map<String, dynamic> toMap() => {
         'name': name,
         'nameAr': nameAr,
@@ -120,7 +119,6 @@ class Station {
     return radiusKm * c;
   }
 
-  /// Copy with some fields modified
   Station copyWith({
     String? id,
     String? name,
@@ -172,10 +170,10 @@ class StationServices {
 
   factory StationServices.fromMap(Map<String, dynamic> map) {
     return StationServices(
-      hasWifi: map['wifi'] ?? false,
-      hasToilet: map['toilet'] ?? false,
-      hasCafe: map['cafe'] ?? false,
-      hasParking: map['parking'] ?? false,
+      hasWifi: (map['wifi'] as bool?) ?? false,
+      hasToilet: (map['toilet'] as bool?) ?? false,
+      hasCafe: (map['cafe'] as bool?) ?? false,
+      hasParking: (map['parking'] as bool?) ?? false,
     );
   }
 

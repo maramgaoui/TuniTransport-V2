@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 class ValidationUtils {
-  // Email validation with real-time feedback
   static String? validateEmail(String? value) {
     if (value == null || value.isEmpty) {
       return 'Email est requis';
@@ -19,7 +18,6 @@ class ValidationUtils {
     return emailRegex.hasMatch(value);
   }
 
-  // Password strength validation
   static PasswordStrength validatePasswordStrength(String? value) {
     if (value == null || value.isEmpty) {
       return PasswordStrength.empty;
@@ -27,21 +25,13 @@ class ValidationUtils {
 
     int strength = 0;
 
-    // Check length
     if (value.length >= 6) strength++;
     if (value.length >= 8) strength++;
     if (value.length >= 12) strength++;
 
-    // Check for uppercase
     if (value.contains(RegExp(r'[A-Z]'))) strength++;
-
-    // Check for lowercase
     if (value.contains(RegExp(r'[a-z]'))) strength++;
-
-    // Check for numbers
     if (value.contains(RegExp(r'[0-9]'))) strength++;
-
-    // Check for special characters
     if (value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) strength++;
 
     if (strength <= 1) {
@@ -69,12 +59,11 @@ class ValidationUtils {
     return null;
   }
 
-  // Name validation (letters only, accents allowed)
+  // Accented characters (À-ÿ), hyphens, and apostrophes are allowed for French names.
   static String? validateName(String? value, String fieldName) {
     if (value == null || value.isEmpty) {
       return '$fieldName est requis';
     }
-    // Allow letters, spaces, hyphens, and accented characters
     final nameRegex = RegExp(r"^[a-zA-ZÀ-ÿ\s\-']+$");
     if (!nameRegex.hasMatch(value)) {
       return '$fieldName ne peut contenir que des lettres';
@@ -91,7 +80,6 @@ class ValidationUtils {
     return nameRegex.hasMatch(value) && value.length >= 2;
   }
 
-  // Username validation (letters, numbers, underscore, hyphen)
   static String? validateUsername(String? value) {
     if (value == null || value.isEmpty) {
       return 'Le nom d\'utilisateur est requis';
@@ -115,7 +103,6 @@ class ValidationUtils {
     return usernameRegex.hasMatch(value) && value.length >= 3 && value.length <= 20;
   }
 
-  // Confirm password validation
   static String? validateConfirmPassword(String? value, String password) {
     if (value == null || value.isEmpty) {
       return 'Veuillez confirmer votre mot de passe';

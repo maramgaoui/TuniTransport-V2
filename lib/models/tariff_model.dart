@@ -8,7 +8,7 @@ class Tariff {
   final double price; // in TND
   final String currency;
   final String? tariffClass; // economy, comfort, vip
-  final DateTime validFrom;
+  final DateTime? validFrom;
   final DateTime? validTo;
   final String? notes;
   final List<SpecialDiscount> specialDiscounts;
@@ -22,36 +22,37 @@ class Tariff {
     required this.price,
     this.currency = 'TND',
     this.tariffClass,
-    required this.validFrom,
+    this.validFrom,
     this.validTo,
     this.notes,
     required this.specialDiscounts,
     required this.createdAt,
   });
 
-  /// Convert from Firestore document
   factory Tariff.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data()!;
+    final data = doc.data();
+    if (data == null) throw StateError('Tariff document ${doc.id} does not exist');
     return Tariff(
       id: doc.id,
-      operatorId: data['operatorId'] ?? '',
-      fromStationId: data['fromStationId'] ?? '',
-      toStationId: data['toStationId'] ?? '',
-      price: (data['price'] ?? 0.0).toDouble(),
-      currency: data['currency'] ?? 'TND',
-      tariffClass: data['tariffClass'],
-      validFrom: (data['validFrom'] as Timestamp).toDate(),
+      operatorId: (data['operatorId'] as String?) ?? '',
+      fromStationId: (data['fromStationId'] as String?) ?? '',
+      toStationId: (data['toStationId'] as String?) ?? '',
+      price: (data['price'] as num?)?.toDouble() ?? 0.0,
+      currency: (data['currency'] as String?) ?? 'TND',
+      tariffClass: data['tariffClass'] as String?,
+      validFrom: data['validFrom'] != null
+          ? (data['validFrom'] as Timestamp).toDate()
+          : null,
       validTo: (data['validTo'] as Timestamp?)?.toDate(),
-      notes: data['notes'],
+      notes: data['notes'] as String?,
       specialDiscounts: (data['specialDiscounts'] as List?)
-              ?.map((d) => SpecialDiscount.fromMap(Map<String, dynamic>.from(d)))
+              ?.map((d) => SpecialDiscount.fromMap(Map<String, dynamic>.from(d as Map)))
               .toList() ??
           [],
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
-  /// Convert to Firestore document
   Map<String, dynamic> toMap() => {
         'operatorId': operatorId,
         'fromStationId': fromStationId,
@@ -59,7 +60,7 @@ class Tariff {
         'price': price,
         'currency': currency,
         'tariffClass': tariffClass,
-        'validFrom': Timestamp.fromDate(validFrom),
+        'validFrom': validFrom != null ? Timestamp.fromDate(validFrom!) : null,
         'validTo': validTo != null ? Timestamp.fromDate(validTo!) : null,
         'notes': notes,
         'specialDiscounts': specialDiscounts.map((d) => d.toMap()).toList(),
@@ -78,38 +79,8 @@ class Tariff {
     return basePrice + (additionalIncrements * incrementPrice);
   }
 
-  /// Calculate final price with discounts
-  double calculateFinalPrice({
-    int quantity = 1,
-    bool isStudent = false,
-    bool isSenior = false,
-  }) {
-    double finalPrice = price * quantity;
-
-    for (final discount in specialDiscounts) {
-      if (discount.appliesToQuantity(quantity) &&
-          ((discount.condition == 'student' && isStudent) ||
-              (discount.condition == 'senior' && isSenior) ||
-              (discount.condition == 'group' && quantity > 1) ||
-              discount.condition == 'return')) {
-        final discountAmount = finalPrice * (discount.discountPercentage / 100);
-        finalPrice -= discountAmount;
-      }
-    }
-
-    return double.parse(finalPrice.toStringAsFixed(3)); // 3 decimal places
-  }
-
-  /// Check if tariff is valid on a given date
-  bool isValidOn(DateTime date) {
-    return date.isAfter(validFrom.subtract(const Duration(days: 1))) &&
-        (validTo == null || date.isBefore(validTo!.add(const Duration(days: 1))));
-  }
-
-  /// Format price for display
   String get formattedPrice => '${price.toStringAsFixed(3)} $currency';
 
-  /// Copy with some fields modified
   Tariff copyWith({
     String? id,
     String? operatorId,
@@ -142,7 +113,7 @@ class Tariff {
 
   @override
   String toString() =>
-      'Tariff($fromStationId → $toStationId: ${formattedPrice})';
+      'Tariff($fromStationId → $toStationId: $formattedPrice)';
 }
 
 class SpecialDiscount {
@@ -162,9 +133,9 @@ class SpecialDiscount {
 
   factory SpecialDiscount.fromMap(Map<String, dynamic> map) {
     return SpecialDiscount(
-      condition: map['condition'] ?? '',
-      discountPercentage: (map['discountPercentage'] ?? 0.0).toDouble(),
-      minQuantity: map['minQuantity'],
+      condition: (map['condition'] as String?) ?? '',
+      discountPercentage: (map['discountPercentage'] as num?)?.toDouble() ?? 0.0,
+      minQuantity: map['minQuantity'] as int?,
       validFrom: (map['validFrom'] as Timestamp?)?.toDate(),
       validTo: (map['validTo'] as Timestamp?)?.toDate(),
     );

@@ -12,7 +12,7 @@ class RouteMapWidget extends StatefulWidget {
   final String? title;
   
   /// Optional callback when a station marker is tapped
-  final Function(Station station)? onStationTapped;
+  final void Function(Station station)? onStationTapped;
   
   /// Initial zoom level
   final double initialZoom;
@@ -149,7 +149,7 @@ class _RouteMapWidgetState extends State<RouteMapWidget> {
 
   /// Show station information in a bottom sheet
   void _showStationInfo(Station station) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       builder: (context) => Container(
         padding: const EdgeInsets.all(16),

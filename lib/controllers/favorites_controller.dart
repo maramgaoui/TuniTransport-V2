@@ -37,7 +37,6 @@ class FavoritesController extends ChangeNotifier {
     }
 
     if (_isLoading) return;
-    if (_loadedForUid == uid) return;
 
     await loadFavorites();
   }
@@ -61,7 +60,7 @@ class FavoritesController extends ChangeNotifier {
         ..addAll(items.map((journey) => journey.copyWith(isFavorite: true)));
       _loadedForUid = uid;
     } catch (e) {
-      debugPrint('[FavoritesController] loadFavorites failed: $e');
+      if (kDebugMode) debugPrint('[FavoritesController] loadFavorites failed: $e');
       _favorites.clear();
       _loadedForUid = null;
     } finally {
@@ -76,18 +75,17 @@ class FavoritesController extends ChangeNotifier {
 
     try {
       if (alreadyFavorite) {
-        // Remove from Firestore first, then update local state only if successful
+        // Firestore-first: if the write fails the local state stays consistent.
         await _favoritesService.removeFavoriteJourney(journey.id);
         _favorites.removeWhere((item) => item.id == journey.id);
       } else {
-        // Add to Firestore first, then update local state only if successful
         await _favoritesService.addFavoriteJourney(favoriteJourney);
         _favorites.insert(0, favoriteJourney);
       }
 
       notifyListeners();
     } catch (e) {
-      debugPrint('toggleFavorite failed for ${journey.id}: $e');
+      if (kDebugMode) debugPrint('toggleFavorite failed for ${journey.id}: $e');
       rethrow;
     }
   }
@@ -97,8 +95,9 @@ class FavoritesController extends ChangeNotifier {
   }
 
   @override
-  void dispose() {
-    // Singleton - prevent dispose to avoid assertion failures
-    // when listeners exist during hot reload or app restart
+  void dispose() { // ignore: must_call_super
+    // Singleton — intentionally skips super.dispose(). Calling it would mark
+    // this ChangeNotifier as dead and make every subsequent notifyListeners()
+    // throw.
   }
 }

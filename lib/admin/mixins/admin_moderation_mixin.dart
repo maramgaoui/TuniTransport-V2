@@ -1,28 +1,31 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
+import 'package:tuni_transport/constants/firestore_collections.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/services/admin_user_service.dart';
 import 'package:tuni_transport/controllers/auth_controller.dart';
+import 'package:tuni_transport/utils/role_guard.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 mixin AdminModerationMixin<T extends StatefulWidget> on State<T> {
-  AdminUserService get _adminUserService => AdminUserService();
+  final AdminUserService _adminUserService = GetIt.I<AdminUserService>();
 
   Future<bool> _targetIsPrivileged(String userId) async {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('admins')
+      final firestore = GetIt.I<FirebaseFirestore>();
+      final doc = await firestore
+          .collection(Col.admins)
           .doc(userId)
           .get();
       if (doc.exists) return true;
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
+      final userDoc = await firestore
+          .collection(Col.users)
           .doc(userId)
           .get();
-      final role = userDoc.data()?['role']?.toString() ?? '';
-      return role == 'admin' || role == 'super_admin';
+      final role = userDoc.data()?['role']?.toString();
+      return RoleGuard.isPrivileged(role);
     } on FirebaseException {
-      // If the privilege check fails due to a network error, deny the action
-      // rather than risk moderating an admin account.
+      // Network failure: deny the action rather than risk moderating an admin.
       return true;
     }
   }
@@ -34,7 +37,6 @@ mixin AdminModerationMixin<T extends StatefulWidget> on State<T> {
   }) async {
     final l10n = AppLocalizations.of(context)!;
     
-    // Prevent self-ban: check if target user is the current admin
     final currentUser = AuthController.instance.currentUser;
     if (currentUser != null && currentUser.uid == userId) {
       if (!context.mounted) return;
@@ -64,11 +66,11 @@ mixin AdminModerationMixin<T extends StatefulWidget> on State<T> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.userBannedDays(days))),
       );
-    } on FirebaseException catch (e) {
+    } on FirebaseException catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.message ?? l10n.firestoreUpdateError),
+          content: Text(l10n.firestoreUpdateError),
           backgroundColor: Colors.red,
         ),
       );
@@ -108,11 +110,11 @@ mixin AdminModerationMixin<T extends StatefulWidget> on State<T> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.userBlockedPermanently)),
       );
-    } on FirebaseException catch (e) {
+    } on FirebaseException catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.message ?? l10n.firestoreUpdateError),
+          content: Text(l10n.firestoreUpdateError),
           backgroundColor: Colors.red,
         ),
       );
@@ -155,11 +157,11 @@ mixin AdminModerationMixin<T extends StatefulWidget> on State<T> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.userUnblocked)),
       );
-    } on FirebaseException catch (e) {
+    } on FirebaseException catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.message ?? l10n.firestoreUpdateError),
+          content: Text(l10n.firestoreUpdateError),
           backgroundColor: Colors.red,
         ),
       );

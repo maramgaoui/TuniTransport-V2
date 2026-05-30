@@ -44,31 +44,32 @@ class BusService {
   factory BusService.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
-    final d = doc.data()!;
+    final d = doc.data();
+    if (d == null) throw StateError('BusService document ${doc.id} does not exist');
     final firstHub = _normalizeTimeValue(d['firstDepartureFromHub'] as String?);
     final firstSuburb = _normalizeTimeValue(d['firstDepartureFromSuburb'] as String?);
     final lastHub = _normalizeTimeValue(d['lastDepartureFromHub'] as String?);
     final lastSuburb = _normalizeTimeValue(d['lastDepartureFromSuburb'] as String?);
     return BusService(
       id: doc.id,
-      routeId: d['routeId'] ?? '',
-      hubStationId: d['hubStationId'],
-      destinationStationId: d['destinationStationId'],
-      lineNumber: d['lineNumber'] ?? '',
-      directionAr: d['directionAr'] ?? '',
+      routeId: (d['routeId'] as String?) ?? '',
+      hubStationId: d['hubStationId'] as String?,
+      destinationStationId: d['destinationStationId'] as String?,
+      lineNumber: (d['lineNumber'] as String?) ?? '',
+      directionAr: (d['directionAr'] as String?) ?? '',
       firstDepartureFromHub: firstHub,
       firstDepartureFromSuburb: firstSuburb,
       lastDepartureFromHub: lastHub,
       lastDepartureFromSuburb: lastSuburb,
-      peakFrequencyMinutes: d['peakFrequencyMinutes'],
-      operatingDays: List<int>.from(d['operatingDays'] ?? [0, 1, 2, 3, 4, 5, 6]),
-      season: d['season'] ?? '',
-      zone: d['zone'],
+      peakFrequencyMinutes: d['peakFrequencyMinutes'] as int?,
+      operatingDays: List<int>.from(d['operatingDays'] as List? ?? [0, 1, 2, 3, 4, 5, 6]),
+      season: (d['season'] as String?) ?? '',
+      zone: d['zone'] as String?,
       // Fix: TRANSTU urban fare is 0.500 DT. If price is missing in Firestore,
       // default to 0.5 for urbaine zone, else leave null.
       price: (d['price'] as num?)?.toDouble() ??
           ((d['zone'] == 'urbaine') ? 0.5 : null),
-      destinationNameFr: d['destinationNameFr'],
+      destinationNameFr: d['destinationNameFr'] as String?,
       estimatedTripDurationMinutes: (d['estimatedTripDurationMinutes'] as num?)?.toInt(),
       isActive: (d['isActive'] ?? true) == true,
     );
@@ -128,6 +129,7 @@ class BusService {
 
     // If we have no schedule data, just return the raw first departure string.
     if (first == null || freq == null) return firstDepartureFromHub;
+    if (freq <= 0) return null;
 
     // Truncate to the minute to avoid sub-minute boundary edge cases.
     final nowMinutes = t.hour * 60 + t.minute;
@@ -156,6 +158,7 @@ class BusService {
     final freq = peakFrequencyMinutes;
 
     if (first == null || freq == null) return firstDepartureFromSuburb;
+    if (freq <= 0) return null;
 
     // Truncate to the minute to avoid sub-minute boundary edge cases.
     final nowMinutes = t.hour * 60 + t.minute;

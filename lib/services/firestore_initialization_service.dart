@@ -1,96 +1,100 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:get_it/get_it.dart';
 import 'package:flutter/foundation.dart';
 import '../constants/firestore_collections.dart';
 
-/// Service to initialize and seed Firestore with TRANSTU data
+// Seeds TRANSTU hubs, destinations, and routes into Firestore on first launch.
+// No-ops if the stations collection is already populated.
 class FirestoreInitializationService {
-  static final FirestoreInitializationService _instance =
-      FirestoreInitializationService._internal();
+  static FirestoreInitializationService? _instance;
 
   final FirebaseFirestore _firestore;
   bool _isInitialized = false;
 
   factory FirestoreInitializationService({FirebaseFirestore? firestore}) {
-    return _instance;
+    return _instance ??= FirestoreInitializationService._internal(
+      firestore: firestore,
+    );
   }
 
-  FirestoreInitializationService._internal()
-      : _firestore = FirebaseFirestore.instance;
+  FirestoreInitializationService._internal({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? GetIt.I<FirebaseFirestore>();
 
-  /// Check if Firestore has been initialized with data
   Future<bool> get isInitialized async {
     if (_isInitialized) return true;
     
     try {
       final stationCount = await _firestore.collection(Col.stations).count().get();
-      _isInitialized = stationCount.count! > 0;
+      _isInitialized = (stationCount.count ?? 0) > 0;
       return _isInitialized;
     } catch (e) {
-      debugPrint('Error checking initialization: $e');
+      if (kDebugMode) debugPrint('Error checking initialization: $e');
       return false;
     }
   }
 
-  /// Initialize Firestore with TRANSTU data
   Future<void> initialize() async {
     if (_isInitialized) {
-      debugPrint('[FirestoreInit] Already initialized, skipping.');
+      if (kDebugMode) debugPrint('[FirestoreInit] Already initialized, skipping.');
       return;
     }
 
     try {
-      debugPrint('[FirestoreInit] Starting Firestore initialization...');
+      if (kDebugMode) debugPrint('[FirestoreInit] Starting Firestore initialization...');
       await _seedTranstuData();
       _isInitialized = true;
-      debugPrint('[FirestoreInit] Initialization complete!');
+      if (kDebugMode) debugPrint('[FirestoreInit] Initialization complete!');
     } catch (e) {
-      debugPrint('[FirestoreInit] Error during initialization: $e');
+      if (kDebugMode) debugPrint('[FirestoreInit] Error during initialization: $e');
       rethrow;
     }
   }
 
   Future<void> _seedTranstuData() async {
-    // Add TRANSTU hub stations
     final hubs = _getHubStations();
     final destinations = _getDestinationStations();
-    
-    debugPrint('[FirestoreInit] Adding ${hubs.length} hub stations...');
-    for (final entry in hubs.entries) {
-      await _firestore.collection(Col.stations).doc(entry.key).set(entry.value);
-    }
-
-    debugPrint('[FirestoreInit] Adding ${destinations.length} destination stations...');
-    for (final entry in destinations.entries) {
-      await _firestore.collection(Col.stations).doc(entry.key).set(entry.value);
-    }
-
-    // Add bus services and routes
     final routes = _getTranstuRoutes();
-    debugPrint('[FirestoreInit] Adding ${routes.length} bus routes...');
-    
+
+    final batch = _firestore.batch();
+
+    if (kDebugMode) debugPrint('[FirestoreInit] Batching ${hubs.length} hub stations...');
+    for (final entry in hubs.entries) {
+      batch.set(_firestore.collection(Col.stations).doc(entry.key), entry.value);
+    }
+
+    if (kDebugMode) debugPrint('[FirestoreInit] Batching ${destinations.length} destination stations...');
+    for (final entry in destinations.entries) {
+      batch.set(_firestore.collection(Col.stations).doc(entry.key), entry.value);
+    }
+
+    if (kDebugMode) debugPrint('[FirestoreInit] Batching ${routes.length} bus routes...');
     for (final entry in routes.entries) {
       final lineNumber = entry.key;
       final routeData = entry.value;
-      
-      final serviceDocId = 'transtu_line_$lineNumber';
-      await _firestore
-          .collection(Col.busServices)
-          .doc(serviceDocId)
-          .set(routeData['service']);
-      
-      // Add route stops
-      for (int i = 0; i < routeData['stops'].length; i++) {
-        await _firestore.collection(Col.routeStops).add({
-          'routeId': 'route_line_$lineNumber',
-          'stationId': routeData['stops'][i],
-          'stopOrder': i,
-          'stopName': routeData['stopNames'][i],
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+
+      batch.set(
+        _firestore.collection(Col.busServices).doc('transtu_line_$lineNumber'),
+        routeData['service'] as Map<String, dynamic>,
+      );
+
+      final stops = routeData['stops'] as List;
+      final stopNames = routeData['stopNames'] as List;
+      for (int i = 0; i < stops.length; i++) {
+        batch.set(
+          _firestore.collection(Col.routeStops).doc('route_stops_${lineNumber}_$i'),
+          {
+            'routeId': 'route_line_$lineNumber',
+            'stationId': stops[i],
+            'stopOrder': i,
+            'stopName': stopNames[i],
+            'createdAt': FieldValue.serverTimestamp(),
+          },
+        );
       }
     }
 
-    debugPrint('[FirestoreInit] Firestore seeding complete!');
+    await batch.commit();
+    if (kDebugMode) debugPrint('[FirestoreInit] Firestore seeding complete!');
   }
 
   Map<String, Map<String, dynamic>> _getHubStations() {

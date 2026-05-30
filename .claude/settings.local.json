@@ -19,7 +19,13 @@
       "Bash(firebase deploy *)",
       "Read(//c/Users/Snaws/Downloads/**)",
       "Read(//c/Users/Snaws/**)",
-      "Bash(ls /mnt/c/Users/Snaws/Downloads/ | grep -i latex)"
+      "Bash(ls /mnt/c/Users/Snaws/Downloads/ | grep -i latex)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Snaws\\\\Desktop\\\\TuniTransport-V2\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Snaws\\\\Desktop\\\\TuniTransport-V2\\\\scripts\" -File -Exclude node_modules)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(flutter gen-l10n *)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

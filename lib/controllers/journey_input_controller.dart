@@ -82,7 +82,7 @@ class JourneyInputController {
       final remote = await _stationRepository.searchStationsByName(trimmedQuery);
       return remote.isNotEmpty ? remote.first : null;
     } catch (e) {
-      debugPrint('[JourneyInputController] Remote search failed for "$trimmedQuery": $e');
+      if (kDebugMode) debugPrint('[JourneyInputController] Remote search failed for "$trimmedQuery": $e');
       return null;
     }
   }

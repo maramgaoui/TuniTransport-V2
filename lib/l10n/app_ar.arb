@@ -194,10 +194,12 @@
   "searchByNameOrEmail": "البحث بالاسم أو البريد الإلكتروني…",
   "filterAll": "الكل",
   "filterActive": "نشط",
+  "filterInactive": "غير نشط",
   "filterBanned": "محظور مؤقت",
   "filterBlocked": "محظور دائم",
   "noUsersFound": "لا يوجد مستخدمون.",
   "noUsersMatchFilter": "لا يوجد مستخدمون يطابقون الفلتر الحالي.",
+  "noJourneysMatchFilter": "لا توجد رحلات تطابق هذا البحث.",
   "statusActive": "الحالة: نشط",
   "statusBlocked": "الحالة: محظور دائم",
   "statusBannedUntil": "الحالة: محظور حتى {date}",
@@ -364,6 +366,7 @@
   "authErrorGeneric": "حدث خطأ في المصادقة. يرجى المحاولة مرة أخرى.",
   "authErrorAccountCreationFailed": "تعذر إنشاء حساب المستخدم.",
   "authErrorPasswordResetFailed": "تعذر إرسال البريد الإلكتروني. يرجى التحقق من عنوان بريدك الإلكتروني.",
+  "authErrorAccountDeactivated": "تم تعطيل حسابك من قبل المسؤول. يرجى التواصل مع الدعم للمزيد من المعلومات.",
   "useCurrentLocationButton": "استخدم موقعي الحالي",
   "disableCurrentLocation": "تعطيل الموقع الحالي",
   "journeySearchResolutionFailed": "تعذر إتمام البحث. يرجى التحقق من المحطات المدخلة.",
@@ -382,5 +385,35 @@
       "suggestions": {}
     }
   },
-  "results": "النتائج"
+  "results": "النتائج",
+  "routeMap": "خريطة المسار",
+  "lineLabel": "خط",
+  "legendStart": "بداية",
+  "legendStop": "محطة",
+  "legendEnd": "نهاية",
+  "failedToLoadOlderMessages": "تعذّر تحميل الرسائل القديمة.",
+  "reasonBestPrice": "أفضل سعر",
+  "reasonFastest": "الأسرع",
+  "reasonBestOverall": "الأفضل عموماً",
+  "departureStationLabel": "محطة المغادرة",
+  "arrivalStationLabel": "محطة الوصول",
+  "tripDurationLabel": "مدة الرحلة",
+  "tariffLabel": "التعريفة",
+  "onDemand": "عند الطلب",
+  "noServiceTonightPrefix": "لا خدمة الليلة. الرحلة القادمة غداً في ",
+  "routeTemporarilyDisabled": "المسار معطّل مؤقتاً",
+  "moreDetails": "مزيد من التفاصيل",
+  "sendTooFast": "يرجى الانتظار قبل الإرسال مجدداً.",
+  "sendNotificationCooldown": "يرجى الانتظار {seconds} ثوانٍ قبل الإرسال.",
+  "@sendNotificationCooldown": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
+  "sendNotificationResend": "إعادة الإرسال خلال {seconds}ث",
+  "@sendNotificationResend": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  }
 }

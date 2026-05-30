@@ -70,8 +70,6 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
     return dt;
   }
 
-  // ── Journey status ────────────────────────────────────────────────────────
-
   bool get _hasStarted {
     final dep = _departureDateTime;
     return dep == null || !DateTime.now().isBefore(dep);
@@ -134,8 +132,6 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
   }
 
   Future<void> _onTerminer() async {
-    // Show rating sheet first, then clear journey and navigate away.
-    await _showRatingSheet();
     await ActiveJourneyService.instance.clearActiveJourney();
     if (!mounted) return;
     context.go('/home/journey-input');
@@ -177,7 +173,6 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // ── Header ──────────────────────────────────────────────────────
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(8, 16, 16, 16),
@@ -193,7 +188,13 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () => context.go('/home/journey-input'),
+                        onPressed: () {
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/home/journey-input');
+                          }
+                        },
                       ),
                       const Expanded(
                         child: Text(
@@ -262,7 +263,6 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
               ),
             ),
 
-            // ── Body ────────────────────────────────────────────────────────
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
@@ -360,7 +360,7 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // End journey — shows rating then navigates
+                    // End journey — clears active journey and navigates home
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
@@ -390,8 +390,6 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
     );
   }
 }
-
-// ── Supporting widgets ────────────────────────────────────────────────────────
 
 class _InfoCard extends StatelessWidget {
   final List<Widget> children;

@@ -69,7 +69,7 @@ class _SendNotificationsScreenState extends State<SendNotificationsScreen> {
 
     if (_cooldownRemainingSeconds > 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please wait $_cooldownRemainingSeconds seconds before sending again.')),
+        SnackBar(content: Text(l10n.sendNotificationCooldown(_cooldownRemainingSeconds))),
       );
       return;
     }
@@ -253,7 +253,7 @@ class _SendNotificationsScreenState extends State<SendNotificationsScreen> {
                           _isSending
                               ? l10n.sendingInProgress
                               : (_cooldownRemainingSeconds > 0
-                                  ? 'Resend in ${_cooldownRemainingSeconds}s'
+                                  ? l10n.sendNotificationResend(_cooldownRemainingSeconds)
                                   : l10n.sendNotificationAction),
                         ),
                       ),
@@ -296,7 +296,7 @@ class _SendNotificationsScreenState extends State<SendNotificationsScreen> {
                     final data = doc.data();
                     final title = (data['title'] ?? '').toString();
                     final message = (data['message'] ?? '').toString();
-                    final recipients = (data['recipientsCount'] ?? 0) as int;
+                    final recipients = ((data['recipientsCount'] ?? 0) as num).toInt();
                     final ts = data['createdAt'];
                     final sentAt =
                         ts is Timestamp ? ts.toDate() : DateTime.now();

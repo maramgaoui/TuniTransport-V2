@@ -1,20 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:get_it/get_it.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:tuni_transport/widgets/time_text.dart';
 import '../services/active_journey_service.dart';
 import '../services/map_routing_service.dart';
-import '../services/recommendation_service.dart';
 import '../services/taxi_collectif_service.dart';
-import '../controllers/favorites_controller.dart';
 import '../theme/app_theme.dart';
 import '../models/journey_model.dart';
 import '../models/metro_sahel_result.dart';
 import '../constants/firestore_collections.dart';
-import '../widgets/rating_sheet.dart';
+import '../utils/text_normalizer.dart';
 
 class JourneyDetailsScreen extends StatefulWidget {
   final Journey? journey;
@@ -42,8 +40,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
   /// True when this details screen is showing a TRANSTU bus journey.
   bool get _isTranstuBus =>
       widget.journey != null && widget.journey!.type == 'Bus TRANSTU';
-
-  // ── Transport colour theme ────────────────────────────────────────────────
 
   List<Color> get _themeGradient {
     if (widget.metroResult != null) {
@@ -100,7 +96,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
   Future<void> _loadIntermediateStops() async {
     try {
       final metro = widget.metroResult!;
-      final db = FirebaseFirestore.instance;
+      final db = GetIt.I<FirebaseFirestore>();
 
       String routeId;
       if (metro.lineType == 'banlieue_sud') {
@@ -248,10 +244,10 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
             '${(displayMin ~/ 60).toString().padLeft(2, '0')}:${(displayMin % 60).toString().padLeft(2, '0')}$overflow';
 
         stops.add(_StopInfo(
-          name: data['name'] ?? stationId,
+          name: (data['name'] as String?) ?? stationId,
           time: timeStr,
-          lat: (data['latitude'] ?? 0.0).toDouble(),
-          lng: (data['longitude'] ?? 0.0).toDouble(),
+          lat: (data['latitude'] as num?)?.toDouble() ?? 0.0,
+          lng: (data['longitude'] as num?)?.toDouble() ?? 0.0,
         ));
       }
 
@@ -273,7 +269,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
   /// Loads route stops for a TRANSTU bus journey from Firestore.
   Future<void> _loadTranstuStops() async {
     try {
-      final db = FirebaseFirestore.instance;
+      final db = GetIt.I<FirebaseFirestore>();
       // Derive routeId: Journey.id is 'bus_svc_route_transtu_...' → 'route_transtu_...'
       String routeId;
       if (_journey.id.startsWith('bus_svc_')) {
@@ -338,10 +334,10 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
         final timeStr =
             '${(arr ~/ 60).toString().padLeft(2, '0')}:${(arr % 60).toString().padLeft(2, '0')}';
         stops.add(_StopInfo(
-          name: data['name'] ?? sorted[i].data()['stationId'],
+          name: (data['name'] as String?) ?? (sorted[i].data()['stationId'] as String? ?? ''),
           time: timeStr,
-          lat: (data['latitude'] ?? 0.0).toDouble(),
-          lng: (data['longitude'] ?? 0.0).toDouble(),
+          lat: (data['latitude'] as num?)?.toDouble() ?? 0.0,
+          lng: (data['longitude'] as num?)?.toDouble() ?? 0.0,
         ));
       }
 
@@ -372,8 +368,8 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
 
     if (servicesSnap.docs.isEmpty) return ('', null);
 
-    final departure = _normalizeText(_journey.departureStation);
-    final arrival = _normalizeText(_journey.arrivalStation);
+    final departure = TextNormalizer.normalize(_journey.departureStation);
+    final arrival = TextNormalizer.normalize(_journey.arrivalStation);
 
     int bestScore = -1;
     String bestRouteId = '';
@@ -384,7 +380,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       final hubId = (data['hubStationId'] as String?) ?? '';
       final destId = (data['destinationStationId'] as String?) ?? '';
       final destinationNameFr =
-          _normalizeText((data['destinationNameFr'] as String?) ?? '');
+          TextNormalizer.normalize((data['destinationNameFr'] as String?) ?? '');
 
       final ids = <String>{hubId, destId}.where((id) => id.isNotEmpty).toList();
       final stationSnapshots = await Future.wait(
@@ -395,15 +391,15 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       String destName = '';
       for (int i = 0; i < ids.length; i++) {
         final stationData = stationSnapshots[i].data();
-        final name = _normalizeText((stationData?['name'] as String?) ?? '');
+        final name = TextNormalizer.normalize((stationData?['name'] as String?) ?? '');
         if (ids[i] == hubId) hubName = name;
         if (ids[i] == destId) destName = name;
       }
 
       var score = 0;
-      if (_textMatches(hubName, departure)) score += 2;
-      if (_textMatches(destName, arrival)) score += 2;
-      if (_textMatches(destinationNameFr, arrival)) score += 1;
+      if (hubName.isNotEmpty && departure.isNotEmpty && (hubName == departure || hubName.contains(departure) || departure.contains(hubName))) score += 2;
+      if (destName.isNotEmpty && arrival.isNotEmpty && (destName == arrival || destName.contains(arrival) || arrival.contains(destName))) score += 2;
+      if (destinationNameFr.isNotEmpty && arrival.isNotEmpty && (destinationNameFr == arrival || destinationNameFr.contains(arrival) || arrival.contains(destinationNameFr))) score += 1;
 
       if (score > bestScore) {
         bestScore = score;
@@ -419,19 +415,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     final cleaned = rawLine.replaceAll('Ligne', '').trim();
     if (cleaned.isEmpty) return '';
     return cleaned;
-  }
-
-  String _normalizeText(String input) {
-    return input
-        .toLowerCase()
-        .replaceAll(RegExp(r"[^a-z0-9\u0600-\u06FF\s]"), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-  }
-
-  bool _textMatches(String a, String b) {
-    if (a.isEmpty || b.isEmpty) return false;
-    return a == b || a.contains(b) || b.contains(a);
   }
 
   int _parseMinutes(String timeStr) {
@@ -676,7 +659,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
 
       // Try Firestore first so admin-updated coordinates are respected.
       Future<LatLng?> fetchCoords(String cityId) async {
-        final snap = await FirebaseFirestore.instance
+        final snap = await GetIt.I<FirebaseFirestore>()
             .collection(Col.stations)
             .where('cityId', isEqualTo: cityId)
             .limit(5)
@@ -723,52 +706,9 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     }
   }
 
-  Future<void> _shareJourney() async {
-    final metro = widget.metroResult;
-    final shareText = StringBuffer();
-
-    if (metro != null) {
-      final isBus = metro.lineType == 'sts_sahel';
-      shareText
-        ..writeln('${isBus ? '🚌' : '🚆'} ${metro.operatorName}')
-        ..writeln('${metro.fromStationName} → ${metro.toStationName}')
-        ..writeln('${isBus ? 'Bus N°' : 'Train N°'}${metro.tripNumberStr ?? metro.tripNumber}')
-        ..writeln('Départ: ${metro.departureTime}')
-        ..writeln(
-            'Arrivée: ${metro.noTrainToday ? "Demain" : metro.arrivalTime}')
-        ..writeln('Durée: ${metro.durationMinutes} min')
-        ..writeln('Prix: ${metro.price.toStringAsFixed(3)} TND')
-        ..writeln('Arrêts: ${metro.numberOfStops}')
-        ..writeln('☎️ ${metro.operatorPhone}');
-    } else {
-      final j = _journey;
-      shareText
-        ..writeln('🚌 Bus TRANSTU – ${j.line}')
-        ..writeln('${j.departureStation} → ${j.arrivalStation}')
-        ..writeln('Premier départ: $_displayFirstDeparture');
-      if (_displayLastDeparture != null) {
-        shareText.writeln('Dernier départ: $_displayLastDeparture');
-      }
-      shareText
-        ..writeln(j.duration.isNotEmpty ? j.duration : '')
-        ..writeln('Prix: ${j.price} TND');
-    }
-
-    try {
-      await Share.share(shareText.toString());
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Impossible de partager ce trajet.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
 
   Future<String?> _resolveSncftMainlineRouteId(MetroSahelResult metro) async {
-    final db = FirebaseFirestore.instance;
+    final db = GetIt.I<FirebaseFirestore>();
     const candidateRoutes = [
       'route_sncft_l5_forward',
       'route_sncft_l5_reverse',
@@ -808,7 +748,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
   }
 
   Future<String?> _resolveStsSahelRouteId(MetroSahelResult metro) async {
-    final db = FirebaseFirestore.instance;
+    final db = GetIt.I<FirebaseFirestore>();
     const candidateRoutes = [
       'route_sts_mahdia_sousse_basic',
       'route_sts_sousse_mahdia_basic',
@@ -857,8 +797,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     }
     return fallbackRouteId;
   }
-
-  // ── Bus details panel ─────────────────────────────────────────────────────
 
   Widget _buildBusDetailsPanel() {
     final j = _journey;
@@ -957,41 +895,8 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     );
   }
 
-  // ── Rating sheet ─────────────────────────────────────────────────────────
-
-  static String _iconKeyToTransportType(String iconKey) {
-    switch (iconKey) {
-      case 'bus':
-        return 'transtu_bus';
-      case 'taxi':
-        return 'taxi_collectif';
-      case 'train':
-        return 'sncft';
-      default:
-        return 'metro_sahel';
-    }
-  }
-
-  Future<void> _showRatingSheet(BuildContext ctx, Journey journey) {
-    final metro = widget.metroResult;
-    return showModalBottomSheet(
-      context: ctx,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      isDismissible: true,
-      builder: (_) => RatingSheet(
-        journey: journey,
-        fromStationId: metro?.fromStationId,
-        toStationId: metro?.toStationId,
-        transportType: metro != null
-            ? RecommendationService.lineTypeToTransportType(metro.lineType)
-            : _iconKeyToTransportType(journey.iconKey),
-      ),
-    );
-  }
 
 
-  // ── Section header ────────────────────────────────────────────────────────
 
   Widget _sectionHeader(String title) {
     return Padding(
@@ -1006,8 +911,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       ),
     );
   }
-
-  // ── Shadow card wrapper used for each info section ────────────────────────
 
   Widget _sectionCard(Widget child) {
     return Container(
@@ -1028,8 +931,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     );
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final metro = widget.metroResult;
@@ -1037,7 +938,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     final isTaxi = !isMetro && _journey.iconKey == 'taxi';
     final isStusBus = isMetro && metro.lineType == 'sts_sahel';
 
-    // ── Derive transport display names ──────────────────────────────────────
     final String transportName = isMetro
         ? (isStusBus ? 'Bus' : 'Train')
         : isTaxi
@@ -1060,7 +960,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
             ? Icons.local_taxi
             : Icons.directions_bus;
 
-    // ── Duration string ─────────────────────────────────────────────────────
     final String durationStr = isMetro
         ? '${metro.durationMinutes} min'
         : _journey.estimatedTripDurationMinutes != null
@@ -1069,7 +968,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                 ? _journey.duration
                 : '--';
 
-    // ── Price string ────────────────────────────────────────────────────────
     final String priceStr = isMetro
         ? '${metro.price.toStringAsFixed(3)} TND'
         : '${_journey.price} TND';
@@ -1078,7 +976,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // ── Header ───────────────────────────────────────────────────────
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(4, 12, 8, 16),
@@ -1137,30 +1034,15 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                     ),
                     const SizedBox(width: 4),
                   ],
-                  // ⭐ and 📤 only for taxi — hidden for train and bus
-                  if (isTaxi) ...[
-                    IconButton(
-                      icon: const Icon(Icons.star_border, color: Colors.white),
-                      tooltip: 'Évaluer',
-                      onPressed: () => _showRatingSheet(context, _journey),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.ios_share, color: Colors.white),
-                      tooltip: 'Partager',
-                      onPressed: _shareJourney,
-                    ),
-                  ],
                 ],
               ),
             ),
 
-            // ── Scrollable content ────────────────────────────────────────────
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Map (250 px) — shown for all modes ─────────────────
                     SizedBox(
                       height: 250,
                       child: _stopsLoading
@@ -1182,7 +1064,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                                     urlTemplate:
                                         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                                     userAgentPackageName:
-                                        'com.example.tunitransport',
+                                        'com.tunitranspo.app',
                                     maxNativeZoom: 19,
                                   ),
                                   if (_buildPolylines().isNotEmpty)
@@ -1195,7 +1077,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                             ),
                     ),
 
-                    // ── Informations du trajet ────────────────────────────────
                     _sectionHeader('Informations du trajet'),
                     _sectionCard(
                       Column(
@@ -1288,7 +1169,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                       ),
                     ),
 
-                    // ── Étapes du trajet ────────────────────────────────────
                     _sectionHeader('Étapes du trajet'),
                     _sectionCard(
                       _stopsLoading
@@ -1321,7 +1201,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                                     ),
                     ),
 
-                    // ── Tarif ───────────────────────────────────────────────
                     _sectionHeader('Tarif'),
                     _sectionCard(
                       Row(
@@ -1342,7 +1221,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                     ),
 
 
-                    // ── Fréquence — bus only ─────────────────────────────────
                     if (_isTranstuBus && _resolvedBusFrequencyMinutes != null) ...[
                       _sectionHeader('Fréquence'),
                       _sectionCard(
@@ -1360,14 +1238,11 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                       ),
                     ],
 
-                    // ── Actions ──────────────────────────────────────────────
                     _sectionHeader('Actions'),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
                         children: [
-
-                          // ── Commencer le trajet — all modes ──────────────────
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
@@ -1402,77 +1277,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                           ),
                           const SizedBox(height: 10),
 
-                          // Favoris + Partager — side by side
-                          Row(
-                            children: [
-                              Expanded(
-                                child: AnimatedBuilder(
-                                  animation: FavoritesController.instance,
-                                  builder: (bCtx, _) {
-                                    final isFav = FavoritesController.instance
-                                        .isFavorite(_journey.id);
-                                    return OutlinedButton.icon(
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: isFav
-                                            ? Colors.red
-                                            : AppTheme.mediumGrey,
-                                        side: BorderSide(
-                                          color: isFav
-                                              ? Colors.red.shade200
-                                              : AppTheme.lightGrey,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 12),
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12)),
-                                      ),
-                                      onPressed: () async {
-                                        try {
-                                          await FavoritesController.instance
-                                              .toggleFavorite(_journey);
-                                          if (!bCtx.mounted) return;
-                                          final nowFav =
-                                              FavoritesController.instance
-                                                  .isFavorite(_journey.id);
-                                          ScaffoldMessenger.of(bCtx)
-                                              .showSnackBar(SnackBar(
-                                            content: Text(nowFav
-                                                ? 'Ajouté aux favoris'
-                                                : 'Retiré des favoris'),
-                                            duration:
-                                                const Duration(seconds: 2),
-                                          ));
-                                        } catch (_) {}
-                                      },
-                                      icon: Icon(isFav
-                                          ? Icons.favorite_rounded
-                                          : Icons.favorite_border_rounded),
-                                      label: Text(isFav ? 'Favoris ♥' : 'Favoris'),
-                                    );
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppTheme.mediumGrey,
-                                    side: const BorderSide(
-                                        color: AppTheme.lightGrey),
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(12)),
-                                  ),
-                                  onPressed: _shareJourney,
-                                  icon: const Icon(Icons.ios_share),
-                                  label: const Text('Partager'),
-                                ),
-                              ),
-                            ],
-                          ),
                         ],
                       ),
                     ),
@@ -1487,8 +1291,6 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       ),
     );
   }
-
-  // ── Départ / Arrivée row ──────────────────────────────────────────────────
 
   Widget _infoRow({
     required String label,
@@ -1670,5 +1472,4 @@ class _StopInfo {
   });
 }
 
-// ── Rating bottom sheet ────────────────────────────────────────────────────
 

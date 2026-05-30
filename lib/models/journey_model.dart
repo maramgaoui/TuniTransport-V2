@@ -6,7 +6,7 @@ class Journey {
   final String price;
   final bool isFavorite;
 
-  // Additional metadata used by current UI screens.
+  // Extra metadata used by UI screens — kept flat for favorites JSON serialization.
   final String type;
   final String iconKey;
   final String? arrivalTime;
@@ -43,7 +43,7 @@ class Journey {
     this.timetableLastDepartureTime,
   });
 
-  // Backward-compatible aliases used by existing screens.
+  // Backward-compat aliases; prefer departureTime/arrivalTime in new code.
   String get departure => departureTime;
   String get arrival => arrivalTime ?? '';
 
@@ -92,6 +92,11 @@ class Journey {
           timetableLastDepartureTime ?? this.timetableLastDepartureTime,
     );
   }
+
+  @override
+  String toString() =>
+      'Journey(id: $id, $departureStation→$arrivalStation, '
+      'dep: $departureTime, type: $type, operator: $operator)';
 
   factory Journey.fromJson(Map<String, dynamic> json) {
     return Journey(

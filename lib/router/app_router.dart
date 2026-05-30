@@ -57,7 +57,6 @@ class AppRouter {
   }) {
     final refresh = _GoRouterRefreshStream(authController.authStateChanges);
 
-    // Admin route — no sensitive data in URL (#25).
     const adminLocation = '/admin';
     const superAdminLoginLocation = '/super-admin/login';
 
@@ -90,10 +89,21 @@ class AppRouter {
           return '/auth';
         }
 
-        // Single resolveSession call covers user / admin / super_admin.
-        // On a transient Firestore failure (weak signal, cold start) keep the
-        // user where they are rather than kicking them to /auth. Splash is the
-        // only exception — it has no UI to show, so fall back to /auth there.
+        // Fast path: for home tab switching, use the in-memory cached session
+        // directly without hitting Firestore or even awaiting a microtask.
+        // This eliminates ANR caused by piling up redirect microtasks on rapid
+        // tab presses.
+        if (path.startsWith('/home')) {
+          final cached = authController.cachedSession;
+          if (cached != null) {
+            final actingAsUser = authController.isActingAsUser;
+            if (cached.isUser || actingAsUser) return null;
+            if (cached.isPrivileged && !actingAsUser) return adminLocation;
+          }
+        }
+
+        // On a transient Firestore failure, keep the user where they are.
+        // Splash is the only exception — it has no UI, so fall back to /auth.
         SessionResult session;
         try {
           session = await authController.resolveSession(user);
@@ -107,7 +117,6 @@ class AppRouter {
 
         final actingAsUser = authController.isActingAsUser;
 
-        // ── Super admin (in admin mode) ──────────────────────────────────────
         if (session.isSuperAdmin && !actingAsUser) {
           if (path == '/splash') {
             if (savedRoute != null &&
@@ -125,7 +134,6 @@ class AppRouter {
           return null;
         }
 
-        // ── Admin (in admin mode) ────────────────────────────────────────────
         if (session.isAdmin && !actingAsUser) {
           if (path == '/splash') {
             if (savedRoute != null &&
@@ -142,15 +150,13 @@ class AppRouter {
           return null;
         }
 
-        // ── Privileged user acting as regular user ───────────────────────────
-        // Block access back to privileged areas while in user mode.
+        // Privileged user in user mode — block them from navigating back to admin areas.
         if (actingAsUser && session.isPrivileged) {
           if (path.startsWith('/admin') || isSuperAdminRoute) {
             return '/home/journey-input';
           }
         }
 
-        // ── Regular user (or privileged acting as user) ──────────────────────
         if (path.startsWith('/admin')) return '/home/journey-input';
         if (isSuperAdminRoute && path != superAdminLoginLocation) {
           return '/home/journey-input';
@@ -178,8 +184,7 @@ class AppRouter {
           path: '/auth',
           builder: (context, state) => const AuthScreen(),
         ),
-        // All /home/* tab routes render HomeScreen, which derives the
-        // active tab from GoRouterState.uri.path — so deep links work.
+        // All /home/* tabs render the same HomeScreen; it derives the active tab from the path.
         for (final tabPath in const [
           '/home',
           '/home/journey-input',
@@ -268,7 +273,7 @@ class AppRouter {
             final extra = state.extra;
             if (extra is Map<String, dynamic>) {
               return RouteMapScreen(
-                stationIds: List<String>.from(extra['stationIds'] ?? []),
+                stationIds: List<String>.from(extra['stationIds'] as List? ?? []),
                 routeTitle: extra['routeTitle']?.toString(),
                 lineNumber: extra['lineNumber']?.toString(),
               );

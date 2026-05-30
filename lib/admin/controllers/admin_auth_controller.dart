@@ -5,6 +5,8 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/firestore_collections.dart';
+import '../../utils/firebase_error_handler.dart';
+import '../../utils/role_guard.dart';
 
 class AdminAuthResult {
   final bool isAuthenticated;
@@ -36,9 +38,7 @@ class AdminAuthController {
   final FirebaseAuth _auth;
   final SharedPreferences? _sharedPreferences;
 
-  // ── Client-side brute-force protection ──────────────────────────────────────
-  // Firebase enforces server-side rate limiting, but a local counter gives
-  // immediate feedback and cuts unnecessary Auth round-trips while under attack.
+  // Client-side lockout: immediate feedback before Auth round-trip, 5 attempts then exponential back-off.
   static const int _kLockoutThreshold = 5;
   static const String _failedAttemptsKey = 'admin_auth.failed_attempts';
   static const String _lockedUntilEpochKey = 'admin_auth.locked_until_epoch';
@@ -110,7 +110,7 @@ class AdminAuthController {
     await _restoreLockoutStateIfNeeded();
 
     final sanitizedInput = emailOrMatricule.trim();
-    final sanitizedPassword = password.trim();
+    final sanitizedPassword = password;
 
     if (sanitizedInput.isEmpty || sanitizedPassword.isEmpty) {
       return const AdminAuthResult(
@@ -131,15 +131,12 @@ class AdminAuthController {
     }
 
     try {
-      // Auto-detect: real email (contains @) or legacy matricule.
-      // Accounts created via Cloud Function use {matricule}@admin.local.
-      // Accounts promoted from existing users keep their real email — we
-      // resolve that via the resolveAdminEmail Cloud Function as a fallback.
+      // Cloud Function accounts use {matricule}@admin.local; promoted users keep
+      // their real email — resolve via admin_login_lookup as a fallback.
       String email = sanitizedInput.contains('@')
           ? sanitizedInput
           : '${sanitizedInput.toLowerCase()}@admin.local';
 
-      // Sign in first — no unauthenticated Firestore read required.
       late UserCredential credential;
       try {
         credential = await _auth.signInWithEmailAndPassword(
@@ -147,11 +144,8 @@ class AdminAuthController {
           password: sanitizedPassword,
         );
       } on FirebaseAuthException catch (e) {
-        // If @admin.local lookup failed AND the input was a plain matricule,
-        // the admin may have been promoted from an existing account (their
-        // Firebase Auth email is their real email, not @admin.local).
-        // Check the admin_login_lookup collection (public read) for their
-        // real email, then retry.
+        // @admin.local failed → promoted admin using real email. Look up via
+        // admin_login_lookup (public read) and retry with the resolved email.
         if ((e.code == 'user-not-found' || e.code == 'invalid-credential') &&
             !sanitizedInput.contains('@')) {
           final lookupDoc = await _firestore
@@ -183,13 +177,12 @@ class AdminAuthController {
         );
       }
 
-      // Fetch admin profile — check unified users collection first (new schema),
-      // then fall back to legacy admins collection.
+      // Unified users collection first (new schema), legacy admins as fallback.
       Map<String, dynamic>? adminData;
 
       final userDoc = await _firestore.collection(Col.users).doc(uid).get();
       final userRole = userDoc.data()?['role']?.toString() ?? '';
-      if (userDoc.exists && (userRole == 'admin' || userRole == 'super_admin')) {
+      if (userDoc.exists && RoleGuard.isPrivileged(userRole)) {
         adminData = userDoc.data();
       } else {
         final adminDoc = await _firestore.collection(Col.admins).doc(uid).get();
@@ -203,6 +196,16 @@ class AdminAuthController {
         return const AdminAuthResult(
           isAuthenticated: false,
           errorMessage: 'Admin profile not found.',
+        );
+      }
+
+      // Block deactivated/suspended admin accounts.
+      final accountStatus = (adminData['status'] ?? 'active').toString();
+      if (accountStatus == 'suspended' || accountStatus == 'inactive') {
+        await _auth.signOut();
+        return const AdminAuthResult(
+          isAuthenticated: false,
+          errorMessage: 'Ce compte administrateur a été désactivé. Contactez un super administrateur.',
         );
       }
 
@@ -239,26 +242,14 @@ class AdminAuthController {
       }.contains(e.code)) {
         await _recordFailure();
       }
-      final message = switch (e.code) {
-        'user-not-found' ||
-        'invalid-password' ||
-        'wrong-password' ||
-        'invalid-credential' =>
-          'Invalid matricule or password.',
-        'too-many-requests' =>
-          'Too many login attempts. Please try again later.',
-        _ => e.message ?? 'Authentication error during admin login.',
-      };
-      return AdminAuthResult(isAuthenticated: false, errorMessage: message);
-    } on FirebaseException catch (e) {
       return AdminAuthResult(
         isAuthenticated: false,
-        errorMessage: e.message ?? 'Firestore error during admin login.',
+        errorMessage: FirebaseErrorHandler.getMessage(e),
       );
-    } catch (_) {
-      return const AdminAuthResult(
+    } catch (e) {
+      return AdminAuthResult(
         isAuthenticated: false,
-        errorMessage: 'Unexpected error during admin login.',
+        errorMessage: FirebaseErrorHandler.getMessage(e),
       );
     }
   }
@@ -273,11 +264,17 @@ class AdminAuthController {
   /// admin's real email by matricule and sends the Firebase reset link there
   /// (because admin Firebase Auth emails are non-deliverable @admin.local addresses).
   Future<void> sendPasswordResetRequest(String matricule) async {
-    final callable = FirebaseFunctions.instance
-        .httpsCallable('sendAdminPasswordReset');
-    await callable.call(<String, dynamic>{
-      'matricule': matricule.trim().toLowerCase(),
-    });
+    try {
+      final callable = FirebaseFunctions.instance
+          .httpsCallable('sendAdminPasswordReset');
+      await callable.call<dynamic>(<String, dynamic>{
+        'matricule': matricule.trim().toLowerCase(),
+      });
+    } on FirebaseFunctionsException catch (e) {
+      throw Exception('Password reset failed: ${e.message}');
+    } catch (_) {
+      throw Exception('Password reset request failed. Check your connection.');
+    }
   }
 
   Future<void> changePassword({
@@ -290,18 +287,18 @@ class AdminAuthController {
       throw const FormatException('No authenticated admin session found.');
     }
 
-    final sanitizedCurrent = currentPassword;
-    final sanitizedNew = newPassword;
+    final currentPwd = currentPassword;
+    final newPwd = newPassword;
 
-    if (sanitizedCurrent.trim().isEmpty || sanitizedNew.trim().isEmpty) {
+    if (currentPwd.trim().isEmpty || newPwd.trim().isEmpty) {
       throw const FormatException('Current password and new password are required.');
     }
 
-    if (sanitizedNew.length < 6) {
+    if (newPwd.length < 6) {
       throw const FormatException('New password must be at least 6 characters.');
     }
 
-    if (sanitizedCurrent == sanitizedNew) {
+    if (currentPwd == newPwd) {
       throw const FormatException('New password must be different from the current one.');
     }
 
@@ -317,7 +314,7 @@ class AdminAuthController {
     try {
       final credential = EmailAuthProvider.credential(
         email: email,
-        password: sanitizedCurrent,
+        password: currentPwd,
       );
 
       await user
@@ -325,8 +322,16 @@ class AdminAuthController {
           .timeout(const Duration(seconds: 10));
 
       await user
-          .updatePassword(sanitizedNew)
+          .updatePassword(newPwd)
           .timeout(const Duration(seconds: 10));
+
+      // Stamp audit field — non-blocking so a Firestore hiccup doesn't
+      // fail the password change that already succeeded in Firebase Auth.
+      _firestore
+          .collection(Col.users)
+          .doc(user.uid)
+          .update({'passwordChangedAt': FieldValue.serverTimestamp()})
+          .catchError((_) {});
 
       await user.reload();
     } on TimeoutException {

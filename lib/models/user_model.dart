@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class User {
   final String uid;
   final String email;
@@ -33,7 +35,6 @@ class User {
     this.permissions = const [],
   });
 
-  // Convert User to JSON for Firestore
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{
       'uid': uid,
@@ -54,41 +55,35 @@ class User {
     return map;
   }
 
-  // Create User from Firestore document
   factory User.fromMap(Map<String, dynamic> map) {
     DateTime? parsedBanUntil;
     final banRaw = map['banUntil'];
-    if (banRaw is DateTime) {
-      parsedBanUntil = banRaw;
+    if (banRaw is Timestamp) {
+      parsedBanUntil = banRaw.toDate();
     } else if (banRaw is String && banRaw.isNotEmpty) {
       parsedBanUntil = DateTime.tryParse(banRaw);
-    }
-    // Firestore Timestamp support (imported as dynamic from cloud_firestore)
-    if (banRaw != null && parsedBanUntil == null) {
-      try {
-        parsedBanUntil = (banRaw as dynamic).toDate() as DateTime;
-      } catch (_) {}
+    } else if (banRaw is DateTime) {
+      parsedBanUntil = banRaw;
     }
 
     return User(
-      uid: map['uid'] ?? '',
-      email: map['email'] ?? '',
-      username: map['username'],
-      firstName: map['firstName'],
-      lastName: map['lastName'],
-      avatarId: map['avatarId'],
-      customAvatarUrl: map['customAvatarUrl'],
-      city: map['city'],
-      status: (map['status'] ?? 'active').toString(),
+      uid: (map['uid'] as String?) ?? '',
+      email: (map['email'] as String?) ?? '',
+      username: map['username'] as String?,
+      firstName: map['firstName'] as String?,
+      lastName: map['lastName'] as String?,
+      avatarId: map['avatarId'] as String?,
+      customAvatarUrl: map['customAvatarUrl'] as String?,
+      city: map['city'] as String?,
+      status: (map['status'] as String?) ?? 'active',
       banUntil: parsedBanUntil,
-      role: (map['role'] ?? 'user').toString(),
+      role: (map['role'] as String?) ?? 'user',
       adminType: map['adminType'] as String?,
       matricule: map['matricule'] as String?,
-      permissions: List<String>.from(map['permissions'] ?? const <String>[]),
+      permissions: List<String>.from(map['permissions'] as List? ?? const <String>[]),
     );
   }
 
-  // Copy with method for updates
   User copyWith({
     String? uid,
     String? email,
@@ -124,7 +119,6 @@ class User {
     );
   }
 
-  // Get full name
   String get fullName {
     if (firstName != null && lastName != null) {
       return '$firstName $lastName';

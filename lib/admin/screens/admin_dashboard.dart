@@ -93,55 +93,56 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     return Scaffold(
       key: const Key('admin_dashboard_screen'),
-      appBar: AppBar(
-        title: Text(switch (_selectedIndex) {
-          0 => l10n.adminDashboard,
-          1 => l10n.messages,
-          2 => l10n.notifications,
-          _ => l10n.profile,
-        }),
-        automaticallyImplyLeading: false,
-        backgroundColor: AppTheme.primaryTeal,
-        foregroundColor: Colors.white,
-        actions: [
-          if (canShowProfileActions && !(profileState?.isEditing ?? false))
-            IconButton(
-              tooltip: l10n.edit,
-              icon: const Icon(Icons.edit),
-              onPressed: () => profileState?.startEditingFromParent(),
+      appBar: _selectedIndex == 1
+          ? null
+          : AppBar(
+              title: Text(switch (_selectedIndex) {
+                0 => l10n.adminDashboard,
+                2 => l10n.notifications,
+                _ => l10n.profile,
+              }),
+              automaticallyImplyLeading: false,
+              backgroundColor: AppTheme.primaryTeal,
+              foregroundColor: Colors.white,
+              actions: [
+                if (canShowProfileActions && !(profileState?.isEditing ?? false))
+                  IconButton(
+                    tooltip: l10n.edit,
+                    icon: const Icon(Icons.edit),
+                    onPressed: () => profileState?.startEditingFromParent(),
+                  ),
+                if (canShowProfileActions && (profileState?.isEditing ?? false))
+                  IconButton(
+                    tooltip: l10n.save,
+                    icon: (profileState?.isLoading ?? false)
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Icon(Icons.check),
+                    onPressed: (profileState?.isLoading ?? false)
+                        ? null
+                        : () => profileState?.submitEditsFromParent(),
+                  ),
+                if (canShowProfileActions)
+                  IconButton(
+                    tooltip: l10n.settings,
+                    icon: const Icon(Icons.settings),
+                    onPressed: () => profileState?.openSettingsFromParent(),
+                  ),
+                if (_selectedIndex != 3)
+                  IconButton(
+                    tooltip: l10n.profile,
+                    icon: const Icon(Icons.account_circle_outlined),
+                    onPressed: () => setState(() => _selectedIndex = 3),
+                  ),
+              ],
             ),
-          if (canShowProfileActions && (profileState?.isEditing ?? false))
-            IconButton(
-              tooltip: l10n.save,
-              icon: (profileState?.isLoading ?? false)
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Icon(Icons.check),
-              onPressed: (profileState?.isLoading ?? false)
-                  ? null
-                  : () => profileState?.submitEditsFromParent(),
-            ),
-          if (canShowProfileActions)
-            IconButton(
-              tooltip: l10n.settings,
-              icon: const Icon(Icons.settings),
-              onPressed: () => profileState?.openSettingsFromParent(),
-            ),
-          if (_selectedIndex != 3)
-            IconButton(
-              tooltip: l10n.profile,
-              icon: const Icon(Icons.account_circle_outlined),
-              onPressed: () => setState(() => _selectedIndex = 3),
-            ),
-        ],
-      ),
       body: IndexedStack(index: _selectedIndex, children: pages),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
@@ -317,13 +318,11 @@ class _DashboardTab extends StatelessWidget {
       _AdminAction(
         labelKey: (l) => l.manageAdmins,
         icon: Icons.badge_outlined,
-        isSuperAdminOnly: true,
         onTap: (ctx) => ctx.push('/admin/manage-admins'),
       ),
       _AdminAction(
         labelKey: (l) => l.globalPlatformSupervision,
         icon: Icons.monitor_outlined,
-        isSuperAdminOnly: true,
         onTap: (ctx) => ctx.push('/super-admin/dashboard?tab=supervision'),
       ),
     ];
@@ -393,7 +392,7 @@ class _DashboardTab extends StatelessWidget {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 const spacing = 12.0;
-                final cardHeight = (constraints.maxHeight - (spacing * 3)) / 4;
+                final cardHeight = (constraints.maxHeight - (spacing * (actions.length - 1))) / actions.length;
 
                 return ListView.separated(
                   padding: EdgeInsets.zero,
@@ -440,13 +439,11 @@ class _AdminAction {
     required this.labelKey,
     required this.icon,
     required this.onTap,
-    this.isSuperAdminOnly = false,
   });
 
   final String Function(AppLocalizations) labelKey;
   final IconData icon;
   final void Function(BuildContext) onTap;
-  final bool isSuperAdminOnly;
 }
 
 class _AdminNotificationsTab extends StatelessWidget {

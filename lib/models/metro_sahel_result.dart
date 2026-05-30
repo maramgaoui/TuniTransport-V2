@@ -49,7 +49,7 @@ class MetroSahelResult {
   /// Convert to Journey for favorites / active-journey compatibility.
   Journey toJourney() {
     return Journey(
-      id: '${lineType}_$tripNumber',
+      id: '${lineType}_${fromStationId}_${toStationId}_$departureTime',
       departureStation: fromStationName,
       arrivalStation: toStationName,
       departureTime: departureTime,
@@ -57,7 +57,7 @@ class MetroSahelResult {
       price: price.toStringAsFixed(3),
       type: operatorName,
       iconKey: 'train',
-      duration: '${durationMinutes} min',
+      duration: '$durationMinutes min',
       transfers: 0,
       isOptimal: true,
       operator: operatorName,

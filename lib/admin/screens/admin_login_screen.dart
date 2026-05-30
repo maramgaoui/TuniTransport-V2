@@ -1,11 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/admin/controllers/admin_auth_controller.dart';
 import 'package:tuni_transport/theme/app_theme.dart';
-import '../../constants/firestore_collections.dart';
+import 'package:tuni_transport/utils/firebase_error_handler.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -97,52 +95,19 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                             setDialogState(() => isSending = true);
 
                             try {
-                              String emailToReset;
-                              if (input.contains('@')) {
-                                emailToReset = input.toLowerCase();
-                              } else {
-                                // Promoted admin: look up real email from Firestore.
-                                final doc = await FirebaseFirestore.instance
-                                    .collection(Col.adminLoginLookup)
-                                    .doc(input.toLowerCase())
-                                    .get();
-                                final found =
-                                    (doc.data()?['email'] as String? ?? '').trim();
-                                if (found.isEmpty) {
-                                  // Fall back to @admin.local for legacy accounts.
-                                  emailToReset =
-                                      '${input.toLowerCase()}@admin.local';
-                                } else {
-                                  emailToReset = found;
-                                }
-                              }
-                              await FirebaseAuth.instance
-                                  .sendPasswordResetEmail(email: emailToReset);
+                              await _adminAuthController
+                                  .sendPasswordResetRequest(input);
                               setDialogState(() {
                                 isSending = false;
                                 isSuccess = true;
                                 resultMessage =
                                     'Si ce compte est enregistré, un lien de réinitialisation a été envoyé.';
                               });
-                            } on FirebaseAuthException catch (e) {
-                              final msg = switch (e.code) {
-                                'user-not-found' =>
-                                  'Aucun compte trouvé pour cet identifiant.',
-                                'invalid-email' => 'Adresse email invalide.',
-                                'too-many-requests' =>
-                                  'Trop de tentatives. Réessayez plus tard.',
-                                _ => e.message ?? 'Une erreur est survenue.',
-                              };
+                            } catch (e) {
                               setDialogState(() {
                                 isSending = false;
                                 isSuccess = false;
-                                resultMessage = msg;
-                              });
-                            } catch (_) {
-                              setDialogState(() {
-                                isSending = false;
-                                isSuccess = false;
-                                resultMessage = 'Une erreur est survenue. Réessayez.';
+                                resultMessage = FirebaseErrorHandler.getMessage(e);
                               });
                             }
                           },

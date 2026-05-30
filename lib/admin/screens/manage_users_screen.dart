@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/admin/widgets/admin_soft_card.dart';
 import 'package:tuni_transport/admin/mixins/admin_moderation_mixin.dart';
+import 'package:tuni_transport/constants/firestore_collections.dart';
 import 'package:tuni_transport/admin/mixins/admin_user_status_mixin.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -30,7 +31,6 @@ class ManageUsersScreen extends StatefulWidget {
 
 class _ManageUsersScreenState extends State<ManageUsersScreen>
   with AdminModerationMixin, AdminUserStatusMixin {
-  static const String _usersCollection = 'users';
 
   _UserFilter _activeFilter = _UserFilter.all;
   final TextEditingController _searchController = TextEditingController();
@@ -43,6 +43,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
   bool _hasMore = true;
   String? _loadError;
   String _searchQuery = '';
+  int _loadGen = 0;
 
   FirebaseFirestore get _firestore => widget.firestore ?? FirebaseFirestore.instance;
 
@@ -86,7 +87,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
     bool preferServerPrefixSearch = true,
   }) {
     Query<Map<String, dynamic>> query = _firestore
-        .collection(_usersCollection)
+        .collection(Col.users)
         .where('role', isEqualTo: 'user');
 
     final statusFilter = _statusValueFilter;
@@ -117,6 +118,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
   }
 
   Future<void> _loadInitialUsers() async {
+    final gen = ++_loadGen;
     setState(() {
       _isInitialLoading = true;
       _loadError = null;
@@ -139,23 +141,36 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
           preferServerPrefixSearch: false,
         ).get();
       }
-      if (!mounted) return;
+      if (!mounted || gen != _loadGen) return;
       setState(() {
         _loadedDocs.addAll(snapshot.docs);
         _lastDocument = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
         _hasMore = snapshot.docs.length == widget.pageSize;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || gen != _loadGen) return;
       setState(() {
         _loadError = e.toString();
       });
     } finally {
-      if (mounted) {
-        setState(() {
-          _isInitialLoading = false;
-        });
+      if (mounted && gen == _loadGen) {
+        setState(() => _isInitialLoading = false);
+        _maybeAutoFetchMore();
       }
+    }
+  }
+
+  /// When a search query is active, keeps fetching pages until the client-side
+  /// filtered count reaches at least [pageSize] results or there are no more
+  /// pages. This prevents the list from appearing empty just because the
+  /// current page happened to contain no matching documents.
+  void _maybeAutoFetchMore() {
+    if (!_hasMore || _isLoadingMore || _isInitialLoading || _searchQuery.isEmpty) {
+      return;
+    }
+    final visible = _loadedDocs.where((d) => _matchesFilters(d.data())).length;
+    if (visible < widget.pageSize) {
+      unawaited(_loadMoreUsers());
     }
   }
 
@@ -183,9 +198,17 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
         }
         _hasMore = snapshot.docs.length == widget.pageSize;
       });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Impossible de charger plus d\'utilisateurs.'),
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoadingMore = false);
+        _maybeAutoFetchMore();
       }
     }
   }
@@ -240,7 +263,6 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
       ),
       body: Column(
         children: [
-          // ── Search bar ──────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
             child: TextField(
@@ -280,7 +302,6 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
             ),
           ),
 
-          // ── Filter chips ────────────────────────────────────────────
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
@@ -324,7 +345,6 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
 
           const Divider(height: 1),
 
-          // ── User list ───────────────────────────────────────────────
           Expanded(
             child: Builder(
               builder: (context) {

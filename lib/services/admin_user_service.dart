@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../constants/firestore_collections.dart';
 import 'admin_notification_service.dart';
 import 'audit_log_service.dart';
 
@@ -14,8 +15,6 @@ class AdminUserService {
 
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
-  static const String _usersCollection = 'users';
-
   Future<void> _logAdminAction({
     required String action,
     required String targetUid,
@@ -33,7 +32,7 @@ class AdminUserService {
 
   Future<String> _resolveUsername(String userId) async {
     try {
-      final doc = await _firestore.collection(_usersCollection).doc(userId).get();
+      final doc = await _firestore.collection(Col.users).doc(userId).get();
       final data = doc.data() ?? {};
       final username = (data['username'] ?? '').toString().trim();
       if (username.isNotEmpty) return username;
@@ -46,7 +45,7 @@ class AdminUserService {
   Future<void> banUser(String userId, {required int days}) async {
     final until    = DateTime.now().add(Duration(days: days));
     final username = await _resolveUsername(userId);
-    await _firestore.collection(_usersCollection).doc(userId).update({
+    await _firestore.collection(Col.users).doc(userId).update({
       'status':   'banned',
       'banUntil': Timestamp.fromDate(until),
     });
@@ -60,7 +59,7 @@ class AdminUserService {
 
   Future<void> blockUser(String userId) async {
     final username = await _resolveUsername(userId);
-    await _firestore.collection(_usersCollection).doc(userId).update({
+    await _firestore.collection(Col.users).doc(userId).update({
       'status':   'blocked',
       'banUntil': null,
     });
@@ -74,7 +73,7 @@ class AdminUserService {
 
   Future<void> unblockUser(String userId) async {
     final username = await _resolveUsername(userId);
-    await _firestore.collection(_usersCollection).doc(userId).update({
+    await _firestore.collection(Col.users).doc(userId).update({
       'status':   'active',
       'banUntil': null,
     });

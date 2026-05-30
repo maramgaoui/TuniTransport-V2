@@ -18,7 +18,7 @@ class ActiveJourneyService extends ChangeNotifier {
   bool get hasActiveJourney => _activeJourney != null;
 
   Future<void> init() async {
-    _prefs ??= await SharedPreferences.getInstance();
+    _prefs = await SharedPreferences.getInstance();
     final raw = _prefs!.getString(_activeJourneyKey);
     if (raw == null || raw.isEmpty) {
       _activeJourney = null;
@@ -49,8 +49,9 @@ class ActiveJourneyService extends ChangeNotifier {
   }
 
   @override
-  void dispose() {
-    // Singleton - prevent dispose to avoid assertion failures
-    // when listeners exist during hot reload or app restart
+  void dispose() { // ignore: must_call_super
+    // Singleton — intentionally skips super.dispose(). Calling it would mark
+    // this ChangeNotifier as dead and make every subsequent notifyListeners()
+    // throw. For test teardown use resetForTesting() instead.
   }
 }

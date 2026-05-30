@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:avatar_plus/avatar_plus.dart';
 import 'package:tuni_transport/admin/mixins/admin_moderation_mixin.dart';
 import 'package:tuni_transport/admin/mixins/admin_user_status_mixin.dart';
@@ -64,6 +65,7 @@ class _ChatScreenState extends State<ChatScreen>
   bool _isLoadingMore = false;
   bool _hasMoreMessages = true;
   bool _isSending = false;
+  DateTime? _lastSentAt;
 
   List<QueryDocumentSnapshot<Map<String, dynamic>>> get _visibleMessages {
     final seen = <String>{};
@@ -106,16 +108,18 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   String get _adminDisplayName {
-    final fallback = (widget.adminRole?.trim().isNotEmpty ?? false)
-        ? 'Admin (${widget.adminRole!.trim()})'
-        : 'Admin';
+    final role = widget.adminRole?.trim();
+    final fallback = (role?.isNotEmpty ?? false) ? 'Admin ($role)' : 'Admin';
     final name = widget.adminName?.trim();
     if (name == null || name.isEmpty) return fallback;
     return name;
   }
 
   bool get _canParticipateInChat {
-    return _chatSessionUid != null;
+    if (_chatSessionUid == null) return false;
+    if (widget.isAdminMode) return true;
+    final status = _authController.currentUserStatus;
+    return status == null || status == 'active';
   }
 
   @override
@@ -162,7 +166,7 @@ class _ChatScreenState extends State<ChatScreen>
               _scheduleScrollToBottom();
             }
           },
-          onError: (error) {
+          onError: (Object error) {
             if (!mounted) return;
             setState(() {
               _isMessagesLoading = false;
@@ -235,6 +239,11 @@ class _ChatScreenState extends State<ChatScreen>
       setState(() {
         _messagesError = error;
       });
+      if (_visibleMessages.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.failedToLoadOlderMessages)),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -434,10 +443,26 @@ class _ChatScreenState extends State<ChatScreen>
     return value;
   }
 
+  String _sanitize(String input) {
+    return input.trim().replaceAll(RegExp(r'[<>]'), '');
+  }
+
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
 
     if (!_canParticipateInChat || text.isEmpty || _isSending) return;
+    if (_lastSentAt != null &&
+        DateTime.now().difference(_lastSentAt!) < const Duration(seconds: 2)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.sendTooFast),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+      return;
+    }
 
     // Ensure we have the current authenticated user's uid
     final authUid = _chatSessionUid;
@@ -472,7 +497,7 @@ class _ChatScreenState extends State<ChatScreen>
                   currentUser!.avatarId!.trim().isNotEmpty)
             ? currentUser.avatarId!.trim()
             : 'avatar-01',
-        'text': text,
+        'text': _sanitize(text),
         'timestamp': FieldValue.serverTimestamp(),
       };
 
@@ -485,6 +510,7 @@ class _ChatScreenState extends State<ChatScreen>
       }
 
       await _messagesRef.add(payload);
+      _lastSentAt = DateTime.now();
 
       if (!mounted) return;
       setState(() {
@@ -872,10 +898,9 @@ class _ChatScreenState extends State<ChatScreen>
           AppHeader(
             title: l10n.community,
             subtitle: l10n.publicDiscussion,
-            leading: Icon(
-              Icons.forum,
-              color: Theme.of(context).colorScheme.onPrimary,
-              size: 28,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => context.go('/home/journey-input'),
             ),
           ),
           Expanded(

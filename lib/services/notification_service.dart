@@ -1,32 +1,19 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../controllers/auth_controller.dart';
 import '../controllers/notification_controller.dart';
-import '../firebase_runtime_options.dart';
 import '../constants/firestore_collections.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  if (Firebase.apps.isEmpty) {
-    try {
-      await Firebase.initializeApp(
-        options: FirebaseRuntimeOptions.currentPlatform,
-      );
-    } on FirebaseException catch (e) {
-      if (e.code != 'duplicate-app' && e.code != 'core/duplicate-app') {
-        rethrow;
-      }
-    }
-  }
-
-  // Background isolate: keep lightweight work only.
-  debugPrint('Background notification received: ${message.messageId}');
+  // Keep this handler completely empty — the system (GMS/FCM) already displays
+  // the notification. Calling Firebase.initializeApp() here triggers a slow
+  // binder IPC to GMS that causes ANR on MIUI devices with restricted GMS.
 }
 
 class NotificationService {
@@ -53,12 +40,16 @@ class NotificationService {
     if (_initialized) return;
 
     if (!_isMessagingSupported) {
-      debugPrint('Firebase Messaging is not supported on this platform. Skipping init.');
+      if (kDebugMode) debugPrint('Firebase Messaging is not supported on this platform. Skipping init.');
       _initialized = true;
       return;
     }
 
-    await _requestPermissions();
+    final permStatus = await _requestPermissions();
+    if (permStatus == AuthorizationStatus.denied) {
+      _initialized = true;
+      return;
+    }
     await _initializeToken();
     _registerTokenRefreshHandler();
     _registerForegroundHandler();
@@ -68,7 +59,7 @@ class NotificationService {
     _initialized = true;
   }
 
-  Future<void> _requestPermissions() async {
+  Future<AuthorizationStatus> _requestPermissions() async {
     final settings = await _messaging.requestPermission(
       alert: true,
       badge: true,
@@ -76,7 +67,8 @@ class NotificationService {
       provisional: false,
     );
 
-    debugPrint('Notification permission status: ${settings.authorizationStatus}');
+    if (kDebugMode) debugPrint('Notification permission status: ${settings.authorizationStatus}');
+    return settings.authorizationStatus;
   }
 
   Future<void> _initializeToken() async {
@@ -90,11 +82,11 @@ class NotificationService {
       }
     } on MissingPluginException {
       // Defensive fallback for desktop targets where channel impl is absent.
-      debugPrint('FCM getToken is not implemented on this platform.');
+      if (kDebugMode) debugPrint('FCM getToken is not implemented on this platform.');
     } catch (e) {
       // Do not crash app startup if FCM token provisioning is temporarily
       // unavailable (for example after key restriction changes).
-      debugPrint('FCM token initialization failed: $e');
+      if (kDebugMode) debugPrint('FCM token initialization failed: $e');
     }
   }
 
@@ -115,7 +107,7 @@ class NotificationService {
         'fcmToken': token,
       }, SetOptions(merge: true));
     } catch (e) {
-      debugPrint('Failed to persist FCM token: $e');
+      if (kDebugMode) debugPrint('Failed to persist FCM token: $e');
     }
   }
 
@@ -135,7 +127,7 @@ class NotificationService {
   void _registerForegroundHandler() {
     _foregroundSubscription?.cancel();
     _foregroundSubscription = FirebaseMessaging.onMessage.listen((message) {
-      debugPrint('Foreground notification received: ${message.messageId}');
+      if (kDebugMode) debugPrint('Foreground notification received: ${message.messageId}');
       NotificationController.instance.addFromRemoteMessage(message);
     });
   }
@@ -143,7 +135,7 @@ class NotificationService {
   void _registerOpenedAppHandler() {
     _openedAppSubscription?.cancel();
     _openedAppSubscription = FirebaseMessaging.onMessageOpenedApp.listen((message) {
-      debugPrint('Opened from notification: ${message.messageId}');
+      if (kDebugMode) debugPrint('Opened from notification: ${message.messageId}');
       NotificationController.instance.addFromRemoteMessage(message);
     });
   }
@@ -152,7 +144,7 @@ class NotificationService {
     final initialMessage = await _messaging.getInitialMessage();
     if (initialMessage == null) return;
 
-    debugPrint('Initial notification open: ${initialMessage.messageId}');
+    if (kDebugMode) debugPrint('Initial notification open: ${initialMessage.messageId}');
     NotificationController.instance.addFromRemoteMessage(initialMessage);
   }
 

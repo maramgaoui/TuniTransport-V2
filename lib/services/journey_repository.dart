@@ -5,10 +5,8 @@ import '../models/tariff_model.dart';
 import 'route_repository.dart';
 import '../constants/firestore_collections.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Configuration object — one per line type.
-//  All the per-line differences live here; the core search algorithm is shared.
-// ─────────────────────────────────────────────────────────────────────────────
+// Per-line config object: all the differences between line types live here;
+// the core search algorithm in _findNextOffsetBasedTrip is shared.
 
 /// Resolves the Firestore routeId for a given (from, to) pair.
 typedef RouteIdResolver = Future<String?> Function(
@@ -17,7 +15,7 @@ typedef RouteIdResolver = Future<String?> Function(
 );
 
 /// Computes the fare given the resolved stop/section metadata.
-typedef FareCalculator = double Function(_StopMeta from, _StopMeta to);
+typedef _FareCalculator = double Function(_StopMeta from, _StopMeta to);
 
 /// Metadata extracted from a single `route_stops` document.
 class _StopMeta {
@@ -40,7 +38,7 @@ class _LineConfig {
   /// First departure fallback shown when no trip is found today.
   final String fallbackFirstDeparture;
   final RouteIdResolver resolveRouteId;
-  final FareCalculator calculateFare;
+  final _FareCalculator calculateFare;
   /// Whether trips may have partial-origin / partial-destination overrides
   /// (only needed for SNCFT mainline long-distance trains).
   final bool supportsPartialTrips;
@@ -80,10 +78,6 @@ class _RouteSearchMetadata {
     required this.isSearchActive,
   });
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Repository
-// ─────────────────────────────────────────────────────────────────────────────
 
 class JourneyRepository {
   final FirebaseFirestore _firestore;
@@ -130,6 +124,7 @@ class JourneyRepository {
     final snap = await _firestore
         .collection(Col.routeStops)
         .where('routeId', isEqualTo: 'route_sncft_l5_forward')
+        .limit(200)
         .get();
     final ids = <String>{
       for (final doc in snap.docs) (doc.data()['stationId'] ?? '').toString(),
@@ -222,8 +217,6 @@ class JourneyRepository {
     final rawPrice = bestDoc.data()['price'];
     return (rawPrice as num?)?.toDouble();
   }
-
-  // ── Public API — one thin wrapper per line type ───────────────────────────
 
   Future<MetroSahelResult?> findNextMetroSahelTrip({
     required String fromStationId,
@@ -346,7 +339,7 @@ class JourneyRepository {
               await _routeRepository.findSncftGlAnnabaRouteId(f, t) ??
               await _routeRepository.findSncftGlBizerteRouteId(f, t),
           calculateFare: (from, to) =>
-              _sncftL5Fare(_sncftFromId, _sncftToId),
+              _sncftL5Fare(resolvedFrom, resolvedTo),
           supportsPartialTrips: true,
         ),
       );
@@ -421,31 +414,6 @@ class JourneyRepository {
     return valid.first;
   }
 
-  /// Returns the result with the earlier departure. Results scheduled for
-  /// TOMORROW rank after any same-day result.
-  static MetroSahelResult _pickEarlierStsResult(
-    MetroSahelResult a,
-    MetroSahelResult b,
-  ) {
-    final aTomorrow = a.noTrainToday;
-    final bTomorrow = b.noTrainToday;
-    if (aTomorrow && !bTomorrow) return b;
-    if (!aTomorrow && bTomorrow) return a;
-    return _parseStsDepMinutes(a.departureTime) <=
-            _parseStsDepMinutes(b.departureTime)
-        ? a
-        : b;
-  }
-
-  static int _parseStsDepMinutes(String depTime) {
-    final s = depTime.replaceAll(RegExp(r'\s*\(\+\d+\)'), '').trim();
-    final parts = s.split(':');
-    if (parts.length != 2) return 99999;
-    final h = int.tryParse(parts[0]) ?? 99;
-    final m = int.tryParse(parts[1]) ?? 99;
-    return h * 60 + m;
-  }
-
   static int? _extractDepartureMinutes(dynamic rawDepartureTime) {
     if (rawDepartureTime is Timestamp) {
       final dt = rawDepartureTime.toDate();
@@ -473,12 +441,8 @@ class JourneyRepository {
     return null;
   }
 
-  // ── Metro Sahel — kept separate due to its unique stop-order lookup ────────
-  //
-  // Metro Sahel uses RouteRepository.getStopOrder() rather than route_stops
-  // offsets, and uses a per-stop duration model (numberOfStops * 4 min).
-  // Every other line uses the offset-based model in _findNextOffsetBasedTrip.
-
+  // Métro du Sahel uses getStopOrder() rather than route_stops offsets
+  // and a per-stop duration of 4 min. Every other line uses _findNextOffsetBasedTrip.
   Future<MetroSahelResult?> _findNextMetroSahelTripInternal({
     required String fromStationId,
     required String toStationId,
@@ -494,14 +458,12 @@ class JourneyRepository {
     final routeIsActive = routeMeta.isSearchActive;
     if (!routeIsActive) return null;
     final routeOperatorId = routeMeta.operatorId;
-    // Price should be read from tariffs collection — see ManageTariffsScreen.
-
     final fromDoc =
         await _firestore.collection(Col.stations).doc(fromStationId).get();
     final toDoc =
         await _firestore.collection(Col.stations).doc(toStationId).get();
-    final fromName = fromDoc.data()?['name'] ?? fromStationId;
-    final toName = toDoc.data()?['name'] ?? toStationId;
+    final fromName = (fromDoc.data()?['name'] as String?) ?? fromStationId;
+    final toName = (toDoc.data()?['name'] as String?) ?? toStationId;
 
     final fromOrder = await _routeRepository.getStopOrder(fromStationId);
     final toOrder = await _routeRepository.getStopOrder(toStationId);
@@ -510,6 +472,7 @@ class JourneyRepository {
     final routeStopsSnap = await _firestore
         .collection(Col.routeStops)
         .where('routeId', isEqualTo: routeId)
+        .limit(200)
         .get();
     int fromOffset = 0;
     int toOffset = 0;
@@ -635,22 +598,12 @@ class JourneyRepository {
     );
   }
 
-  // ── Generic offset-based trip finder (shared by all other line types) ─────
-
-  // Temporary fields used only during SNCFT fare resolution (see note below).
-  String _sncftFromId = '';
-  String _sncftToId = '';
-
   Future<MetroSahelResult?> _findNextOffsetBasedTrip({
     required String fromStationId,
     required String toStationId,
     required DateTime searchDateTime,
     required _LineConfig config,
   }) async {
-    // Capture IDs for the SNCFT fare closure (which needs the original IDs).
-    _sncftFromId = fromStationId;
-    _sncftToId = toStationId;
-
     final routeId =
         await config.resolveRouteId(fromStationId, toStationId);
     if (kDebugMode && config.lineType == 'sncft_mainline') {
@@ -665,9 +618,7 @@ class JourneyRepository {
     final routeIsActive = routeMeta.isSearchActive;
     if (!routeIsActive) return null;
     final routeOperatorId = routeMeta.operatorId;
-    // Price should be read from tariffs collection — see ManageTariffsScreen.
-
-    // ── 1. Station names ────────────────────────────────────────────────────
+    // 1. Station names
     final fromDoc =
         await _firestore.collection(Col.stations).doc(fromStationId).get();
     final toDoc =
@@ -675,10 +626,11 @@ class JourneyRepository {
     final fromName = (fromDoc.data()?['name'] as String?) ?? fromStationId;
     final toName = (toDoc.data()?['name'] as String?) ?? toStationId;
 
-    // ── 2. Stop offsets & orders ────────────────────────────────────────────
+    // 2. Stop offsets & orders
     final routeStopsSnap = await _firestore
         .collection(Col.routeStops)
         .where('routeId', isEqualTo: routeId)
+        .limit(200)
         .get();
 
     _StopMeta? fromMeta;
@@ -687,7 +639,8 @@ class JourneyRepository {
 
     for (final doc in routeStopsSnap.docs) {
       final data = doc.data();
-      final sid = data['stationId'] as String;
+      final sid = data['stationId'] as String?;
+      if (sid == null) continue;
       final order = data['stopOrder'] as int;
       stationOrderMap[sid] = order;
 
@@ -742,7 +695,7 @@ class JourneyRepository {
     final price = tariffPrice ?? config.calculateFare(fromMeta, toMeta);
     final routeName = '$fromName → $toName';
 
-    // ── 3. Query trips for today's day-of-week ──────────────────────────────
+    // 3. Query trips for today's day-of-week
     final dayOfWeek = searchDateTime.weekday % 7;
     var tripsSnapshot = await _firestore
         .collection(Col.trips)
@@ -765,7 +718,7 @@ class JourneyRepository {
     final candidates = <Map<String, dynamic>>[];
     int firstDepAtFrom = 99999;
 
-    // ── 4. Filter candidates ────────────────────────────────────────────────
+    // 4. Filter candidates
     for (final doc in tripsSnapshot.docs) {
       final data = doc.data();
       final originMinutes = _extractDepartureMinutes(data['departureTime']);
@@ -844,7 +797,7 @@ class JourneyRepository {
       }
     }
 
-    // ── 5. No trip today → return next-day first departure ─────────────────
+    // 5. No trip today → return next-day first departure
     if (candidates.isEmpty) {
       final firstDep = firstDepAtFrom < 99999
           ? _minutesToTime(firstDepAtFrom)
@@ -869,7 +822,7 @@ class JourneyRepository {
       );
     }
 
-    // ── 6. Sort and pick the next departure ─────────────────────────────────
+    // 6. Sort and pick the next departure
     candidates.sort(
         (a, b) => (a['_actualDep'] as int).compareTo(b['_actualDep'] as int));
 
@@ -968,8 +921,6 @@ class JourneyRepository {
     );
   }
 
-  // ── Shared result assembler ───────────────────────────────────────────────
-
   MetroSahelResult _assembleResult({
     required String departureTime,
     required String arrivalTime,
@@ -1008,10 +959,8 @@ class JourneyRepository {
     );
   }
 
-  // ── SNCFT per-station time override ──────────────────────────────────────
-
-  /// Returns the per-station scheduled minute if an override exists in the
-  /// trip document, otherwise falls back to originMinutes + routeOffset.
+  /// Returns the override minute from stationTimeOverridesMinutes if present,
+  /// otherwise falls back to originMinutes + routeOffset.
   static int _resolveStationMinute(
     Map<String, dynamic> tripData,
     String stationId,
@@ -1113,10 +1062,10 @@ class JourneyRepository {
     }
   }
 
-  // ── Time utilities ────────────────────────────────────────────────────────
+  // Time utilities
 
-  /// Normalises a raw Firestore tripNumber value (for partial-trip lines like
-  /// STS) into a display string. Returns '–' for null, 0, "0", or empty.
+  /// Normalises a raw Firestore tripNumber to a display string.
+  /// Returns '–' for null, 0, "0", or empty — used for partial-trip lines (STS).
   static String _normalizeTripNumberStr(dynamic raw) {
     if (raw == null) return '–';
     final s = raw.toString().trim();
@@ -1145,18 +1094,12 @@ class JourneyRepository {
     return null;
   }
 
-  int _parseMinutes(String timeStr) {
-    final parts = timeStr.split(':');
-    if (parts.length != 2) return 0;
-    return int.parse(parts[0]) * 60 + int.parse(parts[1]);
-  }
-
   static String _minutesToTime(int minutes) {
     final m = minutes % 1440;
     return '${(m ~/ 60).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}';
   }
 
-  // ── Fare calculators ──────────────────────────────────────────────────────
+  // Fare calculators
 
   /// Banlieue Sud: section-based fare.
   static double _bsFare(int sections) {

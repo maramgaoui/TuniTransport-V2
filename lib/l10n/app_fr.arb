@@ -213,10 +213,12 @@
   "searchByNameOrEmail": "Rechercher par nom ou email…",
   "filterAll": "Tous",
   "filterActive": "Actif",
+  "filterInactive": "Désactivé",
   "filterBanned": "Banni",
   "filterBlocked": "Bloqué",
   "noUsersFound": "Aucun utilisateur trouvé.",
   "noUsersMatchFilter": "Aucun utilisateur ne correspond au filtre actuel.",
+  "noJourneysMatchFilter": "Aucun trajet trouvé pour cette recherche.",
   "statusActive": "Statut : Actif",
   "statusBlocked": "Statut : Bloqué",
   "statusBannedUntil": "Statut : Banni jusqu'au {date}",
@@ -383,6 +385,7 @@
   "authErrorGeneric": "Une erreur d'authentification s'est produite. Veuillez réessayer.",
   "authErrorAccountCreationFailed": "Impossible de créer le compte utilisateur.",
   "authErrorPasswordResetFailed": "Impossible d'envoyer l'e-mail. Vérifiez que votre adresse e-mail est correcte.",
+  "authErrorAccountDeactivated": "Votre compte a été désactivé par un administrateur. Contactez le support pour plus d'informations.",
   "useCurrentLocationButton": "Utiliser ma position actuelle",
   "disableCurrentLocation": "Désactiver la position actuelle",
   "journeySearchResolutionFailed": "Recherche impossible. Vérifiez les stations saisies.",
@@ -401,5 +404,35 @@
       "suggestions": {}
     }
   },
-  "results": "Résultats"
+  "results": "Résultats",
+  "routeMap": "Carte du trajet",
+  "lineLabel": "Ligne",
+  "legendStart": "Départ",
+  "legendStop": "Arrêt",
+  "legendEnd": "Arrivée",
+  "failedToLoadOlderMessages": "Impossible de charger les messages plus anciens.",
+  "reasonBestPrice": "Meilleur prix",
+  "reasonFastest": "Le plus rapide",
+  "reasonBestOverall": "Meilleur rapport",
+  "departureStationLabel": "Station de départ",
+  "arrivalStationLabel": "Station d'arrivée",
+  "tripDurationLabel": "Durée du trajet",
+  "tariffLabel": "Tarif",
+  "onDemand": "À la demande",
+  "noServiceTonightPrefix": "Aucun service ce soir. Prochain départ demain à ",
+  "routeTemporarilyDisabled": "Trajet temporairement désactivé",
+  "moreDetails": "Plus de détails",
+  "sendTooFast": "Veuillez patienter avant de renvoyer.",
+  "sendNotificationCooldown": "Veuillez attendre {seconds} secondes avant de renvoyer.",
+  "@sendNotificationCooldown": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
+  "sendNotificationResend": "Renvoyer dans {seconds}s",
+  "@sendNotificationResend": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  }
 }

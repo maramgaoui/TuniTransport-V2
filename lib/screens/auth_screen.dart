@@ -50,11 +50,9 @@ class _AuthScreenState extends State<AuthScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
 
-    // Listen to password field changes to trigger confirm password revalidation
+    // Re-validate the confirm-password field whenever the password changes.
     _signupPasswordController.addListener(() {
-      setState(() {
-        // Trigger rebuild to revalidate confirm password
-      });
+      setState(() {});
     });
   }
 
@@ -123,6 +121,29 @@ class _AuthScreenState extends State<AuthScreen>
     }
   }
 
+  String _resolveAuthError(String raw, AppLocalizations l10n) {
+    if (raw.startsWith('auth.error.account_banned_until:')) {
+      final date = raw.replaceFirst('auth.error.account_banned_until:', '');
+      return l10n.accountBannedUntil(date);
+    }
+    return switch (raw) {
+      'auth.error.wrong_password'          => l10n.authErrorWrongPassword,
+      'auth.error.user_not_found'          => l10n.authErrorUserNotFound,
+      'auth.error.invalid_email'           => l10n.authErrorInvalidEmail,
+      'auth.error.user_disabled'           => l10n.authErrorUserDisabled,
+      'auth.error.too_many_requests'       => l10n.authErrorTooManyRequests,
+      'auth.error.weak_password'           => l10n.authErrorWeakPassword,
+      'auth.error.email_already_in_use'    => l10n.authErrorEmailAlreadyInUse,
+      'auth.error.account_creation_failed' => l10n.authErrorAccountCreationFailed,
+      'auth.error.firestore_unavailable'   => l10n.authErrorAccountCreationFailed,
+      'auth.error.password_reset_failed'   => l10n.authErrorPasswordResetFailed,
+      'auth.error.account_blocked'         => l10n.accountBlockedBody,
+      'auth.error.account_deactivated'     => l10n.authErrorAccountDeactivated,
+      'auth.error.account_banned_indefinite' => l10n.accountBannedBody,
+      _                                    => l10n.authErrorGeneric,
+    };
+  }
+
   Future<void> _handleLogin() async {
     // Validate form first - triggers all validators
     final isFormValid = _loginFormKey.currentState!.validate();
@@ -153,8 +174,6 @@ class _AuthScreenState extends State<AuthScreen>
         password: _loginPasswordController.text,
       );
 
-      await Future.delayed(const Duration(milliseconds: 500));
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -174,15 +193,16 @@ class _AuthScreenState extends State<AuthScreen>
         return;
       }
 
+      final localized = _resolveAuthError(rawMsg, l10n);
       setState(() {
-        _errorMessage = rawMsg;
+        _errorMessage = localized;
         _isLoading = false;
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_errorMessage ?? l10n.loginFailed),
+            content: Text(localized),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -263,9 +283,9 @@ class _AuthScreenState extends State<AuthScreen>
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Email deja utilise'),
+        title: const Text('Email déjà utilisé'),
         content: const Text(
-          'Ce compte existe deja. Choisissez Se connecter ou lancez une reinitialisation du mot de passe.',
+          'Ce compte existe déjà. Choisissez "Se connecter" ou lancez une réinitialisation du mot de passe.',
         ),
         actions: <Widget>[
           TextButton(
@@ -285,7 +305,7 @@ class _AuthScreenState extends State<AuthScreen>
                 _forgotPasswordController.text = email;
               });
             },
-            child: const Text('Reinitialiser mot de passe'),
+            child: const Text('Réinitialiser mot de passe'),
           ),
         ],
       ),
@@ -330,21 +350,19 @@ class _AuthScreenState extends State<AuthScreen>
       await _showVerificationSentDialog(registeredEmail);
     } catch (e) {
       bool handledByDialog = false;
-      String errorMsg = e.toString().replaceAll('Exception: ', '');
-      // Translate known error codes to localized messages.
-      if (errorMsg == 'auth.error.username_taken') {
-        errorMsg = l10n.usernameTaken;
-      } else if (errorMsg == 'auth.error.firestore_unavailable') {
-        errorMsg =
-            'Service temporairement indisponible. Verifiez votre connexion puis reessayez dans quelques secondes.';
-      } else if (errorMsg == 'auth.error.email_already_in_use') {
-        errorMsg =
-            'Cet email est deja utilise. Connectez-vous avec cet email, puis utilisez "Mot de passe oublie ?" ou "Renvoyer verification" si necessaire.';
+      final rawCode = e.toString().replaceAll('Exception: ', '');
+      String errorMsg;
 
+      if (rawCode == 'auth.error.username_taken') {
+        errorMsg = l10n.usernameTaken;
+      } else if (rawCode == 'auth.error.email_already_in_use') {
+        errorMsg = l10n.authErrorEmailAlreadyInUse;
         // Help the user recover quickly: move to login tab and prefill email.
         _tabController.animateTo(0);
         _loginEmailController.text = _signupEmailController.text.trim().toLowerCase();
         handledByDialog = true;
+      } else {
+        errorMsg = _resolveAuthError(rawCode, l10n);
       }
       setState(() {
         _errorMessage = errorMsg;
@@ -374,6 +392,7 @@ class _AuthScreenState extends State<AuthScreen>
   }
 
   Future<void> _handleGoogleSignIn() async {
+    final l10n = AppLocalizations.of(context)!;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -382,21 +401,18 @@ class _AuthScreenState extends State<AuthScreen>
     try {
       await _authController.signInWithGoogle();
 
-      // Give a moment for AuthGuard stream to detect the change
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Auth state change triggers AuthGuard to rebuild and show HomeScreen
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context)!.googleSignInSuccess),
+            content: Text(l10n.googleSignInSuccess),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 1),
           ),
         );
       }
     } catch (e) {
-      final errorMsg = e.toString().replaceAll('Exception: ', '');
+      final rawCode = e.toString().replaceAll('Exception: ', '');
+      final errorMsg = _resolveAuthError(rawCode, l10n);
       setState(() {
         _errorMessage = errorMsg;
         _isLoading = false;
@@ -405,9 +421,7 @@ class _AuthScreenState extends State<AuthScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              _errorMessage ?? AppLocalizations.of(context)!.googleSignInFailed,
-            ),
+            content: Text(errorMsg),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -589,6 +603,7 @@ class _AuthScreenState extends State<AuthScreen>
               validationType: 'password',
               obscureText: _obscureLoginPassword,
               isPasswordField: true,
+              showStrengthIndicator: false,
               onVisibilityToggle: () {
                 setState(() => _obscureLoginPassword = !_obscureLoginPassword);
               },
@@ -979,6 +994,7 @@ class _VerificationSentDialogState extends State<_VerificationSentDialog>
   @override
   void dispose() {
     _timer?.cancel();
+    _timer = null;
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -1016,12 +1032,13 @@ class _VerificationSentDialogState extends State<_VerificationSentDialog>
     _timer?.cancel();
     setState(() => _secondsLeft = _cooldownSeconds);
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) { t.cancel(); return; }
+      if (!mounted) { t.cancel(); _timer = null; return; }
       setState(() {
         if (_secondsLeft > 0) {
           _secondsLeft--;
         } else {
           t.cancel();
+          _timer = null;
         }
       });
     });

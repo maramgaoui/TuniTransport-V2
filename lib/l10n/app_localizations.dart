@@ -1189,6 +1189,12 @@ abstract class AppLocalizations {
   /// **'Active'**
   String get filterActive;
 
+  /// No description provided for @filterInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive'**
+  String get filterInactive;
+
   /// No description provided for @filterBanned.
   ///
   /// In en, this message translates to:
@@ -1212,6 +1218,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No users match the current filter.'**
   String get noUsersMatchFilter;
+
+  /// No description provided for @noJourneysMatchFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'No journeys match this search.'**
+  String get noJourneysMatchFilter;
 
   /// No description provided for @statusActive.
   ///
@@ -1867,6 +1879,12 @@ abstract class AppLocalizations {
   /// **'Unable to send email. Please check your email address.'**
   String get authErrorPasswordResetFailed;
 
+  /// No description provided for @authErrorAccountDeactivated.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account has been deactivated by an administrator. Please contact support for more information.'**
+  String get authErrorAccountDeactivated;
+
   /// No description provided for @useCurrentLocationButton.
   ///
   /// In en, this message translates to:
@@ -1914,6 +1932,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Results'**
   String get results;
+
+  /// No description provided for @routeMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Route Map'**
+  String get routeMap;
+
+  /// No description provided for @lineLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Line'**
+  String get lineLabel;
+
+  /// No description provided for @legendStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get legendStart;
+
+  /// No description provided for @legendStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get legendStop;
+
+  /// No description provided for @legendEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End'**
+  String get legendEnd;
+
+  /// No description provided for @failedToLoadOlderMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load older messages.'**
+  String get failedToLoadOlderMessages;
+
+  /// No description provided for @reasonBestPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Best price'**
+  String get reasonBestPrice;
+
+  /// No description provided for @reasonFastest.
+  ///
+  /// In en, this message translates to:
+  /// **'Fastest'**
+  String get reasonFastest;
+
+  /// No description provided for @reasonBestOverall.
+  ///
+  /// In en, this message translates to:
+  /// **'Best overall'**
+  String get reasonBestOverall;
+
+  /// No description provided for @departureStationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Departure station'**
+  String get departureStationLabel;
+
+  /// No description provided for @arrivalStationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrival station'**
+  String get arrivalStationLabel;
+
+  /// No description provided for @tripDurationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip duration'**
+  String get tripDurationLabel;
+
+  /// No description provided for @tariffLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fare'**
+  String get tariffLabel;
+
+  /// No description provided for @onDemand.
+  ///
+  /// In en, this message translates to:
+  /// **'On demand'**
+  String get onDemand;
+
+  /// No description provided for @noServiceTonightPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'No service tonight. Next departure tomorrow at '**
+  String get noServiceTonightPrefix;
+
+  /// No description provided for @routeTemporarilyDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Route temporarily disabled'**
+  String get routeTemporarilyDisabled;
+
+  /// No description provided for @moreDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'More details'**
+  String get moreDetails;
+
+  /// No description provided for @sendTooFast.
+  ///
+  /// In en, this message translates to:
+  /// **'Please wait before sending again.'**
+  String get sendTooFast;
+
+  /// No description provided for @sendNotificationCooldown.
+  ///
+  /// In en, this message translates to:
+  /// **'Please wait {seconds} seconds before sending again.'**
+  String sendNotificationCooldown(int seconds);
+
+  /// No description provided for @sendNotificationResend.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend in {seconds}s'**
+  String sendNotificationResend(int seconds);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

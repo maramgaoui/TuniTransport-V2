@@ -13,8 +13,12 @@ class ValidatedTextField extends StatefulWidget {
   final VoidCallback? onVisibilityToggle;
   final bool isPasswordField;
   final ValueChanged<bool>? onValidationChanged;
-  final String? nameFieldType; // 'nom' or 'prenom'
+  /// Display label used in validation error messages when [validationType]
+  /// is `'name'` — e.g. `'Prénom'` produces "Prénom est requis".
+  /// Defaults to `'Nom'` if omitted. Must be in the app's display language.
+  final String? nameFieldType;
   final Key? textFieldKey;
+  final bool showStrengthIndicator;
 
   const ValidatedTextField({
     super.key,
@@ -30,6 +34,7 @@ class ValidatedTextField extends StatefulWidget {
     this.onValidationChanged,
     this.nameFieldType,
     this.textFieldKey,
+    this.showStrengthIndicator = true,
   });
 
   @override
@@ -50,7 +55,7 @@ class _ValidatedTextFieldState extends State<ValidatedTextField> {
         isValid = ValidationUtils.isEmailValid(value);
         break;
       case 'name':
-        error = ValidationUtils.validateName(value, widget.nameFieldType ?? 'Name');
+        error = ValidationUtils.validateName(value, widget.nameFieldType ?? 'Nom');
         isValid = ValidationUtils.isNameValid(value);
         break;
       case 'username':
@@ -132,8 +137,9 @@ class _ValidatedTextFieldState extends State<ValidatedTextField> {
             ),
           ),
         ),
-        // Show password strength indicator for password fields
-        if (widget.validationType == 'password' && widget.controller.text.isNotEmpty)
+        if (widget.validationType == 'password' &&
+            widget.showStrengthIndicator &&
+            widget.controller.text.isNotEmpty)
           _buildPasswordStrengthIndicator(),
       ],
     );
@@ -190,7 +196,7 @@ class _ValidatedTextFieldState extends State<ValidatedTextField> {
       case 'email':
         return ValidationUtils.validateEmail(value);
       case 'name':
-        return ValidationUtils.validateName(value, widget.nameFieldType ?? 'Name');
+        return ValidationUtils.validateName(value, widget.nameFieldType ?? 'Nom');
       case 'username':
         return ValidationUtils.validateUsername(value);
       case 'password':

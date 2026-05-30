@@ -8,8 +8,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer' as developer;
 import '../models/user_model.dart';
 import '../models/session_result.dart';
+import '../utils/role_guard.dart';
 import '../utils/validation_utils.dart';
 import '../constants/firestore_collections.dart';
+import '../services/active_journey_service.dart';
+import 'notification_controller.dart';
 
 class AuthController {
   AuthController({
@@ -47,8 +50,9 @@ class AuthController {
   String? _userStatusListenerUid;
   String? _lastObservedUserStatus;
   String? _lastObservedUserRole;
+  String? _lastObservedAdminType;
 
-  // When true, an admin or super-admin is browsing the app as a regular user.
+  // Admins browsing as regular users: gates router redirect and feature visibility.
   bool _actingAsUser = false;
   bool get isActingAsUser => _actingAsUser;
   SessionResult? get cachedSession => _cachedSession;
@@ -58,8 +62,7 @@ class AuthController {
 
   GoogleSignIn get _googleSignInClient => _googleSignIn ??= GoogleSignIn();
 
-  static const String _blockedMessage =
-      'Your account has been permanently blocked.';
+  static const String _blockedMessage = 'auth.error.account_blocked';
 
   String _normalizeEmail(String email) => email.trim().toLowerCase();
 
@@ -144,6 +147,7 @@ class AuthController {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_sessionCacheKey(uid));
+      await prefs.remove('pending_profile_$uid');
     } catch (e) {
       developer.log(
         'Failed to clear persisted session cache: $e',
@@ -208,6 +212,7 @@ class AuthController {
     _userStatusListenerUid = null;
     _lastObservedUserStatus = null;
     _lastObservedUserRole = null;
+    _lastObservedAdminType = null;
   }
 
   Future<void> _setUserStatusListener(String uid) async {
@@ -225,23 +230,27 @@ class AuthController {
         .listen(
           (snapshot) {
             final data = snapshot.data();
-            final currentStatus = (data?['status'] ?? 'active').toString();
-            final currentRole = (data?['role'] ?? 'user').toString();
+            final currentStatus    = (data?['status']    ?? 'active').toString();
+            final currentRole      = (data?['role']      ?? 'user').toString();
+            final currentAdminType = (data?['adminType'] ?? '').toString();
 
             if (_lastObservedUserStatus == null && _lastObservedUserRole == null) {
-              _lastObservedUserStatus = currentStatus;
-              _lastObservedUserRole = currentRole;
+              _lastObservedUserStatus  = currentStatus;
+              _lastObservedUserRole    = currentRole;
+              _lastObservedAdminType   = currentAdminType;
               return;
             }
 
-            if (_lastObservedUserStatus != currentStatus ||
-                _lastObservedUserRole != currentRole) {
-              _lastObservedUserStatus = currentStatus;
-              _lastObservedUserRole = currentRole;
+            if (_lastObservedUserStatus  != currentStatus  ||
+                _lastObservedUserRole    != currentRole     ||
+                _lastObservedAdminType   != currentAdminType) {
+              _lastObservedUserStatus  = currentStatus;
+              _lastObservedUserRole    = currentRole;
+              _lastObservedAdminType   = currentAdminType;
               _invalidateSessionCache(uid: uid);
             }
           },
-          onError: (error) {
+          onError: (Object error) {
             developer.log(
               'User status listener error: $error',
               name: 'AuthController',
@@ -267,6 +276,11 @@ class AuthController {
       } catch (_) {}
     }
 
+    // Clear user-specific data that must not survive an account switch on a
+    // shared device.
+    await ActiveJourneyService.instance.clearActiveJourney();
+    await NotificationController.instance.resetForSignOut();
+
     try {
       await _firebaseAuth.signOut();
     } catch (e) {
@@ -274,7 +288,6 @@ class AuthController {
     }
   }
 
-  // Get current user stream
   Stream<User?> get authStateChanges {
     return _firebaseAuth.authStateChanges().asyncMap((
       firebase_auth.User? user,
@@ -331,7 +344,6 @@ class AuthController {
         return null;
       }
 
-      // Fetch user data from Firestore
       try {
         final userDoc = await _firestore
             .collection(Col.users)
@@ -348,7 +360,7 @@ class AuthController {
           _cacheAuthStreamUser(user.uid, resolvedUser);
           return resolvedUser;
         } else {
-          // Create default user if not in Firestore
+          // No Firestore doc yet — first login before the profile write lands.
           final resolvedUser = User(uid: user.uid, email: user.email ?? '');
           _cacheAuthStreamUser(user.uid, resolvedUser);
           return resolvedUser;
@@ -362,7 +374,11 @@ class AuthController {
     });
   }
 
-  // Get current user (uid + email only — use fetchCurrentUser() when profile fields are needed)
+  /// Last status value observed by the real-time Firestore listener.
+  /// Null until the first snapshot arrives. Stays current across ban/unban events.
+  String? get currentUserStatus => _lastObservedUserStatus;
+
+  // uid + email only — use fetchCurrentUser() when profile fields are needed
   User? get currentUser {
     final firebaseUser = _firebaseAuth.currentUser;
     if (firebaseUser == null) return null;
@@ -375,7 +391,6 @@ class AuthController {
     return User(uid: firebaseUser.uid, email: firebaseUser.email ?? '');
   }
 
-  // Fetch full user profile from Firestore.
   // Returns a minimal User on Firestore errors so callers are never blocked.
   Future<User?> fetchCurrentUser() async {
     final firebaseUser = _firebaseAuth.currentUser;
@@ -395,10 +410,8 @@ class AuthController {
     return User(uid: firebaseUser.uid, email: firebaseUser.email ?? '');
   }
 
-  // Sign up with email and password.
-  // Reserves the username atomically in Firestore before creating the Auth
-  // account. The user Firestore document is only created after email
-  // verification is confirmed (on first successful login).
+  // Creates the Firestore user doc at signup, not after verification, so
+  // profile data lands even if the user verifies from a different device.
   Future<User?> signUpWithEmail({
     required String email,
     required String password,
@@ -410,7 +423,6 @@ class AuthController {
     try {
       final normalizedEmail = _normalizeEmail(email);
 
-      // Validate all fields before touching Firebase
       final emailValidation = ValidationUtils.validateEmail(normalizedEmail);
       if (emailValidation != null) throw Exception(emailValidation);
 
@@ -431,8 +443,8 @@ class AuthController {
         // collection query requires an authenticated caller.
       }
 
-      // Create Firebase Auth account first so the caller is authenticated
-      // for the username uniqueness check that follows.
+      // Auth account must exist before the username uniqueness query: the
+      // users collection requires an authenticated caller per Firestore rules.
       final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: normalizedEmail,
         password: password,
@@ -443,7 +455,6 @@ class AuthController {
         throw Exception('auth.error.account_creation_failed');
       }
 
-      // Check username uniqueness now that the caller is authenticated.
       if (effectiveUsername != null) {
         late final bool taken;
         try {
@@ -461,8 +472,6 @@ class AuthController {
         }
       }
 
-      // Persist full profile in Firestore immediately so profile data is
-      // available after verification even if login happens on another device.
       final firestoreProfile = {
         'uid': firebaseUser.uid,
         'email': normalizedEmail,
@@ -504,8 +513,7 @@ class AuthController {
         throw Exception('auth.error.account_creation_failed');
       }
 
-      // Keep local pending profile for backward compatibility with older
-      // sessions that still rely on this cache.
+      // Backward-compat: older sessions may still restore profile from this cache key.
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
         'pending_profile_${firebaseUser.uid}',
@@ -513,7 +521,6 @@ class AuthController {
       );
       developer.log('Pending profile saved for ${firebaseUser.uid}', name: 'AuthController');
 
-      // Send verification email then immediately sign out.
       developer.log('Sending verification email to ${firebaseUser.email}', name: 'AuthController');
       try {
         await firebaseUser.sendEmailVerification();
@@ -556,7 +563,6 @@ class AuthController {
     return true;
   }
 
-  // Sign in with email and password
   Future<User?> signInWithEmail({
     required String email,
     required String password,
@@ -573,7 +579,6 @@ class AuthController {
         throw Exception('Failed to sign in');
       }
 
-      // Block unverified email/password accounts.
       if (!firebaseUser.emailVerified) {
         await _firebaseAuth.signOut();
         throw Exception('email_not_verified:${firebaseUser.email ?? ''}');
@@ -588,9 +593,8 @@ class AuthController {
         throw Exception(accessError);
       }
 
-      // Fetch (or create) user data in Firestore.
-      // If no document exists yet, this is the first login after email
-      // verification — restore the pending profile saved during signup.
+      // First login after email verification: Firestore doc may not exist yet.
+      // Restore from the pending profile saved during signup.
       final userDocRef = _firestore.collection(Col.users).doc(firebaseUser.uid);
       final userDoc = await userDocRef.get();
 
@@ -599,7 +603,6 @@ class AuthController {
         return User.fromMap(userDoc.data() ?? {});
       }
 
-      // Try to restore pending profile from SharedPreferences.
       final prefs = await SharedPreferences.getInstance();
       final pendingJson = prefs.getString('pending_profile_${firebaseUser.uid}');
       if (pendingJson != null) {
@@ -617,7 +620,6 @@ class AuthController {
         }
       }
 
-      // Fallback: return basic user if no pending profile found.
       _invalidateSessionCache(uid: firebaseUser.uid);
       return User(uid: firebaseUser.uid, email: firebaseUser.email ?? '');
     } on firebase_auth.FirebaseAuthException catch (e) {
@@ -683,7 +685,6 @@ class AuthController {
     }
   }
 
-  // Sign in with Google
   Future<User?> signInWithGoogle() async {
     try {
       // Clear cached Google account so Android always shows the chooser.
@@ -692,13 +693,11 @@ class AuthController {
         await _googleSignInClient.signOut();
       } catch (_) {}
 
-      // Trigger Google Sign-In flow
       final googleUser = await _googleSignInClient.signIn();
       if (googleUser == null) {
         throw Exception('Google sign-in cancelled');
       }
 
-      // Get authentication details
       final googleAuth = await googleUser.authentication;
 
       // NOTE: Do not query Firestore before authentication. Firestore rules
@@ -706,13 +705,11 @@ class AuthController {
       // `cloud_firestore/permission-denied`. Access checks run right after
       // Firebase sign-in via `_validateAndNormalizeUserAccess`.
 
-      // Create credential for Firebase
       final credential = firebase_auth.GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // Sign in with Firebase
       final userCredential = await _firebaseAuth.signInWithCredential(
         credential,
       );
@@ -722,7 +719,6 @@ class AuthController {
         throw Exception('Failed to create Firebase user');
       }
 
-      // Check if user already exists in Firestore
       final userDoc = await _firestore
           .collection(Col.users)
           .doc(firebaseUser.uid)
@@ -756,7 +752,6 @@ class AuthController {
         }
         return User.fromMap(existingData);
       } else {
-        // Create new user document
         var generatedUsername = _generateUsername(
           displayName: googleUser.displayName,
           email: firebaseUser.email ?? '',
@@ -776,10 +771,24 @@ class AuthController {
         final userData = user.toMap();
         userData['status'] = 'active';
         userData['banUntil'] = null;
-        await _firestore
-            .collection(Col.users)
-            .doc(firebaseUser.uid)
-            .set(userData);
+        try {
+          await _firestore
+              .collection(Col.users)
+              .doc(firebaseUser.uid)
+              .set(userData);
+        } catch (e) {
+          // Roll back the Firebase Auth account so the user can retry cleanly
+          // rather than being left with an orphaned Auth entry and no profile.
+          await firebaseUser.delete().catchError((_) {});
+          developer.log(
+            'Google sign-in Firestore write failed, Auth account rolled back: $e',
+            name: 'AuthController',
+          );
+          if (_isTransientFirestoreError(e)) {
+            throw Exception('auth.error.firestore_unavailable');
+          }
+          throw Exception('auth.error.account_creation_failed');
+        }
 
         _invalidateSessionCache(uid: firebaseUser.uid);
         return user;
@@ -827,7 +836,6 @@ class AuthController {
     }
 
     try {
-      // ── Primary lookup: users/{uid} (single read, no index) ──────────────
       final userDoc = await _firestore
           .collection(Col.users)
           .doc(current.uid)
@@ -837,7 +845,7 @@ class AuthController {
         final data = userDoc.data() ?? {};
         final role = (data['role'] ?? 'user').toString();
 
-        if (role == 'super_admin') {
+        if (RoleGuard.isSuperAdmin(role)) {
           final result = SessionResult(
             role: SessionRole.superAdmin,
             adminType: data['adminType'] as String?,
@@ -849,7 +857,7 @@ class AuthController {
           return result;
         }
 
-        if (role == 'admin') {
+        if (RoleGuard.isAdmin(role)) {
           final result = SessionResult(
             role: SessionRole.admin,
             adminType: data['adminType'] as String?,
@@ -883,7 +891,6 @@ class AuthController {
           return result;
         }
 
-        // Regular user — enforce ban/block.
         final status = (data['status'] ?? 'active').toString();
         final banUntilRaw = data['banUntil'];
         DateTime? banUntil;
@@ -898,18 +905,19 @@ class AuthController {
             _firestore.collection(Col.users).doc(current.uid).update({
               'status': 'active',
               'banUntil': null,
-            }).catchError((error) {
+            }).catchError((Object error) {
               developer.log(
                 'Failed to auto-reactivate expired ban: $error',
                 name: 'AuthController',
               );
             }),
           );
-        } else if (status == 'banned' || status == 'blocked') {
-          const bannedResult = SessionResult(role: SessionRole.guest);
-          _cacheSession(current.uid, bannedResult, accountStatus: status);
+        } else if (status == 'banned' || status == 'blocked' ||
+                   status == 'suspended' || status == 'inactive') {
+          const restrictedResult = SessionResult(role: SessionRole.guest);
+          _cacheSession(current.uid, restrictedResult, accountStatus: status);
           await _safeSignOut(clearSessionCache: false);
-          return bannedResult;
+          return restrictedResult;
         }
 
         const result = SessionResult(role: SessionRole.user);
@@ -917,14 +925,14 @@ class AuthController {
         return result;
       }
 
-      // ── Fallback: legacy admins collection (pre-migration accounts) ───────
+      // Legacy admins collection — pre-migration accounts only. Auto-migrates to users/{uid}.
       final adminDoc = await _firestore
           .collection(Col.admins)
           .doc(current.uid)
           .get();
 
       if (adminDoc.exists) {
-        final adminData = adminDoc.data()!;
+        final adminData = adminDoc.data() ?? {};
         // Auto-migrate: stamp role='admin' onto the users document so future
         // lookups hit the fast path above.
         await _firestore.collection(Col.users).doc(current.uid).set(
@@ -940,7 +948,7 @@ class AuthController {
             'updatedAt': FieldValue.serverTimestamp(),
           },
           SetOptions(merge: true),
-        ).catchError((e) {
+        ).catchError((Object e) {
           developer.log(
             'Failed to auto-migrate admin to users collection: $e',
             name: 'AuthController',
@@ -958,8 +966,7 @@ class AuthController {
         return result;
       }
 
-      // Unknown uid — treat as regular user (new sign-up before Firestore doc
-      // is created, or a race between auth and Firestore write).
+      // Race between auth and Firestore write (new signup) — default to user role.
       const result = SessionResult(role: SessionRole.user);
       _cacheSession(current.uid, result);
       return result;
@@ -991,7 +998,6 @@ class AuthController {
     }
   }
 
-  // Sign out
   Future<void> signOut() async {
     try {
       await _safeSignOut();
@@ -1001,7 +1007,6 @@ class AuthController {
     }
   }
 
-  // Update user profile
   Future<void> updateUserProfile({
     required String uid,
     String? username,
@@ -1017,6 +1022,8 @@ class AuthController {
       if (lastName != null) updateData['lastName'] = lastName;
       if (avatarId != null) updateData['avatarId'] = avatarId;
       if (city != null) updateData['city'] = city;
+      if (updateData.isEmpty) return;
+      updateData['updatedAt'] = FieldValue.serverTimestamp();
 
       await _firestore.collection(Col.users).doc(uid).update(updateData);
     } catch (e) {
@@ -1025,7 +1032,6 @@ class AuthController {
     }
   }
 
-  // Send password reset email
   Future<void> sendPasswordResetEmail(String email) async {
     try {
       await _firebaseAuth.sendPasswordResetEmail(email: _normalizeEmail(email));
@@ -1042,7 +1048,7 @@ class AuthController {
     }
   }
 
-  // Handle Firebase Auth exceptions — returns l10n-friendly error keys.
+  // Maps Firebase error codes to l10n keys; callers translate via AppLocalizations.
   Exception _handleAuthException(firebase_auth.FirebaseAuthException e) {
     return Exception(switch (e.code) {
       'weak-password' => 'auth.error.weak_password',
@@ -1094,11 +1100,15 @@ class AuthController {
       return _blockedMessage;
     }
 
+    if (status == 'suspended' || status == 'inactive') {
+      return 'auth.error.account_deactivated';
+    }
+
     if (status == 'banned') {
       if (banUntil == null) {
-        return 'Your account is banned until further notice.';
+        return 'auth.error.account_banned_indefinite';
       }
-      return 'Your account is banned until ${_formatBanDate(banUntil)}';
+      return 'auth.error.account_banned_until:${_formatBanDate(banUntil)}';
     }
 
     return null;

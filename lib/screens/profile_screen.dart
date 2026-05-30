@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:avatar_plus/avatar_plus.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/constants/avatar_options.dart';
@@ -9,6 +10,7 @@ import 'package:tuni_transport/utils/validation_utils.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/app_settings.dart';
+import '../widgets/validated_text_field.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({
@@ -39,7 +41,6 @@ class ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
   late TextEditingController _usernameController;
-  late TextEditingController _cityController;
 
   final _formKey = GlobalKey<FormState>();
 
@@ -83,7 +84,6 @@ class ProfileScreenState extends State<ProfileScreen> {
     _firstNameController = TextEditingController();
     _lastNameController = TextEditingController();
     _usernameController = TextEditingController();
-    _cityController = TextEditingController();
   }
 
   bool _prefsLoaded = false;
@@ -112,7 +112,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     _firstNameController.dispose();
     _lastNameController.dispose();
     _usernameController.dispose();
-    _cityController.dispose();
+
     super.dispose();
   }
 
@@ -120,7 +120,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     _firstNameController.text = profile.firstName ?? '';
     _lastNameController.text = profile.lastName ?? '';
     _usernameController.text = profile.username ?? '';
-    _cityController.text = profile.city ?? '';
+
   }
 
   String _profileFingerprint(User profile) {
@@ -130,7 +130,6 @@ class ProfileScreenState extends State<ProfileScreen> {
       profile.firstName ?? '',
       profile.lastName ?? '',
       profile.username ?? '',
-      profile.city ?? '',
       profile.avatarId ?? '',
     ].join('|');
   }
@@ -144,13 +143,10 @@ class ProfileScreenState extends State<ProfileScreen> {
       final firstName = _firstNameController.text.trim();
       final lastName = _lastNameController.text.trim();
       final username = _usernameController.text.trim();
-      final city = _cityController.text.trim();
-
       final updatedProfile = profile.copyWith(
         firstName: firstName,
         lastName: lastName,
         username: username,
-        city: city.isEmpty ? null : city,
       );
 
       final success = await _profileController.updateProfile(updatedProfile);
@@ -306,15 +302,16 @@ class ProfileScreenState extends State<ProfileScreen> {
     bool obscureNewPassword = true;
     bool obscureConfirmPassword = true;
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
+        builder: (context, setDialogState) => AlertDialog(
           title: Text(l10n.changePassword),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Current password — plain field, no strength indicator needed.
                 TextField(
                   controller: currentPasswordController,
                   obscureText: obscureCurrentPassword,
@@ -325,42 +322,39 @@ class ProfileScreenState extends State<ProfileScreen> {
                           ? Icons.visibility_off
                           : Icons.visibility),
                       onPressed: () =>
-                          setState(() => obscureCurrentPassword = !obscureCurrentPassword),
+                          setDialogState(() => obscureCurrentPassword = !obscureCurrentPassword),
                     ),
                     border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                // New password — ValidatedTextField shows live strength indicator.
+                ValidatedTextField(
                   controller: newPasswordController,
+                  label: l10n.newPassword,
+                  hintText: '••••••••',
+                  prefixIcon: Icons.lock_outline,
+                  validationType: 'password',
                   obscureText: obscureNewPassword,
-                  decoration: InputDecoration(
-                    labelText: l10n.newPassword,
-                    suffixIcon: IconButton(
-                      icon: Icon(obscureNewPassword
-                          ? Icons.visibility_off
-                          : Icons.visibility),
-                      onPressed: () =>
-                          setState(() => obscureNewPassword = !obscureNewPassword),
-                    ),
-                    border: const OutlineInputBorder(),
-                  ),
+                  isPasswordField: true,
+                  onVisibilityToggle: () =>
+                      setDialogState(() => obscureNewPassword = !obscureNewPassword),
+                  // Rebuild so confirmPasswordValue stays in sync.
+                  onValidationChanged: (_) => setDialogState(() {}),
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                // Confirm password — live match validation against new password.
+                ValidatedTextField(
                   controller: confirmPasswordController,
+                  label: l10n.confirmNewPassword,
+                  hintText: '••••••••',
+                  prefixIcon: Icons.lock_outline,
+                  validationType: 'confirm_password',
+                  confirmPasswordValue: newPasswordController.text,
                   obscureText: obscureConfirmPassword,
-                  decoration: InputDecoration(
-                    labelText: l10n.confirmNewPassword,
-                    suffixIcon: IconButton(
-                      icon: Icon(obscureConfirmPassword
-                          ? Icons.visibility_off
-                          : Icons.visibility),
-                      onPressed: () =>
-                          setState(() => obscureConfirmPassword = !obscureConfirmPassword),
-                    ),
-                    border: const OutlineInputBorder(),
-                  ),
+                  isPasswordField: true,
+                  onVisibilityToggle: () =>
+                      setDialogState(() => obscureConfirmPassword = !obscureConfirmPassword),
                 ),
               ],
             ),
@@ -440,7 +434,7 @@ class ProfileScreenState extends State<ProfileScreen> {
   void _showSettingsDialog() {
     final l10n = AppLocalizations.of(context)!;
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
@@ -595,6 +589,10 @@ class ProfileScreenState extends State<ProfileScreen> {
       appBar: widget.showAppBar
           ? AppBar(
               title: Text(l10n.profile),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => context.go('/home/journey-input'),
+              ),
               actions: [
                 if (!_isEditing && !_isPrivilegedReadOnlyMode)
                   IconButton(
@@ -667,7 +665,6 @@ class ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                if (!widget.showAppBar)
                 if (!widget.showAppBar && widget.showInlineActions)
                   Align(
                     alignment: Alignment.centerRight,
@@ -867,47 +864,6 @@ class ProfileScreenState extends State<ProfileScreen> {
         _buildDetailRow(l10n.lastName, profile.lastName ?? l10n.notSet),
         _buildDetailRow(l10n.email, profile.email),
         
-        // City with add button if empty
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.city,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.mediumGrey,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 4),
-              if (profile.city == null || profile.city!.isEmpty)
-                OutlinedButton.icon(
-                  onPressed: _isPrivilegedReadOnlyMode
-                      ? null
-                      : () {
-                          setState(() {
-                            _isEditing = true;
-                            _cityController.clear();
-                          });
-                        },
-                  icon: const Icon(Icons.add),
-                  label: Text(l10n.addCity),
-                )
-              else
-                Text(
-                  profile.city!,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: AppTheme.textDark,
-                  ),
-                ),
-              const Divider(color: AppTheme.lightGrey),
-            ],
-          ),
-        ),
-        
       ],
     );
   }
@@ -977,18 +933,7 @@ class ProfileScreenState extends State<ProfileScreen> {
               value?.trim(),
             ),
           ),
-          const SizedBox(height: 16),
-          _buildTextFormField(
-            controller: _cityController,
-            label: l10n.city,
-            hint: l10n.city,
-            icon: Icons.location_city_outlined,
-            validator: (value) {
-              final trimmed = value?.trim() ?? '';
-              if (trimmed.isEmpty) return null;
-              return ValidationUtils.validateName(trimmed, l10n.city);
-            },
-          ),
+
         ],
       ),
     );

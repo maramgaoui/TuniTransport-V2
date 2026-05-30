@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:get_it/get_it.dart';
 import 'dart:developer' as developer;
 import 'package:image_picker/image_picker.dart';
 import '../models/user_model.dart';
@@ -18,43 +21,56 @@ const _kProtectedFields = {
 };
 
 class ProfileController {
-  final firebase_auth.FirebaseAuth _firebaseAuth =
-      firebase_auth.FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  ProfileController() {
+    _profileSub = _buildProfileStream().listen(
+      _streamController.add,
+      onError: _streamController.addError,
+      cancelOnError: false,
+    );
+  }
 
-  // Stream profile updates directly from Firestore to avoid retry delays.
-  Stream<User?> get profileStream {
+  final firebase_auth.FirebaseAuth _firebaseAuth =
+      GetIt.I<firebase_auth.FirebaseAuth>();
+  final FirebaseFirestore _firestore = GetIt.I<FirebaseFirestore>();
+
+  final _streamController = StreamController<User?>.broadcast();
+  StreamSubscription<User?>? _profileSub;
+
+  Stream<User?> get profileStream => _streamController.stream;
+
+  void dispose() {
+    _profileSub?.cancel();
+    _streamController.close();
+  }
+
+  Stream<User?> _buildProfileStream() {
     return _firebaseAuth.authStateChanges().asyncExpand((firebase_auth.User? user) {
       if (user == null) return Stream<User?>.value(null);
 
       return _firestore.collection(Col.users).doc(user.uid).snapshots().map((userDoc) {
         try {
+          if (!userDoc.exists) {
+            return User(uid: user.uid, email: user.email ?? '');
+          }
           final userData = userDoc.data() ?? <String, dynamic>{};
-          
-          // Ensure required fields exist
           userData['uid'] = _getStringValue(userData['uid'], user.uid);
           userData['email'] = _getStringValue(userData['email'], user.email ?? '');
-          
           return User.fromMap(userData);
         } catch (e) {
           developer.log('Error mapping profile stream: $e', name: 'ProfileController');
-          return User(
-            uid: user.uid,
-            email: user.email ?? '',
-          );
+          return User(uid: user.uid, email: user.email ?? '');
         }
       });
     });
   }
 
-  // Helper to safely get string values
   String _getStringValue(dynamic value, String defaultValue) {
     if (value is String && value.isNotEmpty) return value;
     if (value != null) return value.toString();
     return defaultValue;
   }
 
-  // Read current profile once, with a short exponential backoff for transient delays.
+  // Short exponential backoff (up to 4 attempts) for transient Firestore delays.
   Future<User?> getCurrentProfile() async {
     final firebaseUser = _firebaseAuth.currentUser;
     if (firebaseUser == null) return null;
@@ -68,7 +84,6 @@ class ProfileController {
         final userDoc = await _firestore.collection(Col.users).doc(firebaseUser.uid).get();
         final userData = userDoc.data() ?? <String, dynamic>{};
 
-        // Even if data is empty, return a basic user object
         userData['uid'] = _getStringValue(userData['uid'], firebaseUser.uid);
         userData['email'] = _getStringValue(userData['email'], firebaseUser.email ?? '');
 
@@ -84,18 +99,17 @@ class ProfileController {
         }
       }
 
-      await Future.delayed(Duration(milliseconds: delayMs));
+      await Future<void>.delayed(Duration(milliseconds: delayMs));
       delayMs *= 2;
     }
 
-    // Return fallback user with basic info from Firebase Auth
     return User(
       uid: firebaseUser.uid,
       email: firebaseUser.email ?? '',
     );
   }
 
-  // Update profile
+  // Strips protected fields before writing so users can't escalate their own role.
   Future<bool> updateProfile(User profile) async {
     final firebaseUser = _firebaseAuth.currentUser;
     if (firebaseUser == null) return false;
@@ -116,7 +130,6 @@ class ProfileController {
     }
   }
 
-  // Update specific profile fields
   Future<bool> updateProfileFields(Map<String, dynamic> fields) async {
     final firebaseUser = _firebaseAuth.currentUser;
     if (firebaseUser == null) return false;
@@ -136,8 +149,7 @@ class ProfileController {
     }
   }
 
-  // Upload custom avatar to Firebase Storage
-  // Returns the download URL on success or null on failure
+  // Stores the download URL in customAvatarUrl field after successful upload.
   Future<String?> uploadCustomAvatar({
     required XFile imageFile,
     void Function(double progress)? onProgress,
@@ -157,7 +169,6 @@ class ProfileController {
       );
 
       if (downloadUrl != null) {
-        // Save the download URL to user profile with a marker that it's a custom avatar
         await updateProfileFields({
           'customAvatarUrl': downloadUrl,
           'avatarUpdatedAt': FieldValue.serverTimestamp(),
@@ -171,37 +182,44 @@ class ProfileController {
     }
   }
 
-  // Change password. Returns null on success, otherwise an error message.
+  // Returns null on success; error strings are French constants (_PasswordErrors).
+  // Controller has no BuildContext — l10n is the caller's responsibility.
   Future<String?> changePassword(String currentPassword, String newPassword) async {
     final firebaseUser = _firebaseAuth.currentUser;
     if (firebaseUser == null) {
-      return 'Utilisateur non connecté';
+      return _PasswordErrors.notAuthenticated;
     }
 
-    // Validate new password strength
     if (newPassword.length < 6) {
-      return 'Le nouveau mot de passe doit contenir au moins 6 caractères';
+      return _PasswordErrors.tooShort;
     }
 
     if (currentPassword == newPassword) {
-      return 'Le nouveau mot de passe doit être différent de l\'ancien';
+      return _PasswordErrors.sameAsCurrent;
     }
 
     try {
-      // Re-authenticate user before changing password
       final credential = firebase_auth.EmailAuthProvider.credential(
         email: firebaseUser.email ?? '',
         password: currentPassword,
       );
 
       await firebaseUser.reauthenticateWithCredential(credential);
-
-      // Update password
       await firebaseUser.updatePassword(newPassword);
-      
-      // Optionally: Send email notification about password change
-      await _sendPasswordChangeNotification(firebaseUser.email);
-      
+
+      // Stamp audit field — non-blocking so a Firestore hiccup doesn't
+      // fail the password change that already succeeded in Firebase Auth.
+      _firestore
+          .collection(Col.users)
+          .doc(firebaseUser.uid)
+          .update({'passwordChangedAt': FieldValue.serverTimestamp()})
+          .catchError((Object e) {
+            developer.log(
+              'passwordChangedAt update failed: $e',
+              name: 'ProfileController',
+            );
+          });
+
       return null;
     } on firebase_auth.FirebaseAuthException catch (e) {
       developer.log(
@@ -212,39 +230,26 @@ class ProfileController {
       switch (e.code) {
         case 'wrong-password':
         case 'invalid-credential':
-          return 'Le mot de passe actuel est incorrect';
+          return _PasswordErrors.wrongCurrentPassword;
         case 'weak-password':
-          return 'Le nouveau mot de passe est trop faible';
+          return _PasswordErrors.tooWeak;
         case 'requires-recent-login':
-          return 'Session expirée. Veuillez vous reconnecter puis réessayer';
+          return _PasswordErrors.requiresRecentLogin;
         case 'too-many-requests':
-          return 'Trop de tentatives. Veuillez réessayer plus tard';
+          return _PasswordErrors.tooManyRequests;
         case 'user-disabled':
-          return 'Ce compte a été désactivé';
+          return _PasswordErrors.userDisabled;
         case 'user-not-found':
-          return 'Utilisateur non trouvé';
+          return _PasswordErrors.userNotFound;
         default:
           return 'Échec du changement de mot de passe: ${e.message}';
       }
     } catch (e) {
       developer.log('Error changing password: $e', name: 'ProfileController');
-      return 'Échec du changement de mot de passe';
+      return _PasswordErrors.genericFailure;
     }
   }
 
-  // Helper to send password change notification
-  Future<void> _sendPasswordChangeNotification(String? email) async {
-    try {
-      // Implement email notification if needed
-      // This could be a call to a cloud function or just local logging
-      developer.log('Password changed for user: $email', name: 'ProfileController');
-    } catch (e) {
-      // Non-critical, don't fail the password change
-      developer.log('Failed to send password change notification: $e', name: 'ProfileController');
-    }
-  }
-
-  // Refresh user profile
   Future<void> refreshUserProfile() async {
     final firebaseUser = _firebaseAuth.currentUser;
     if (firebaseUser == null) return;
@@ -257,7 +262,6 @@ class ProfileController {
     }
   }
 
-  // Check if user profile exists in Firestore
   Future<bool> profileExists() async {
     final firebaseUser = _firebaseAuth.currentUser;
     if (firebaseUser == null) return false;
@@ -270,4 +274,18 @@ class ProfileController {
       return false;
     }
   }
+}
+
+// French error strings for changePassword() — no BuildContext available here.
+abstract final class _PasswordErrors {
+  static const notAuthenticated      = 'Utilisateur non connecté';
+  static const tooShort              = 'Le nouveau mot de passe doit contenir au moins 6 caractères';
+  static const sameAsCurrent         = 'Le nouveau mot de passe doit être différent de l\'ancien';
+  static const wrongCurrentPassword  = 'Le mot de passe actuel est incorrect';
+  static const tooWeak               = 'Le nouveau mot de passe est trop faible';
+  static const requiresRecentLogin   = 'Session expirée. Veuillez vous reconnecter puis réessayer';
+  static const tooManyRequests       = 'Trop de tentatives. Veuillez réessayer plus tard';
+  static const userDisabled          = 'Ce compte a été désactivé';
+  static const userNotFound          = 'Utilisateur non trouvé';
+  static const genericFailure        = 'Échec du changement de mot de passe';
 }

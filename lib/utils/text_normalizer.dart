@@ -1,12 +1,8 @@
 import 'package:flutter/foundation.dart';
 
-/// Text normalization utilities for multilingual search and matching.
-/// 
-/// Handles French accents, Arabic diacritics, and transliteration
-/// to enable flexible matching across multiple languages.
+// Multilingual search normalizer: French accents, Arabic diacritics, transliteration.
+// All comparisons should go through normalize() before matching.
 class TextNormalizer {
-  /// Normalizes text for comparison: lowercase, removes accents,
-  /// strips Arabic diacritics, transliterates Arabic to Latin, collapses whitespace.
   static String normalize(String input) {
     var text = input.toLowerCase().trim();
 
@@ -80,10 +76,9 @@ class TextNormalizer {
       'المحطة': 'mahatta',
     };
 
-    // Apply transliterations
     arabicToLatin.forEach((k, v) => text = text.replaceAll(k, v));
 
-    // Normalize common abbreviations
+    // Common abbreviation variants → canonical form
     text = text
         .replaceAll('cité', 'cite')
         .replaceAll('cit.', 'cite')
@@ -97,16 +92,11 @@ class TextNormalizer {
         .replaceAll('10-décembre', '10 decembre')
         .replaceAll('10décembre', '10 decembre');
 
-    // Collapse whitespace
     text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
     return text;
   }
 
-  /// Calculates Levenshtein distance between two strings for fuzzy matching.
-  /// 
-  /// Returns a value between 0 and 1, where:
-  /// - 1.0 = exact match
-  /// - 0.0 = completely different
+  /// Returns 0.0–1.0; 1.0 = exact match after normalization.
   static double similarity(String s1, String s2) {
     final n1 = normalize(s1);
     final n2 = normalize(s2);
