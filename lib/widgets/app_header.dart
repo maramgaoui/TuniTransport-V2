@@ -24,57 +24,60 @@ class AppHeader extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [AppTheme.primaryTeal, AppTheme.lightTeal],
         ),
       ),
       child: SafeArea(
+        top: true,
         bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                if (leading != null) ...[
-                  leading!,
-                  const SizedBox(width: 10),
-                ],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          color: onPrimary,
-                        ),
-                      ),
-                      if (subtitle != null)
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (leading != null) ...[
+                    leading!,
+                    const SizedBox(width: 10),
+                  ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          subtitle!,
+                          title,
                           style: TextStyle(
-                            fontSize: 12,
-                            color: onPrimary.withValues(alpha: 0.9),
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: onPrimary,
                           ),
                         ),
-                    ],
+                        if (subtitle != null)
+                          Text(
+                            subtitle!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: onPrimary.withValues(alpha: 0.9),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-                ...switch (trailing) {
-                  final trailingWidget? => [trailingWidget],
-                  null => const <Widget>[],
-                },
+                  ...switch (trailing) {
+                    final trailingWidget? => [trailingWidget],
+                    null => const <Widget>[],
+                  },
+                ],
+              ),
+              if (bottom != null) ...[
+                const SizedBox(height: 12),
+                bottom!,
               ],
-            ),
-            if (bottom != null) ...[
-              const SizedBox(height: 12),
-              bottom!,
             ],
-          ],
+          ),
         ),
       ),
     );

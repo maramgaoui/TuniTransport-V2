@@ -157,6 +157,9 @@ abstract class AppLocalizations {
   /// **'Notifications'**
   String get notifications;
 
+  /// No description provided for @notificationsSubtitle.
+  String get notificationsSubtitle;
+
   /// No description provided for @home.
   ///
   /// In en, this message translates to:

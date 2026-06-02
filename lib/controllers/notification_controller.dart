@@ -69,6 +69,7 @@ class NotificationController extends ChangeNotifier {
     try {
       await _loadFromStorage();
       await _loadFromFirestore();
+      await _loadBroadcastNotifications();
       await ensureSystemAnnouncement();
       _initialized = true;
       _initializedForUid = uid;
@@ -133,8 +134,13 @@ class NotificationController extends ChangeNotifier {
     final type = _typeFromString(data['type']?.toString());
 
     final String id;
+    final rawDocId = data['docId']?.toString();
     final rawId = message.messageId;
-    if (rawId != null && rawId.isNotEmpty) {
+    if (rawDocId != null && rawDocId.isNotEmpty) {
+      // Stable ID matching _loadBroadcastNotifications() so FCM delivery and
+      // startup load don't produce duplicate entries for the same broadcast.
+      id = 'broadcast_$rawDocId';
+    } else if (rawId != null && rawId.isNotEmpty) {
       id = rawId;
     } else {
       final bucket = DateTime.now().millisecondsSinceEpoch ~/ 120000;
@@ -321,6 +327,60 @@ class NotificationController extends ChangeNotifier {
         .collection(Col.users)
         .doc(uid)
         .collection(Col.notifications);
+  }
+
+  Future<void> _loadBroadcastNotifications() async {
+    final uid = AuthController.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final db = GetIt.I<FirebaseFirestore>();
+      final userDoc = await db.collection(Col.users).doc(uid).get();
+      final role = (userDoc.data()?['role'] as String?) ?? 'user';
+
+      final List<String> targets;
+      switch (role) {
+        case 'super_admin':
+          targets = ['all', 'admins', 'super_admins'];
+        case 'admin':
+          targets = ['all', 'admins'];
+        default:
+          targets = ['all'];
+      }
+
+      final snap = await db
+          .collection(Col.notifications)
+          .where('target', whereIn: targets)
+          .limit(50)
+          .get();
+
+      bool changed = false;
+      for (final doc in snap.docs) {
+        final broadcastId = 'broadcast_${doc.id}';
+        if (_notifications.any((n) => n.id == broadcastId)) continue;
+
+        final data = doc.data();
+        final title = (data['title'] as String?) ?? '';
+        final body = (data['message'] as String?) ?? '';
+        if (title.isEmpty && body.isEmpty) continue;
+
+        final ts = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+        _notifications.add(NotificationModel(
+          id: broadcastId,
+          title: title,
+          body: body,
+          type: NotificationType.system,
+          timestamp: ts,
+          isRead: false,
+        ));
+        changed = true;
+      }
+
+      if (changed) {
+        _notifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('[NotificationController] Broadcast load failed: $e');
+    }
   }
 
   Future<void> _loadFromFirestore() async {

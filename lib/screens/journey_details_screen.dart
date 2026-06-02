@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get_it/get_it.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
+import '../controllers/favorites_controller.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:tuni_transport/widgets/time_text.dart';
@@ -31,6 +33,7 @@ class JourneyDetailsScreen extends StatefulWidget {
 class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
   late MapController _mapController;
   late Journey _journey;
+  MetroSahelResult? _effectiveMetroResult;
   List<_StopInfo> _intermediateStops = [];
   List<LatLng> _routePolylinePoints = const <LatLng>[];
   List<LatLng> _taxiMapPoints       = const <LatLng>[];
@@ -42,8 +45,8 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       widget.journey != null && widget.journey!.type == 'Bus TRANSTU';
 
   List<Color> get _themeGradient {
-    if (widget.metroResult != null) {
-      final lt = widget.metroResult!.lineType;
+    if (_effectiveMetroResult != null) {
+      final lt = _effectiveMetroResult!.lineType;
       if (lt == 'sts_sahel') {
         return const [Color(0xFF00695C), Color(0xFF00897B)]; // STS bus → green
       }
@@ -76,6 +79,25 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     _mapController = MapController();
     _journey = widget.journey ?? widget.metroResult!.toJourney();
     if (widget.metroResult != null) {
+      _effectiveMetroResult = widget.metroResult;
+      _loadIntermediateStops();
+    } else if (_journey.metroLineType != null && _journey.fromStationId != null) {
+      _effectiveMetroResult = MetroSahelResult(
+        tripNumber:      _journey.metroTripNumber ?? 0,
+        routeName:       '',
+        fromStationId:   _journey.fromStationId!,
+        toStationId:     _journey.toStationId ?? '',
+        fromStationName: _journey.departureStation,
+        toStationName:   _journey.arrivalStation,
+        departureTime:   _journey.departureTime,
+        arrivalTime:     _journey.arrivalTime ?? '',
+        durationMinutes: _journey.estimatedTripDurationMinutes ?? 0,
+        price:           double.tryParse(_journey.price) ?? 0,
+        numberOfStops:   0,
+        operatorName:    _journey.operator,
+        lineType:        _journey.metroLineType!,
+        tripNumberStr:   _journey.metroTripNumberStr,
+      );
       _loadIntermediateStops();
     } else if (_isTranstuBus) {
       _loadTranstuStops();
@@ -95,7 +117,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
 
   Future<void> _loadIntermediateStops() async {
     try {
-      final metro = widget.metroResult!;
+      final metro = _effectiveMetroResult!;
       final db = GetIt.I<FirebaseFirestore>();
 
       String routeId;
@@ -254,8 +276,10 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       if (mounted) {
         setState(() {
           _intermediateStops = stops;
-          _routePolylinePoints =
-              stops.map((s) => LatLng(s.lat, s.lng)).toList(growable: false);
+          _routePolylinePoints = stops
+              .where((s) => s.lat != 0 && s.lng != 0)
+              .map((s) => LatLng(s.lat, s.lng))
+              .toList(growable: false);
           _stopsLoading = false;
         });
         _loadRoutedPolyline();
@@ -344,8 +368,10 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       if (mounted) {
         setState(() {
           _intermediateStops = stops;
-          _routePolylinePoints =
-              stops.map((s) => LatLng(s.lat, s.lng)).toList(growable: false);
+          _routePolylinePoints = stops
+              .where((s) => s.lat != 0 && s.lng != 0)
+              .map((s) => LatLng(s.lat, s.lng))
+              .toList(growable: false);
           _stopsLoading = false;
         });
         _loadRoutedPolyline();
@@ -512,14 +538,18 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
     final markers = <Marker>[];
     if (_intermediateStops.isEmpty) return markers;
 
-    markers.add(Marker(
-      point: LatLng(_intermediateStops.first.lat, _intermediateStops.first.lng),
-      width: 80, height: 80,
-      child: _markerWidget(Colors.green, Icons.play_arrow, 'Départ'),
-    ));
+    final firstStop = _intermediateStops.first;
+    if (firstStop.lat != 0 && firstStop.lng != 0) {
+      markers.add(Marker(
+        point: LatLng(firstStop.lat, firstStop.lng),
+        width: 80, height: 80,
+        child: _markerWidget(Colors.green, Icons.play_arrow, 'Départ'),
+      ));
+    }
 
     for (int i = 1; i < _intermediateStops.length - 1; i++) {
       final stop = _intermediateStops[i];
+      if (stop.lat == 0 || stop.lng == 0) continue;
       markers.add(Marker(
         point: LatLng(stop.lat, stop.lng),
         width: 14, height: 14,
@@ -533,11 +563,14 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       ));
     }
 
-    markers.add(Marker(
-      point: LatLng(_intermediateStops.last.lat, _intermediateStops.last.lng),
-      width: 80, height: 80,
-      child: _markerWidget(Colors.red, Icons.stop, 'Arrivée'),
-    ));
+    final lastStop = _intermediateStops.last;
+    if (lastStop.lat != 0 && lastStop.lng != 0) {
+      markers.add(Marker(
+        point: LatLng(lastStop.lat, lastStop.lng),
+        width: 80, height: 80,
+        child: _markerWidget(Colors.red, Icons.stop, 'Arrivée'),
+      ));
+    }
 
     return markers;
   }
@@ -581,9 +614,13 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
       // Prefer routed road path; fall back to straight line between cities.
       points = _routePolylinePoints.isNotEmpty ? _routePolylinePoints : _taxiMapPoints;
     } else if (_intermediateStops.length >= 2) {
+      final validStops = _intermediateStops
+          .where((s) => s.lat != 0 && s.lng != 0)
+          .toList();
+      if (validStops.length < 2) return [];
       points = _routePolylinePoints.isNotEmpty
           ? _routePolylinePoints
-          : _intermediateStops.map((s) => LatLng(s.lat, s.lng)).toList();
+          : validStops.map((s) => LatLng(s.lat, s.lng)).toList();
     } else {
       return [];
     }
@@ -595,11 +632,21 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
         ? _taxiMapPoints
         : _intermediateStops.length < 2
             ? null
-            : _intermediateStops.map((s) => LatLng(s.lat, s.lng)).toList(growable: false);
+            : _intermediateStops
+                .where((s) => s.lat != 0 && s.lng != 0)
+                .map((s) => LatLng(s.lat, s.lng))
+                .toList(growable: false);
     if (base == null || base.length < 2) return;
     final routed = await MapRoutingService.buildRoadPath(base);
     if (!mounted || routed.length < 2) return;
     setState(() => _routePolylinePoints = routed);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || routed.length < 2) return;
+      final bounds = LatLngBounds.fromPoints(routed);
+      _mapController.fitCamera(
+        CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(40)),
+      );
+    });
   }
 
   // Approximate coordinates for every city that appears in taxi collectif routes.
@@ -933,7 +980,7 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final metro = widget.metroResult;
+    final metro = _effectiveMetroResult;
     final isMetro = metro != null;
     final isTaxi = !isMetro && _journey.iconKey == 'taxi';
     final isStusBus = isMetro && metro.lineType == 'sts_sahel';
@@ -1259,11 +1306,11 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                                 await ActiveJourneyService.instance
                                     .setActiveJourney(_journey);
                                 if (!context.mounted) return;
-                                context.push('/home/active-journey',
+                                context.go('/home/active-journey',
                                     extra: <String, dynamic>{
                                       'journey':       _journey,
-                                      'fromStationId': widget.metroResult?.fromStationId,
-                                      'toStationId':   widget.metroResult?.toStationId,
+                                      'fromStationId': _effectiveMetroResult?.fromStationId,
+                                      'toStationId':   _effectiveMetroResult?.toStationId,
                                       'metroResult':   widget.metroResult,
                                     });
                               },
@@ -1276,6 +1323,35 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                             ),
                           ),
                           const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: _themeColor,
+                                    side: BorderSide(color: _themeColor),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                  onPressed: () {
+                                    final text =
+                                        '${_journey.departureStation} → ${_journey.arrivalStation}\n'
+                                        'Départ : ${_journey.departureTime}  |  Tarif : ${_journey.price} TND\n'
+                                        'Via TuniTransport';
+                                    Share.share(text);
+                                  },
+                                  icon: const Icon(Icons.share_outlined, size: 18),
+                                  label: const Text('Partager'),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _FavoriteButton(
+                                    journey: _journey, themeColor: _themeColor),
+                              ),
+                            ],
+                          ),
 
                         ],
                       ),
@@ -1472,4 +1548,62 @@ class _StopInfo {
   });
 }
 
+class _FavoriteButton extends StatefulWidget {
+  final Journey journey;
+  final Color themeColor;
+  const _FavoriteButton({required this.journey, required this.themeColor});
+  @override
+  State<_FavoriteButton> createState() => _FavoriteButtonState();
+}
 
+class _FavoriteButtonState extends State<_FavoriteButton> {
+  bool _isFavorite = false;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _check();
+  }
+
+  Future<void> _check() async {
+    await FavoritesController.instance.ensureFavoritesLoaded();
+    if (mounted) {
+      setState(() {
+        _isFavorite = FavoritesController.instance.isFavorite(widget.journey.id);
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _toggle() async {
+    if (_loading) return;
+    setState(() => _loading = true);
+    try {
+      await FavoritesController.instance.toggleFavorite(widget.journey);
+      if (mounted) setState(() { _isFavorite = !_isFavorite; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: _isFavorite ? Colors.red : widget.themeColor,
+        side: BorderSide(color: _isFavorite ? Colors.red : widget.themeColor),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      onPressed: _toggle,
+      icon: _loading
+          ? const SizedBox(
+              width: 16, height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2))
+          : Icon(_isFavorite ? Icons.favorite : Icons.favorite_border_outlined,
+              size: 18),
+      label: Text(_isFavorite ? 'Sauvegardé' : 'Favoris'),
+    );
+  }
+}

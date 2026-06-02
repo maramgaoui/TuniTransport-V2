@@ -39,6 +39,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get notifications => 'Notifications';
 
   @override
+  String get notificationsSubtitle => 'Alertes et mises à jour';
+
+  @override
   String get home => 'Accueil';
 
   @override
@@ -329,7 +332,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get community => 'Communauté';
 
   @override
-  String get publicDiscussion => 'Discussion publique';
+  String get publicDiscussion => 'Échanges entre voyageurs';
 
   @override
   String get writeMessageHint => 'Écrire un message...';

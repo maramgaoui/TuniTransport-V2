@@ -9,6 +9,7 @@ import 'package:tuni_transport/models/user_model.dart';
 import 'package:tuni_transport/utils/validation_utils.dart';
 
 import '../theme/app_theme.dart';
+import '../widgets/app_header.dart';
 import '../widgets/app_settings.dart';
 import '../widgets/validated_text_field.dart';
 
@@ -204,13 +205,16 @@ class ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _showAvatarPicker(User profile) async {
+    if (!mounted) return;
     final l10n = AppLocalizations.of(context)!;
     String selectedAvatarId = profile.avatarId ?? avatarOptions.first;
+    bool confirmed = false;
 
-    final saved = await showDialog<bool>(
+    await showDialog<void>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
           title: Text(l10n.chooseAvatar),
           content: SizedBox(
             width: double.maxFinite,
@@ -225,7 +229,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
                 ),
-                itemBuilder: (context, index) {
+                itemBuilder: (dialogContext, index) {
                   final avatarId = avatarOptions[index];
                   final isSelected = selectedAvatarId == avatarId;
                   return GestureDetector(
@@ -258,11 +262,14 @@ class ProfileScreenState extends State<ProfileScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: Text(l10n.cancel),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () {
+                confirmed = true;
+                Navigator.of(dialogContext).pop();
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryTeal,
               ),
@@ -276,21 +283,21 @@ class ProfileScreenState extends State<ProfileScreen> {
       ),
     );
 
-    if (saved == true) {
-      final success = await _profileController.updateProfileFields({
-        'avatarId': selectedAvatarId,
-        'customAvatarUrl': null,
-      });
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success ? l10n.avatarUpdated : l10n.avatarUpdateFailed,
-          ),
-          backgroundColor: success ? AppTheme.primaryTeal : Colors.red,
+    if (!mounted || !confirmed) return;
+
+    final success = await _profileController.updateProfileFields({
+      'avatarId': selectedAvatarId,
+      'customAvatarUrl': null,
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success ? l10n.avatarUpdated : l10n.avatarUpdateFailed,
         ),
-      );
-    }
+        backgroundColor: success ? AppTheme.primaryTeal : Colors.red,
+      ),
+    );
   }
 
   void _showChangePasswordDialog() {
@@ -394,6 +401,16 @@ class ProfileScreenState extends State<ProfileScreen> {
                 if (newPasswordController.text.length < 6) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(l10n.passwordMinLength)),
+                  );
+                  return;
+                }
+                final strengthError = ValidationUtils.validatePassword(
+                    newPasswordController.text);
+                if (strengthError != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text(strengthError),
+                        backgroundColor: Colors.red),
                   );
                   return;
                 }
@@ -586,56 +603,65 @@ class ProfileScreenState extends State<ProfileScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: widget.showAppBar
-          ? AppBar(
-              title: Text(l10n.profile),
+      body: Column(
+        children: [
+          if (widget.showAppBar)
+            AppHeader(
+              title: l10n.profile,
               leading: IconButton(
-                icon: const Icon(Icons.arrow_back),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
                 onPressed: () => context.go('/home/journey-input'),
               ),
-              actions: [
-                if (!_isEditing && !_isPrivilegedReadOnlyMode)
-                  IconButton(
-                    icon: const Icon(Icons.edit),
-                    onPressed: () {
-                      setState(() => _isEditing = true);
-                      widget.onActionStateChanged?.call();
-                    },
-                  ),
-                if (_isEditing && !_isPrivilegedReadOnlyMode)
-                  IconButton(
-                    icon: _isLoading
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : const Icon(Icons.check),
-                    onPressed: _isLoading
-                        ? null
-                        : () async {
-                            final profile =
-                                await _profileController.getCurrentProfile();
-                            if (profile != null && mounted) {
-                              await _saveProfile(profile);
-                            }
-                          },
-                  ),
-                if (!_isPrivilegedReadOnlyMode)
-                  IconButton(
-                    icon: const Icon(Icons.settings),
-                    onPressed: _showSettingsDialog,
-                  ),
-              ],
-            )
-          : null,
-      body: StreamBuilder<User?>(
-        stream: _profileController.profileStream,
-        builder: (context, snapshot) {
+              trailing: !widget.showInlineActions
+                  ? null
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (!_isEditing && !_isPrivilegedReadOnlyMode)
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.white),
+                            onPressed: () {
+                              setState(() => _isEditing = true);
+                              widget.onActionStateChanged?.call();
+                            },
+                          ),
+                        if (_isEditing && !_isPrivilegedReadOnlyMode)
+                          IconButton(
+                            icon: _isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor:
+                                          AlwaysStoppedAnimation<Color>(
+                                              Colors.white),
+                                    ),
+                                  )
+                                : const Icon(Icons.check, color: Colors.white),
+                            onPressed: _isLoading
+                                ? null
+                                : () async {
+                                    final profile =
+                                        await _profileController
+                                            .getCurrentProfile();
+                                    if (profile != null && mounted) {
+                                      await _saveProfile(profile);
+                                    }
+                                  },
+                          ),
+                        if (!_isPrivilegedReadOnlyMode)
+                          IconButton(
+                            icon: const Icon(Icons.settings, color: Colors.white),
+                            onPressed: _showSettingsDialog,
+                          ),
+                      ],
+                    ),
+            ),
+          Expanded(
+            child: StreamBuilder<User?>(
+              stream: _profileController.profileStream,
+              builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -850,6 +876,9 @@ class ProfileScreenState extends State<ProfileScreen> {
           );
         },
       ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -902,72 +931,36 @@ class ProfileScreenState extends State<ProfileScreen> {
       key: _formKey,
       child: Column(
         children: [
-          _buildTextFormField(
+          ValidatedTextField(
             controller: _firstNameController,
             label: l10n.firstName,
-            hint: l10n.firstName,
-            icon: Icons.person_outline,
-            validator: (value) => ValidationUtils.validateName(
-              value?.trim(),
-              l10n.firstName,
-            ),
+            hintText: l10n.firstName,
+            prefixIcon: Icons.person_outline,
+            validationType: 'name',
+            nameFieldType: l10n.firstName,
+            maxLength: 30,
           ),
           const SizedBox(height: 16),
-          _buildTextFormField(
+          ValidatedTextField(
             controller: _lastNameController,
             label: l10n.lastName,
-            hint: l10n.lastName,
-            icon: Icons.person_outline,
-            validator: (value) => ValidationUtils.validateName(
-              value?.trim(),
-              l10n.lastName,
-            ),
+            hintText: l10n.lastName,
+            prefixIcon: Icons.person_outline,
+            validationType: 'name',
+            nameFieldType: l10n.lastName,
+            maxLength: 30,
           ),
           const SizedBox(height: 16),
-          _buildTextFormField(
+          ValidatedTextField(
             controller: _usernameController,
             label: l10n.username,
-            hint: l10n.username,
-            icon: Icons.person_add_outlined,
-            validator: (value) => ValidationUtils.validateUsername(
-              value?.trim(),
-            ),
+            hintText: l10n.username,
+            prefixIcon: Icons.person_add_outlined,
+            validationType: 'username',
+            maxLength: 20,
           ),
-
         ],
       ),
-    );
-  }
-
-  Widget _buildTextFormField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-    int maxLines = 1,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(icon),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(
-            color: AppTheme.primaryTeal,
-            width: 2,
-          ),
-        ),
-      ),
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      validator: validator,
     );
   }
 }

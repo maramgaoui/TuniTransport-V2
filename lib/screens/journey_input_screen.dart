@@ -255,8 +255,10 @@ class _JourneyInputScreenState extends State<JourneyInputScreen> {
             if (!_useCurrentLocation) {
               _manualDepartureBackup = _displayStationName(selected);
             }
+            _arrivalFocus.requestFocus();
           } else {
             _selectedArrival = selected;
+            FocusScope.of(context).unfocus();
           }
         });
       },
@@ -302,7 +304,14 @@ class _JourneyInputScreenState extends State<JourneyInputScreen> {
             });
           },
           textInputAction: isDeparture ? TextInputAction.next : TextInputAction.search,
-          onSubmitted: (_) => onFieldSubmitted(),
+          onSubmitted: (_) {
+            onFieldSubmitted();
+            if (isDeparture) {
+              _arrivalFocus.requestFocus();
+            } else {
+              FocusScope.of(context).unfocus();
+            }
+          },
         );
       },
       optionsViewBuilder: (context, onSelected, options) {

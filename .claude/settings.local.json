@@ -25,7 +25,13 @@
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Snaws\\\\Desktop\\\\TuniTransport-V2\\\\scripts\" -File -Exclude node_modules)",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(flutter gen-l10n *)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(flutter pub *)",
+      "Bash(powershell -command \"Expand-Archive -Path 'Template_Latex_ISIMa \\(19\\).zip' -DestinationPath 'Template_Latex_ISIMa_19' -Force\")",
+      "Bash(powershell -command \"Compress-Archive -Path 'C:\\\\Users\\\\Snaws\\\\Downloads\\\\Template_Latex_ISIMa_19\\\\*' -DestinationPath 'C:\\\\Users\\\\Snaws\\\\Downloads\\\\Template_Latex_ISIMa_fixed.zip' -Force; Write-Host 'Done'\")",
+      "Bash(adb -s f125817f shell pm uninstall com.tunitranspo.app)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Snaws\\\\Desktop\\\\TuniTransport-V2\" -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match \"\\\\.\\(dart\\)$\" } | Select-Object -ExpandProperty FullName | head -30)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Snaws\\\\Desktop\\\\TuniTransport-V2\" -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match \"\\\\.\\(dart\\)$\" } | Select-Object -ExpandProperty FullName | Select-Object -First 50)"
     ]
   }
 }

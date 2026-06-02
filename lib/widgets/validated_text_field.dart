@@ -19,6 +19,7 @@ class ValidatedTextField extends StatefulWidget {
   final String? nameFieldType;
   final Key? textFieldKey;
   final bool showStrengthIndicator;
+  final int? maxLength;
 
   const ValidatedTextField({
     super.key,
@@ -35,6 +36,7 @@ class ValidatedTextField extends StatefulWidget {
     this.nameFieldType,
     this.textFieldKey,
     this.showStrengthIndicator = true,
+    this.maxLength,
   });
 
   @override
@@ -104,7 +106,9 @@ class _ValidatedTextFieldState extends State<ValidatedTextField> {
           onChanged: _validateField,
           validator: (value) => _getFormValidator(value),
           autovalidateMode: AutovalidateMode.onUserInteraction,
+          maxLength: widget.maxLength,
           decoration: InputDecoration(
+            counterText: widget.maxLength != null ? '' : null,
             hintText: widget.hintText,
             prefixIcon: Icon(widget.prefixIcon),
             suffixIcon: _buildSuffixIcon(),

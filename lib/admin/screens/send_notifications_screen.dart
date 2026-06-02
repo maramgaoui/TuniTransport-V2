@@ -6,6 +6,7 @@ import '../../constants/firestore_collections.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/theme/app_theme.dart';
+import '../../widgets/app_header.dart';
 
 class SendNotificationsScreen extends StatefulWidget {
   const SendNotificationsScreen({super.key});
@@ -120,19 +121,21 @@ class _SendNotificationsScreenState extends State<SendNotificationsScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.sendNotifications),
-        backgroundColor: AppTheme.primaryTeal,
-        foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (Navigator.of(context).canPop()) {
-              context.pop();
-            } else {
-              context.go('/admin');
-            }
-          },
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(80),
+        child: AppHeader(
+          title: l10n.sendNotifications,
+          subtitle: 'Alertes et annonces',
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              if (Navigator.of(context).canPop()) {
+                context.pop();
+              } else {
+                context.go('/admin');
+              }
+            },
+          ),
         ),
       ),
       body: SingleChildScrollView(
@@ -262,118 +265,10 @@ class _SendNotificationsScreenState extends State<SendNotificationsScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 32),
-
-            // History section
-            Text(
-              l10n.notificationsHistory,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: _notificationsRef
-                  .orderBy('createdAt', descending: true)
-                  .limit(50)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Text(l10n.notificationsLoadError);
-                }
-
-                final docs = snapshot.data?.docs ?? [];
-                if (docs.isEmpty) {
-                  return Text(l10n.noNotificationSentYet);
-                }
-
-                return Column(
-                  children: docs.map((doc) {
-                    final data = doc.data();
-                    final title = (data['title'] ?? '').toString();
-                    final message = (data['message'] ?? '').toString();
-                    final recipients = ((data['recipientsCount'] ?? 0) as num).toInt();
-                    final ts = data['createdAt'];
-                    final sentAt =
-                        ts is Timestamp ? ts.toDate() : DateTime.now();
-
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    title,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                Text(
-                                  _formatDate(sentAt),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.darkGrey,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              message,
-                              style: const TextStyle(fontSize: 13),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                const Icon(Icons.person, size: 16, color: AppTheme.mediumGrey),
-                                const SizedBox(width: 4),
-                                Text(
-                                  l10n.recipientsCount(recipients),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.mediumGrey,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
           ],
         ),
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final diff = now.difference(date);
-    if (diff.inHours < 24) {
-      return '${diff.inHours}h ago';
-    } else if (diff.inDays < 7) {
-      return '${diff.inDays}j ago';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
-    }
   }
 
   @override

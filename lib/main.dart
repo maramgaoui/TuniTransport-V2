@@ -6,7 +6,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' as dart_firestore;
 import 'firebase_runtime_options.dart';
 import 'firebase_options.dart';
@@ -60,7 +59,6 @@ void main() async {
   await AnalyticsService.instance.logAppOpen();
 
   if (!FirebaseRuntimeOptions.integrationTestMode) {
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     await NotificationService.instance.initialize();
     await NotificationController.instance.initialize();
   }

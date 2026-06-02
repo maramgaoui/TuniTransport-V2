@@ -38,6 +38,11 @@ class FavoritesController extends ChangeNotifier {
 
     if (_isLoading) return;
 
+    // Skip if already loaded for this user — avoids an unnecessary Firestore
+    // round-trip (and the GMS IPC it triggers on restricted MIUI devices)
+    // every time a screen with a _FavoriteButton opens.
+    if (_loadedForUid == uid) return;
+
     await loadFavorites();
   }
 

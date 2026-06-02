@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/controllers/auth_controller.dart';
 import 'package:tuni_transport/admin/widgets/admin_soft_card.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
+import '../../widgets/app_header.dart';
 import 'package:tuni_transport/theme/app_theme.dart';
 import '../../services/admin_notification_service.dart';
 import '../../services/audit_log_service.dart';
@@ -36,55 +37,6 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
 
   bool get _isTaxiAdmin => !_isSuperAdmin && _adminType == 'taxicollectifs';
 
-  CollectionReference<Map<String, dynamic>> get _routesRef {
-    if (_isTaxiAdmin) return _db.collection(Col.taxiCollectifRoutes);
-    return _db.collection(Col.routes);
-  }
-
-  // Super admin: merge both collections into a single list stream.
-  // Other admins: stream only their own collection.
-  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> get _routeStream {
-    if (!_isSuperAdmin) {
-      return _singleCollectionStream(_routesRef);
-    }
-    // Merge Col.routes + Col.taxiCollectifRoutes for super admin.
-    final s1 = _singleCollectionStream(_db.collection(Col.routes));
-    final s2 = _singleCollectionStream(_db.collection(Col.taxiCollectifRoutes));
-    return _mergeRouteStreams(s1, s2);
-  }
-
-  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _singleCollectionStream(
-    CollectionReference<Map<String, dynamic>> ref,
-  ) {
-    switch (_activeFilter) {
-      case _RouteFilter.active:
-        return ref.where('isActive', isEqualTo: true).snapshots()
-            .map((s) => s.docs);
-      case _RouteFilter.inactive:
-        return ref.where('isActive', isEqualTo: false).snapshots()
-            .map((s) => s.docs);
-      case _RouteFilter.all:
-        return ref.snapshots().map((s) => s.docs);
-    }
-  }
-
-  // Emits a combined list whenever either sub-stream fires.
-  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _mergeRouteStreams(
-    Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> s1,
-    Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> s2,
-  ) {
-    final controller = StreamController<List<QueryDocumentSnapshot<Map<String, dynamic>>>>();
-    List<QueryDocumentSnapshot<Map<String, dynamic>>>? d1;
-    List<QueryDocumentSnapshot<Map<String, dynamic>>>? d2;
-    void emit() {
-      if (d1 != null && d2 != null) controller.add([...d1!, ...d2!]);
-    }
-    final sub1 = s1.listen((docs) { d1 = docs; emit(); });
-    final sub2 = s2.listen((docs) { d2 = docs; emit(); });
-    controller.onCancel = () { sub1.cancel(); sub2.cancel(); };
-    return controller.stream;
-  }
-
   final TextEditingController _departureController = TextEditingController();
   final TextEditingController _arrivalController = TextEditingController();
 
@@ -96,9 +48,18 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
   String _arrivalQuery = '';
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _scopeSub;
 
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _allDocs = const [];
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _results = const [];
+  bool _isLoading = false;
+  // Optimistic local overrides so the toggle reflects immediately without waiting
+  // for a full reload. Cleared when _loadAll() fetches fresh data.
+  final Map<String, bool> _activeOverrides = {};
+
   @override
   void initState() {
     super.initState();
+    _departureController.addListener(_applySearch);
+    _arrivalController.addListener(_applySearch);
     _resolveScope();
     _listenForScopeChanges();
   }
@@ -121,6 +82,7 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
           _isSuperAdmin = newIsSuperAdmin;
           _adminType    = newAdminType;
         });
+        _loadAll();
       }
     });
   }
@@ -128,6 +90,8 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
   @override
   void dispose() {
     _scopeSub?.cancel();
+    _departureController.removeListener(_applySearch);
+    _arrivalController.removeListener(_applySearch);
     _departureController.dispose();
     _arrivalController.dispose();
     super.dispose();
@@ -153,10 +117,85 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
         _adminType = session.adminType;
         _isResolvingScope = false;
       });
+      _loadAll();
     } catch (_) {
       if (!mounted) return;
       setState(() => _isResolvingScope = false);
     }
+  }
+
+  Future<void> _loadAll() async {
+    if (!_isSuperAdmin && _adminType == null) {
+      if (!mounted) return;
+      setState(() {
+        _allDocs = const [];
+        _results = const [];
+        _isLoading = false;
+      });
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final List<QueryDocumentSnapshot<Map<String, dynamic>>> fetched;
+      if (_isSuperAdmin) {
+        final results = await Future.wait([
+          _db.collection(Col.routes).get(),
+          _db.collection(Col.taxiCollectifRoutes).get(),
+        ]);
+        fetched = [
+          ...results[0].docs,
+          ...results[1].docs,
+        ];
+      } else if (_isTaxiAdmin) {
+        final snap = await _db.collection(Col.taxiCollectifRoutes).get();
+        fetched = snap.docs;
+      } else {
+        final snap = await _db.collection(Col.routes).get();
+        fetched = snap.docs;
+      }
+
+      final filtered = fetched.where((doc) => _matchesAdminScope(doc.data())).toList();
+      final sorted = filtered..sort((a, b) {
+        final aTs = a.data()['createdAt'] as Timestamp?;
+        final bTs = b.data()['createdAt'] as Timestamp?;
+        if (aTs == null && bTs == null) return 0;
+        if (aTs == null) return 1;
+        if (bTs == null) return -1;
+        return bTs.compareTo(aTs);
+      });
+
+      if (!mounted) return;
+      setState(() {
+        _activeOverrides.clear();
+        _allDocs = sorted;
+        _applyFilters();
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _allDocs = const [];
+        _results = const [];
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _applySearch() => setState(_applyFilters);
+
+  void _applyFilters() {
+    _departureQuery = _departureController.text.trim().toLowerCase();
+    _arrivalQuery = _arrivalController.text.trim().toLowerCase();
+
+    var docs = _allDocs.where((doc) => _matchesAdminScope(doc.data())).toList();
+    docs = switch (_activeFilter) {
+      _RouteFilter.active => docs.where((d) => d.data()['isActive'] != false).toList(),
+      _RouteFilter.inactive => docs.where((d) => d.data()['isActive'] == false).toList(),
+      _RouteFilter.all => docs,
+    };
+    docs = docs.where((doc) => _matchesSearch(doc.data())).toList();
+    _results = docs;
   }
 
   bool _matchesAdminScope(Map<String, dynamic> data) {
@@ -175,20 +214,13 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
         : (typeIdRaw?.toString() ?? '').toLowerCase();
 
     return switch (_adminType) {
-      'bus' => operatorId == 'transtu' || typeId.contains('bus'),
+      'bus' => operatorId == 'transtu' || operatorId == 'sts_sahel' || typeId.contains('bus'),
       'metro_train' => typeId.contains('metro') || typeId.contains('train')
           || operatorId.contains('sncft') || operatorId.contains('sahel')
           || operatorId.contains('banlieue'),
       'louage' => typeId.contains('louage'),
       _ => false,
     };
-  }
-
-  void _applySearch() {
-    setState(() {
-      _departureQuery = _departureController.text.trim().toLowerCase();
-      _arrivalQuery = _arrivalController.text.trim().toLowerCase();
-    });
   }
 
   String _normalize(String value) => value
@@ -268,6 +300,7 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
     }
 
     if (!mounted) return;
+    setState(() => _activeOverrides[doc.id] = newActive);
 
     // Bus service propagation only applies to TRANSTU routes.
     if (!isTaxiDoc) {
@@ -334,73 +367,37 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.manageJourneys),
-        backgroundColor: AppTheme.primaryTeal,
-        foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (Navigator.of(context).canPop()) {
-              context.pop();
-            } else {
-              context.go('/admin');
-            }
-          },
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(80),
+        child: AppHeader(
+          title: l10n.manageJourneys,
+          subtitle: 'Suivi des trajets',
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              if (Navigator.of(context).canPop()) {
+                context.pop();
+              } else {
+                context.go('/admin');
+              }
+            },
+          ),
         ),
       ),
-      body: _isResolvingScope
+      body: _isResolvingScope || _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
-              stream: _routeStream,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text(l10n.journeysLoadError));
-                }
-
-                final allDocs = List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(
-                  snapshot.data ?? const [],
-                )..sort((a, b) {
-                  final aTs = a.data()['createdAt'] as Timestamp?;
-                  final bTs = b.data()['createdAt'] as Timestamp?;
-                  if (aTs == null && bTs == null) return 0;
-                  if (aTs == null) return 1;
-                  if (bTs == null) return -1;
-                  return bTs.compareTo(aTs);
-                });
-
-                // Role-based scope: each admin sees only their transport type.
-                final List<QueryDocumentSnapshot<Map<String, dynamic>>> scopedDocs;
-                if (_isSuperAdmin) {
-                  scopedDocs = allDocs;
-                } else if (_adminType != null) {
-                  scopedDocs = allDocs.where((doc) => _matchesAdminScope(doc.data())).toList();
-                } else {
-                  scopedDocs = const [];
-                }
-
-                if (scopedDocs.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.route, size: 64, color: AppTheme.lightGrey),
-                        const SizedBox(height: 16),
-                        Text(l10n.noJourneysFound),
-                      ],
-                    ),
-                  );
-                }
-
-                // Apply search filter — isActive is already filtered by Firestore.
-                final docs = scopedDocs
-                    .where((doc) => _matchesSearch(doc.data()))
-                    .toList();
-
-                return Column(
+          : _allDocs.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.route, size: 64, color: AppTheme.lightGrey),
+                      const SizedBox(height: 16),
+                      Text(l10n.noJourneysFound),
+                    ],
+                  ),
+                )
+              : Column(
                   children: [
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
@@ -432,8 +429,10 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                                     ? FontWeight.w700
                                     : FontWeight.normal,
                               ),
-                              onSelected: (_) =>
-                                  setState(() => _activeFilter = filter),
+                              onSelected: (_) {
+                                setState(() => _activeFilter = filter);
+                                _applyFilters();
+                              },
                             ),
                           );
                         }).toList(),
@@ -446,7 +445,7 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                       child: TextField(
                         controller: _departureController,
                         textInputAction: TextInputAction.search,
-                        onSubmitted: (_) => _applySearch(),
+                        onSubmitted: (_) => _applyFilters(),
                         decoration: InputDecoration(
                           labelText: l10n.departurePoint,
                           prefixIcon: const Icon(Icons.trip_origin),
@@ -454,7 +453,7 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                             tooltip: MaterialLocalizations.of(context)
                                 .searchFieldLabel,
                             icon: const Icon(Icons.search),
-                            onPressed: _applySearch,
+                            onPressed: _applyFilters,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -467,7 +466,7 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                       child: TextField(
                         controller: _arrivalController,
                         textInputAction: TextInputAction.search,
-                        onSubmitted: (_) => _applySearch(),
+                        onSubmitted: (_) => _applyFilters(),
                         decoration: InputDecoration(
                           labelText: l10n.arrivalPoint,
                           prefixIcon: const Icon(Icons.flag_outlined),
@@ -475,7 +474,7 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                             tooltip: MaterialLocalizations.of(context)
                                 .searchFieldLabel,
                             icon: const Icon(Icons.search),
-                            onPressed: _applySearch,
+                            onPressed: _applyFilters,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -484,7 +483,7 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                       ),
                     ),
 
-                    if (docs.isEmpty)
+                    if (_results.isEmpty)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
                         child: Align(
@@ -498,11 +497,13 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                     Expanded(
                       child: ListView.builder(
                         padding: const EdgeInsets.all(16),
-                        itemCount: docs.length,
+                        itemCount: _results.length,
                         itemBuilder: (_, i) {
-                          final doc = docs[i];
+                          final doc = _results[i];
                           final data = doc.data();
-                          final isActive = (data['isActive'] ?? true) == true;
+                          final isActive = _activeOverrides.containsKey(doc.id)
+                              ? _activeOverrides[doc.id]!
+                              : (data['isActive'] ?? true) == true;
 
                           // Detect taxi collectif docs by their field names
                           // (works for both taxi admins and super admin viewing taxi routes).
@@ -621,9 +622,7 @@ class _ManageJourneysScreenState extends State<ManageJourneysScreen> {
                       ),
                     ),
                   ],
-                );
-              },
-            ),
+                ),
     );
   }
 }

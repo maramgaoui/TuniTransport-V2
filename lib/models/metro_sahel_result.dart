@@ -62,6 +62,12 @@ class MetroSahelResult {
       isOptimal: true,
       operator: operatorName,
       line: tripNumberStr != null ? 'Train $tripNumberStr' : 'Train $tripNumber',
+      estimatedTripDurationMinutes: durationMinutes,
+      fromStationId: fromStationId,
+      toStationId: toStationId,
+      metroLineType: lineType,
+      metroTripNumber: tripNumber,
+      metroTripNumberStr: tripNumberStr,
     );
   }
 }

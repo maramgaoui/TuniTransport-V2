@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/models/notification_model.dart';
 
@@ -56,10 +57,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
           children: [
             AppHeader(
               title: l10n.notifications,
-              leading: Icon(
-                Icons.notifications,
-                color: Theme.of(context).colorScheme.onPrimary,
-                size: 28,
+              subtitle: l10n.notificationsSubtitle,
+              leading: IconButton(
+                icon: Icon(
+                  Icons.arrow_back,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+                onPressed: () => context.go('/home/journey-input'),
               ),
               trailing: AnimatedBuilder(
                 animation: _controller,

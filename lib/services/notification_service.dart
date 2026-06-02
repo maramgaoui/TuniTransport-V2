@@ -9,13 +9,6 @@ import '../controllers/auth_controller.dart';
 import '../controllers/notification_controller.dart';
 import '../constants/firestore_collections.dart';
 
-@pragma('vm:entry-point')
-Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Keep this handler completely empty — the system (GMS/FCM) already displays
-  // the notification. Calling Firebase.initializeApp() here triggers a slow
-  // binder IPC to GMS that causes ANR on MIUI devices with restricted GMS.
-}
-
 class NotificationService {
   NotificationService._();
 
@@ -108,6 +101,22 @@ class NotificationService {
       }, SetOptions(merge: true));
     } catch (e) {
       if (kDebugMode) debugPrint('Failed to persist FCM token: $e');
+    }
+  }
+
+  /// Called when a user logs in. Ensures FCM token is saved to Firestore
+  /// (in case the initial attempt in initialize() happened before auth).
+  Future<void> onUserLoggedIn() async {
+    if (!_isMessagingSupported) return;
+    
+    try {
+      final token = await _messaging.getToken();
+      if (token != null && token.isNotEmpty) {
+        await _saveTokenToCurrentUser(token);
+        if (kDebugMode) debugPrint('FCM token saved on user login.');
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('Failed to save FCM token on login: $e');
     }
   }
 

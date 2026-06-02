@@ -9,6 +9,7 @@ import 'package:tuni_transport/admin/mixins/admin_moderation_mixin.dart';
 import 'package:tuni_transport/constants/firestore_collections.dart';
 import 'package:tuni_transport/admin/mixins/admin_user_status_mixin.dart';
 import '../../l10n/app_localizations.dart';
+import '../../widgets/app_header.dart';
 
 /// Filter options shown in the chip bar above the list.
 enum _UserFilter { all, active, banned, blocked }
@@ -248,17 +249,21 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.manageUsers),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (Navigator.of(context).canPop()) {
-              context.pop();
-            } else {
-              context.go('/admin');
-            }
-          },
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(80),
+        child: AppHeader(
+          title: AppLocalizations.of(context)!.manageUsers,
+          subtitle: 'Comptes et accès',
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              if (Navigator.of(context).canPop()) {
+                context.pop();
+              } else {
+                context.go('/admin');
+              }
+            },
+          ),
         ),
       ),
       body: Column(

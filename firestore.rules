@@ -114,6 +114,15 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'banUntil'])
           && request.resource.data.status == 'active'
           && request.resource.data.banUntil == null
+        )
+        // Allow users to set only their fcmToken (for push notifications) even on non-existent docs
+        || (
+          request.auth.uid == userId
+          && (
+            (!resource.exists && request.resource.data.keys().hasOnly(['fcmToken']))
+            || (resource.exists && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmToken']))
+          )
+          && request.resource.data.fcmToken is string
         );
 
       // Regular users may only create or update their own document and

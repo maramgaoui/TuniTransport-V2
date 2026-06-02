@@ -13,6 +13,7 @@ import '../utils/validation_utils.dart';
 import '../constants/firestore_collections.dart';
 import '../services/active_journey_service.dart';
 import 'notification_controller.dart';
+import '../services/notification_service.dart';
 
 class AuthController {
   AuthController({
@@ -358,6 +359,7 @@ class AuthController {
         if (userDoc.exists) {
           final resolvedUser = User.fromMap(userDoc.data() ?? {});
           _cacheAuthStreamUser(user.uid, resolvedUser);
+          unawaited(NotificationService.instance.onUserLoggedIn());
           return resolvedUser;
         } else {
           // No Firestore doc yet — first login before the profile write lands.
@@ -600,6 +602,7 @@ class AuthController {
 
       if (userDoc.exists) {
         _invalidateSessionCache(uid: firebaseUser.uid);
+        unawaited(NotificationService.instance.onUserLoggedIn());
         return User.fromMap(userDoc.data() ?? {});
       }
 
@@ -614,6 +617,7 @@ class AuthController {
           await userDocRef.set(pendingData);
           await prefs.remove('pending_profile_${firebaseUser.uid}');
           _invalidateSessionCache(uid: firebaseUser.uid);
+          unawaited(NotificationService.instance.onUserLoggedIn());
           return User.fromMap(pendingData);
         } catch (e) {
           developer.log('Failed to restore pending profile: $e', name: 'AuthController');
@@ -621,6 +625,7 @@ class AuthController {
       }
 
       _invalidateSessionCache(uid: firebaseUser.uid);
+      unawaited(NotificationService.instance.onUserLoggedIn());
       return User(uid: firebaseUser.uid, email: firebaseUser.email ?? '');
     } on firebase_auth.FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
@@ -685,7 +690,7 @@ class AuthController {
     }
   }
 
-  Future<User?> signInWithGoogle() async {
+  Future<User?> signInWithGoogle({bool isSignUp = false}) async {
     try {
       // Clear cached Google account so Android always shows the chooser.
       // Without this, GoogleSignIn may silently reuse the previous account.
@@ -725,6 +730,10 @@ class AuthController {
           .get();
 
       if (userDoc.exists) {
+        if (isSignUp) {
+          await _firebaseAuth.signOut();
+          throw Exception('auth.error.google_account_already_exists');
+        }
         final accessError = await _validateAndNormalizeUserAccess(
           uid: firebaseUser.uid,
           enforceRestriction: true,
@@ -750,6 +759,7 @@ class AuthController {
               .update({'username': generated});
           existingData['username'] = generated;
         }
+        unawaited(NotificationService.instance.onUserLoggedIn());
         return User.fromMap(existingData);
       } else {
         var generatedUsername = _generateUsername(
@@ -791,6 +801,7 @@ class AuthController {
         }
 
         _invalidateSessionCache(uid: firebaseUser.uid);
+        unawaited(NotificationService.instance.onUserLoggedIn());
         return user;
       }
     } on firebase_auth.FirebaseAuthException catch (e) {
@@ -1034,13 +1045,28 @@ class AuthController {
 
   Future<void> sendPasswordResetEmail(String email) async {
     try {
-      await _firebaseAuth.sendPasswordResetEmail(email: _normalizeEmail(email));
+      final normalizedEmail = _normalizeEmail(email);
+      developer.log(
+        'Sending password reset email to: $normalizedEmail',
+        name: 'AuthController',
+      );
+      await _firebaseAuth.sendPasswordResetEmail(email: normalizedEmail);
+      developer.log(
+        'Password reset email sent successfully to: $normalizedEmail',
+        name: 'AuthController',
+      );
     } on firebase_auth.FirebaseAuthException catch (e) {
+      developer.log(
+        'Firebase Auth Exception - Code: ${e.code}, Message: ${e.message}',
+        name: 'AuthController',
+        error: e,
+      );
       throw _handleAuthException(e);
     } catch (e) {
       developer.log(
         'Send password reset email error: $e',
         name: 'AuthController',
+        error: e,
       );
       throw Exception(
         'auth.error.password_reset_failed',

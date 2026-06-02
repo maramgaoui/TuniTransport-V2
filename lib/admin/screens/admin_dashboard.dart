@@ -4,9 +4,9 @@ import 'package:tuni_transport/controllers/auth_controller.dart';
 import 'package:tuni_transport/models/session_result.dart';
 import 'package:tuni_transport/controllers/notification_controller.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
-import 'package:tuni_transport/screens/profile_screen.dart';
 import 'package:tuni_transport/screens/chat_screen.dart';
 import 'package:tuni_transport/theme/app_theme.dart';
+import '../../widgets/app_header.dart';
 import 'package:tuni_transport/utils/notification_l10n.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -19,8 +19,6 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   int _selectedIndex = 0;
   SessionResult? _session;
-  final GlobalKey<ProfileScreenState> _profileScreenKey =
-      GlobalKey<ProfileScreenState>();
 
   @override
   void initState() {
@@ -77,77 +75,43 @@ class _AdminDashboardState extends State<AdminDashboard> {
         adminRole: trustedRole,
       ),
       const _AdminNotificationsTab(),
-      ProfileScreen(
-        key: _profileScreenKey,
-        showAppBar: false,
-        showInlineActions: false,
-        onActionStateChanged: () {
-          if (mounted) setState(() {});
-        },
-      ),
     ];
-
-    final profileState = _profileScreenKey.currentState;
-    final canShowProfileActions =
-        _selectedIndex == 3 && (profileState?.canShowHeaderActions ?? false);
 
     return Scaffold(
       key: const Key('admin_dashboard_screen'),
       appBar: _selectedIndex == 1
           ? null
-          : AppBar(
-              title: Text(switch (_selectedIndex) {
-                0 => l10n.adminDashboard,
-                2 => l10n.notifications,
-                _ => l10n.profile,
-              }),
-              automaticallyImplyLeading: false,
-              backgroundColor: AppTheme.primaryTeal,
-              foregroundColor: Colors.white,
-              actions: [
-                if (canShowProfileActions && !(profileState?.isEditing ?? false))
-                  IconButton(
-                    tooltip: l10n.edit,
-                    icon: const Icon(Icons.edit),
-                    onPressed: () => profileState?.startEditingFromParent(),
-                  ),
-                if (canShowProfileActions && (profileState?.isEditing ?? false))
-                  IconButton(
-                    tooltip: l10n.save,
-                    icon: (profileState?.isLoading ?? false)
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : const Icon(Icons.check),
-                    onPressed: (profileState?.isLoading ?? false)
-                        ? null
-                        : () => profileState?.submitEditsFromParent(),
-                  ),
-                if (canShowProfileActions)
-                  IconButton(
-                    tooltip: l10n.settings,
-                    icon: const Icon(Icons.settings),
-                    onPressed: () => profileState?.openSettingsFromParent(),
-                  ),
-                if (_selectedIndex != 3)
-                  IconButton(
-                    tooltip: l10n.profile,
-                    icon: const Icon(Icons.account_circle_outlined),
-                    onPressed: () => setState(() => _selectedIndex = 3),
-                  ),
-              ],
+          : PreferredSize(
+              preferredSize: const Size.fromHeight(80),
+              child: AppHeader(
+                title: switch (_selectedIndex) {
+                  0 => l10n.adminDashboard,
+                  2 => l10n.notifications,
+                  _ => l10n.profile,
+                },
+                subtitle: switch (_selectedIndex) {
+                  0 => 'Tableau de bord',
+                  2 => l10n.notificationsSubtitle,
+                  _ => null,
+                },
+                trailing: IconButton(
+                  tooltip: l10n.profile,
+                  icon: const Icon(Icons.account_circle_outlined, color: Colors.white),
+                  onPressed: () => context.go('/admin/profile'),
+                ),
+              ),
             ),
       body: IndexedStack(index: _selectedIndex, children: pages),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
+        currentIndex: GoRouterState.of(context).uri.path == '/admin/profile'
+            ? 3
+            : _selectedIndex,
         onTap: (index) {
+          if (index == 3) {
+            context.go('/admin/profile');
+            return;
+          }
           if (index == 1) {
             NotificationController.instance.markAllChatAsRead();
           }

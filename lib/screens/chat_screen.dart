@@ -117,7 +117,9 @@ class _ChatScreenState extends State<ChatScreen>
 
   bool get _canParticipateInChat {
     if (_chatSessionUid == null) return false;
-    if (widget.isAdminMode) return true;
+    // Admins in admin mode can participate; but not if they're acting as a user
+    if (widget.isAdminMode && !_authController.isActingAsUser) return true;
+    // Regular users can only participate if active
     final status = _authController.currentUserStatus;
     return status == null || status == 'active';
   }
@@ -451,6 +453,8 @@ class _ChatScreenState extends State<ChatScreen>
     final text = _messageController.text.trim();
 
     if (!_canParticipateInChat || text.isEmpty || _isSending) return;
+    // Block admins acting as users from sending messages
+    if (_authController.isActingAsUser) return;
     if (_lastSentAt != null &&
         DateTime.now().difference(_lastSentAt!) < const Duration(seconds: 2)) {
       if (mounted) {
@@ -762,7 +766,10 @@ class _ChatScreenState extends State<ChatScreen>
       );
     }
 
-    final canSend = _messageController.text.trim().isNotEmpty && !_isSending;
+    final canSend = _messageController.text.trim().isNotEmpty &&
+        !_isSending &&
+        _canParticipateInChat &&
+        !_authController.isActingAsUser;
 
     return Container(
       decoration: BoxDecoration(
@@ -844,6 +851,7 @@ class _ChatScreenState extends State<ChatScreen>
             children: [
               Expanded(
                 child: TextField(
+                  enabled: !_authController.isActingAsUser,
                   controller: _messageController,
                   focusNode: _messageFocusNode,
                   minLines: 1,

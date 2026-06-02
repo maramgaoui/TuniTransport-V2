@@ -16,7 +16,7 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
   bool _obscureLoginPassword = true;
   bool _obscureSignupPassword = true;
@@ -27,6 +27,11 @@ class _AuthScreenState extends State<AuthScreen>
   // Forgot password inline state (no dialog / no Navigator push)
   bool _showForgotPassword = false;
   bool _isSendingReset = false;
+  bool _resetEmailSent = false;
+  String _resetEmailAddress = '';
+  int _resetResendSeconds = 0;
+  bool _isResending = false;
+  Timer? _resetTimer;
   final _forgotPasswordController = TextEditingController();
   final _forgotPasswordFormKey = GlobalKey<FormState>();
 
@@ -48,6 +53,7 @@ class _AuthScreenState extends State<AuthScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _tabController = TabController(length: 2, vsync: this);
 
     // Re-validate the confirm-password field whenever the password changes.
@@ -68,38 +74,73 @@ class _AuthScreenState extends State<AuthScreen>
     _signupEmailController.dispose();
     _signupPasswordController.dispose();
     _signupConfirmPasswordController.dispose();
+    _resetTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _resetEmailSent && mounted) {
+      _resetTimer?.cancel();
+      setState(() {
+        _showForgotPassword = false;
+        _resetEmailSent = false;
+      });
+    }
   }
 
   void _handleForgotPassword() {
     setState(() {
       _showForgotPassword = true;
+      _resetEmailSent = false;
+      _resetEmailAddress = '';
       _forgotPasswordController.clear();
     });
+  }
+
+  void _startResetCooldown() {
+    _resetTimer?.cancel();
+    setState(() => _resetResendSeconds = 60);
+    _resetTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) { t.cancel(); _resetTimer = null; return; }
+      setState(() {
+        if (_resetResendSeconds > 0) {
+          _resetResendSeconds--;
+        } else {
+          t.cancel();
+          _resetTimer = null;
+        }
+      });
+    });
+  }
+
+  Future<void> _handleResendReset() async {
+    setState(() => _isResending = true);
+    try {
+      await _authController.sendPasswordResetEmail(_resetEmailAddress);
+      if (mounted) _startResetCooldown();
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _isResending = false);
+    }
   }
 
   Future<void> _handleSendReset() async {
     if (!(_forgotPasswordFormKey.currentState?.validate() ?? false)) return;
 
-    final l10n = AppLocalizations.of(context)!;
     setState(() => _isSendingReset = true);
 
     try {
-      await _authController.sendPasswordResetEmail(
-        _forgotPasswordController.text.trim(),
-      );
+      final email = _forgotPasswordController.text.trim();
+      await _authController.sendPasswordResetEmail(email);
       if (!mounted) return;
       setState(() {
-        _showForgotPassword = false;
         _isSendingReset = false;
+        _resetEmailSent = true;
+        _resetEmailAddress = email;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.resetLinkSent),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      _startResetCooldown();
     } catch (e) {
       if (!mounted) return;
       final rawCode = e.toString().replaceAll('Exception: ', '');
@@ -139,8 +180,9 @@ class _AuthScreenState extends State<AuthScreen>
       'auth.error.password_reset_failed'   => l10n.authErrorPasswordResetFailed,
       'auth.error.account_blocked'         => l10n.accountBlockedBody,
       'auth.error.account_deactivated'     => l10n.authErrorAccountDeactivated,
-      'auth.error.account_banned_indefinite' => l10n.accountBannedBody,
-      _                                    => l10n.authErrorGeneric,
+      'auth.error.account_banned_indefinite'       => l10n.accountBannedBody,
+      'auth.error.google_account_already_exists'   => l10n.authErrorGeneric,
+      _                                            => l10n.authErrorGeneric,
     };
   }
 
@@ -391,7 +433,7 @@ class _AuthScreenState extends State<AuthScreen>
     }
   }
 
-  Future<void> _handleGoogleSignIn() async {
+  Future<void> _handleGoogleSignIn({bool isSignUp = false}) async {
     final l10n = AppLocalizations.of(context)!;
     setState(() {
       _isLoading = true;
@@ -399,7 +441,7 @@ class _AuthScreenState extends State<AuthScreen>
     });
 
     try {
-      await _authController.signInWithGoogle();
+      await _authController.signInWithGoogle(isSignUp: isSignUp);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -412,6 +454,34 @@ class _AuthScreenState extends State<AuthScreen>
       }
     } catch (e) {
       final rawCode = e.toString().replaceAll('Exception: ', '');
+
+      if (isSignUp && rawCode == 'auth.error.google_account_already_exists' && mounted) {
+        setState(() => _isLoading = false);
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Compte existant'),
+            content: const Text(
+              'Vous avez déjà un compte. Veuillez vous connecter.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  _tabController.animateTo(0);
+                },
+                child: const Text('Se connecter'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Annuler'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
       final errorMsg = _resolveAuthError(rawCode, l10n);
       setState(() {
         _errorMessage = errorMsg;
@@ -500,6 +570,44 @@ class _AuthScreenState extends State<AuthScreen>
 
   Widget _buildLoginTab() {
     final l10n = AppLocalizations.of(context)!;
+
+    if (_showForgotPassword && _resetEmailSent) {
+      final canResend = _resetResendSeconds == 0 && !_isResending;
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 20),
+            const Icon(Icons.mark_email_read_outlined, size: 48, color: Colors.green),
+            const SizedBox(height: 16),
+            const Text(
+              'Email envoyé !',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppTheme.textDark),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Un lien de réinitialisation a été envoyé à $_resetEmailAddress. Vérifiez votre boîte mail (et les spams).',
+              style: TextStyle(fontSize: 14, color: AppTheme.mediumGrey),
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: canResend ? _handleResendReset : null,
+                child: _isResending
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : Text(
+                        _resetResendSeconds > 0
+                            ? 'Renvoyer l\'email ($_resetResendSeconds s)'
+                            : 'Renvoyer l\'email',
+                      ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     if (_showForgotPassword) {
       return SingleChildScrollView(
@@ -658,7 +766,7 @@ class _AuthScreenState extends State<AuthScreen>
               width: double.infinity,
               child: OutlinedButton.icon(
                 key: const Key('auth_google_login_button'),
-                onPressed: _isLoading ? null : _handleGoogleSignIn,
+                onPressed: _isLoading ? null : () => _handleGoogleSignIn(),
                 icon: const Icon(Icons.g_mobiledata),
                 label: Text(l10n.signInWithGoogle),
               ),
@@ -861,7 +969,7 @@ class _AuthScreenState extends State<AuthScreen>
               width: double.infinity,
               child: OutlinedButton.icon(
                 key: const Key('auth_google_signup_button'),
-                onPressed: _isLoading ? null : _handleGoogleSignIn,
+                onPressed: _isLoading ? null : () => _handleGoogleSignIn(isSignUp: true),
                 icon: const Icon(Icons.g_mobiledata),
                 label: Text(l10n.signUpWithGoogle),
               ),

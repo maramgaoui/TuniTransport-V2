@@ -21,6 +21,14 @@ class Journey {
   final String? timetableFirstDepartureTime;
   final String? timetableLastDepartureTime;
 
+  // Metro/train favorites: stored so the details screen can reconstruct
+  // a MetroSahelResult and show the full route map + stops.
+  final String? fromStationId;
+  final String? toStationId;
+  final String? metroLineType;
+  final int?    metroTripNumber;
+  final String? metroTripNumberStr;
+
   Journey({
     required this.id,
     required this.departureStation,
@@ -41,6 +49,11 @@ class Journey {
     this.estimatedTripDurationMinutes,
     this.timetableFirstDepartureTime,
     this.timetableLastDepartureTime,
+    this.fromStationId,
+    this.toStationId,
+    this.metroLineType,
+    this.metroTripNumber,
+    this.metroTripNumberStr,
   });
 
   // Backward-compat aliases; prefer departureTime/arrivalTime in new code.
@@ -67,6 +80,11 @@ class Journey {
     int? estimatedTripDurationMinutes,
     String? timetableFirstDepartureTime,
     String? timetableLastDepartureTime,
+    String? fromStationId,
+    String? toStationId,
+    String? metroLineType,
+    int?    metroTripNumber,
+    String? metroTripNumberStr,
   }) {
     return Journey(
       id: id ?? this.id,
@@ -86,10 +104,13 @@ class Journey {
       operator: operator ?? this.operator,
       line: line ?? this.line,
       estimatedTripDurationMinutes: estimatedTripDurationMinutes ?? this.estimatedTripDurationMinutes,
-      timetableFirstDepartureTime:
-          timetableFirstDepartureTime ?? this.timetableFirstDepartureTime,
-      timetableLastDepartureTime:
-          timetableLastDepartureTime ?? this.timetableLastDepartureTime,
+      timetableFirstDepartureTime: timetableFirstDepartureTime ?? this.timetableFirstDepartureTime,
+      timetableLastDepartureTime: timetableLastDepartureTime ?? this.timetableLastDepartureTime,
+      fromStationId: fromStationId ?? this.fromStationId,
+      toStationId: toStationId ?? this.toStationId,
+      metroLineType: metroLineType ?? this.metroLineType,
+      metroTripNumber: metroTripNumber ?? this.metroTripNumber,
+      metroTripNumberStr: metroTripNumberStr ?? this.metroTripNumberStr,
     );
   }
 
@@ -119,10 +140,13 @@ class Journey {
       operator: (json['operator'] ?? '').toString(),
       line: (json['line'] ?? '').toString(),
       estimatedTripDurationMinutes: (json['estimatedTripDurationMinutes'] as num?)?.toInt(),
-      timetableFirstDepartureTime:
-          json['timetableFirstDepartureTime']?.toString(),
-      timetableLastDepartureTime:
-          json['timetableLastDepartureTime']?.toString(),
+      timetableFirstDepartureTime: json['timetableFirstDepartureTime']?.toString(),
+      timetableLastDepartureTime:  json['timetableLastDepartureTime']?.toString(),
+      fromStationId:      json['fromStationId']?.toString(),
+      toStationId:        json['toStationId']?.toString(),
+      metroLineType:      json['metroLineType']?.toString(),
+      metroTripNumber:    (json['metroTripNumber'] as num?)?.toInt(),
+      metroTripNumberStr: json['metroTripNumberStr']?.toString(),
     );
   }
 
@@ -145,8 +169,13 @@ class Journey {
       'operator': operator,
       'line': line,
       'estimatedTripDurationMinutes': estimatedTripDurationMinutes,
-      'timetableFirstDepartureTime': timetableFirstDepartureTime,
-      'timetableLastDepartureTime': timetableLastDepartureTime,
+      'timetableFirstDepartureTime':  timetableFirstDepartureTime,
+      'timetableLastDepartureTime':   timetableLastDepartureTime,
+      'fromStationId':      fromStationId,
+      'toStationId':        toStationId,
+      'metroLineType':      metroLineType,
+      'metroTripNumber':    metroTripNumber,
+      'metroTripNumberStr': metroTripNumberStr,
     };
   }
 }

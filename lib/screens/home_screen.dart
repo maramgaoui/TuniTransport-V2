@@ -41,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Sync from URL only on deep-link / initial navigation — not on every tap.
+    // Sync tab index from URL. The guard below prevents redundant setState calls.
     final path = GoRouterState.of(context).uri.path;
     final fromUrl = _tabIndexFromLocation(path);
     if (fromUrl != _selectedIndex) {
@@ -59,12 +59,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
+  static const _tabPaths = [
+    '/home/journey-input',
+    '/home/favorites',
+    '/home/notifications',
+    '/home/chat',
+    '/home/profile',
+  ];
+
   void _onTabTapped(int index) {
     if (index == _selectedIndex) return;
     setState(() {
       _selectedIndex = index;
-      _mountedTabs.add(index); // mount this tab for the first time
+      _mountedTabs.add(index);
     });
+    context.go(_tabPaths[index]);
   }
 
   @override
@@ -209,7 +218,7 @@ class _AdminModeBanner extends StatelessWidget {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Row(
             children: [
               const Icon(Icons.shield_outlined, color: Colors.white70, size: 16),

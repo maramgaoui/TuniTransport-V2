@@ -39,6 +39,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get notifications => 'الإشعارات';
 
   @override
+  String get notificationsSubtitle => 'التنبيهات والتحديثات';
+
+  @override
   String get home => 'الرئيسية';
 
   @override
@@ -329,7 +332,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get community => 'المجتمع';
 
   @override
-  String get publicDiscussion => 'نقاش عام';
+  String get publicDiscussion => 'تبادلات المسافرين';
 
   @override
   String get writeMessageHint => 'اكتب رسالة...';

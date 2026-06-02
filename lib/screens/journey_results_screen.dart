@@ -282,19 +282,13 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state        = _searchController.state;
-    final isLoading    = state.isLoading;
-    final error        = state.error;
-    final hasAnyResult = state.trainResults.isNotEmpty ||
-        state.bestBusService != null ||
-        state.taxiCollectifResult != null;
-
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
             AppHeader(
-              title: AppLocalizations.of(context)!.results,
+              title: l10n.results,
               subtitle: '${widget.departure} → ${widget.arrival}',
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back),
@@ -308,61 +302,77 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
               ),
             ),
             Expanded(
-              child: isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : !hasAnyResult
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(32),
-                            child: Text(
-                              error ?? AppLocalizations.of(context)!.noJourneysMatchFilter,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 15, color: Colors.grey[600]),
-                            ),
-                          ),
-                        )
-                      : ListView(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                          children: [
+              child: ListenableBuilder(
+                listenable: _searchController,
+                builder: (context, _) {
+                  final state        = _searchController.state;
+                  final isLoading    = state.isLoading;
+                  final error        = state.error;
+                  final hasAnyResult = state.trainResults.isNotEmpty ||
+                      state.bestBusService != null ||
+                      state.taxiCollectifResult != null;
 
-                            _ProfileSelector(
-                              current: _profile,
-                              onChanged: _changeProfile,
-                            ),
-                            const SizedBox(height: 16),
+                  if (isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                            if (_recommendation != null)
-                              _RecommendationBanner(
-                                rec:            _recommendation!,
-                                profile:        _profile,
-                                communityByType: _communityByType,
-                              ),
-                            if (_recommendation != null) const SizedBox(height: 16),
-
-                            for (final entry in _buildSortedEntries(state)) ...[
-                              _sectionLabel(entry.label),
-                              const SizedBox(height: 8),
-                              _CardWrapper(
-                                isRecommended: _isRecommended(entry.transportKey),
-                                communityData: _communityByType[entry.transportKey],
-                                onTap: entry.onTap,
-                                child: entry.card,
-                              ),
-                              const SizedBox(height: 16),
-                            ],
-
-                            // Bus error (if any)
-                            if (error != null && state.bestBusService != null)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Text(
-                                  error,
-                                  style: const TextStyle(
-                                      color: Colors.orange, fontSize: 13),
-                                ),
-                              ),
-                          ],
+                  if (!hasAnyResult) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Text(
+                          error ?? l10n.noJourneysMatchFilter,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 15, color: Colors.grey[600]),
                         ),
+                      ),
+                    );
+                  }
+
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                    children: [
+
+                      _ProfileSelector(
+                        current: _profile,
+                        onChanged: _changeProfile,
+                      ),
+                      const SizedBox(height: 16),
+
+                      if (_recommendation != null)
+                        _RecommendationBanner(
+                          rec:             _recommendation!,
+                          profile:         _profile,
+                          communityByType: _communityByType,
+                        ),
+                      if (_recommendation != null) const SizedBox(height: 16),
+
+                      for (final entry in _buildSortedEntries(state)) ...[
+                        _sectionLabel(entry.label),
+                        const SizedBox(height: 8),
+                        _CardWrapper(
+                          isRecommended: _isRecommended(entry.transportKey),
+                          communityData: _communityByType[entry.transportKey],
+                          onTap: entry.onTap,
+                          child: entry.card,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Bus error (if any)
+                      if (error != null && state.bestBusService != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            error,
+                            style: const TextStyle(
+                                color: Colors.orange, fontSize: 13),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -430,7 +440,7 @@ class _ProfileSelector extends StatelessWidget {
   // Suggestion 2: subtitle shown under the active tab.
   static String _subtitle(UserProfile profile) => switch (profile) {
     UserProfile.price    => 'Le moins cher',
-    UserProfile.balanced => 'Confort · Prix · Durée',
+    UserProfile.balanced => 'Prix · Durée',
     UserProfile.speed    => 'Le plus direct',
   };
 

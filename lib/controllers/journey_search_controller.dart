@@ -90,6 +90,26 @@ class JourneySearchController extends ChangeNotifier {
     'ms_gabes': 'sncft_gabes',
   };
 
+  /// Maps each SNCFT mainline station to the set of corridor tags it belongs to.
+  /// Stations on different corridors share no direct route — used as a fast
+  /// pre-filter to skip all Firestore queries when no connection is possible.
+  static const Map<String, Set<String>> _sncftStationCorridors = {
+    'sncft_tunis_barcelone':  {'l5', 'kef', 'redeyef', 'annaba', 'bizerte'},
+    'sncft_sousse_voyageurs': {'l5'},
+    'sncft_monastir':         {'l5'},
+    'sncft_sfax':             {'l5', 'redeyef'},
+    'sncft_gabes':            {'l5'},
+    'sncft_sidi_bouzid':      {'redeyef'},
+    'sncft_gafsa':            {'redeyef'},
+    'sncft_redeyef':          {'redeyef'},
+    'sncft_kef_le_kef':       {'kef'},
+    'sncft_beja':             {'kef'},
+    'sncft_bizerte':          {'bizerte'},
+    'sncft_bir_bou_regba':    {'l5'},
+    'sncft_mahres':           {'l5'},
+    'sncft_el_ajem':          {'l5'},
+  };
+
   bool _isSncftBranchStation(Station station) {
     return _stationRepository.isSncftMainlineStation(station) ||
         station.operatorsHere.contains('sncft') ||
@@ -99,6 +119,16 @@ class JourneySearchController extends ChangeNotifier {
   // Resolves shared-hub IDs to SNCFT canonical station IDs.
   String _resolveSncftRouteStationId(String stationId) {
     return _sncftMainlineAlias[stationId] ?? stationId;
+  }
+
+  /// Returns false when the two SNCFT station IDs are provably on different
+  /// corridors — avoids all Firestore queries for impossible pairs like
+  /// Kef (kef corridor) ↔ Sousse (l5 corridor).
+  bool _sncftStationsCouldConnect(String fromId, String toId) {
+    final fromC = _sncftStationCorridors[fromId];
+    final toC   = _sncftStationCorridors[toId];
+    if (fromC == null || toC == null) return true; // Unknown station — let repo decide
+    return fromC.any(toC.contains);
   }
 
   /// Remaps redundant STS-only station IDs to their canonical metro hub IDs.
@@ -284,129 +314,140 @@ class JourneySearchController extends ChangeNotifier {
       // Capture search time once so all branches use the same reference time.
       final searchDateTime = DateTime.now();
 
-      // All branches run concurrently — results collected and emitted together.
-      // BN checked first and gates BS to prevent duplicates on shared stations.
+      // Pre-compute all branch guards synchronously.
+      final runBn     = _isBnStationSet(fromStation.id, toStation.id);
+      final runMetro  = _stationRepository.isMetroSahelStation(fromStation) &&
+                        _stationRepository.isMetroSahelStation(toStation);
+      final runBs     = _stationRepository.isBanlieueSudStation(fromStation) &&
+                        _stationRepository.isBanlieueSudStation(toStation);
+      final runBd     = _stationRepository.isBanlieueDStation(fromStation) &&
+                        _stationRepository.isBanlieueDStation(toStation);
+      final runBe     = _stationRepository.isBanlieueEStation(fromStation) &&
+                        _stationRepository.isBanlieueEStation(toStation);
+      final sncftFromId  = _resolveSncftRouteStationId(fromStation.id);
+      final sncftToId    = _resolveSncftRouteStationId(toStation.id);
+      final runSncft  = _isSncftBranchStation(fromStation) &&
+                        _isSncftBranchStation(toStation);
+      final runSts    = _stationRepository.isStsSahelStation(fromStation) &&
+                        _stationRepository.isStsSahelStation(toStation);
+      final runBus    = _stationRepository.isTranstuStation(fromStation);
 
+      if (kDebugMode) {
+        if (runBn)    debugPrint('[JourneySearch] branch=banlieue_nabeul (priority)');
+        if (runMetro) debugPrint('[JourneySearch] branch=metro_sahel firing');
+        if (runSncft) debugPrint('[JourneySearch] branch=sncft_mainline from=$sncftFromId to=$sncftToId');
+        if (runSts)   debugPrint('[JourneySearch] branch=sts_sahel');
+        if (runBus)   debugPrint('[JourneySearch] branch=transtu hub=${fromStation.id}');
+      }
+
+      // Fire every applicable branch in parallel — total time = max(branch_times).
+      const kTimeout = Duration(seconds: 5);
+      final branchResults = await Future.wait<dynamic>([
+        // [0] Banlieue Nabeul
+        runBn
+            ? _journeyRepository.findNextBanlieueNabeulTrip(
+                fromStationId: fromStation.id,
+                toStationId:   toStation.id,
+                searchDateTime: searchDateTime,
+              ).timeout(kTimeout, onTimeout: () => null)
+            : Future<MetroSahelResult?>.value(null),
+        // [1] Métro du Sahel
+        runMetro
+            ? _journeyRepository.findNextMetroSahelTrip(
+                fromStationId: fromStation.id,
+                toStationId:   toStation.id,
+                searchDateTime: searchDateTime,
+              ).timeout(kTimeout, onTimeout: () => null)
+            : Future<MetroSahelResult?>.value(null),
+        // [2] Banlieue Sud
+        runBs
+            ? _journeyRepository.findNextBanlieueSudTrip(
+                fromStationId: fromStation.id,
+                toStationId:   toStation.id,
+                searchDateTime: searchDateTime,
+              ).timeout(kTimeout, onTimeout: () => null)
+            : Future<MetroSahelResult?>.value(null),
+        // [3] Banlieue Ligne D
+        runBd
+            ? _journeyRepository.findNextBanlieueDTrip(
+                fromStationId: fromStation.id,
+                toStationId:   toStation.id,
+                searchDateTime: searchDateTime,
+              ).timeout(kTimeout, onTimeout: () => null)
+            : Future<MetroSahelResult?>.value(null),
+        // [4] Banlieue Ligne E
+        runBe
+            ? _journeyRepository.findNextBanlieueETrip(
+                fromStationId: fromStation.id,
+                toStationId:   toStation.id,
+                searchDateTime: searchDateTime,
+              ).timeout(kTimeout, onTimeout: () => null)
+            : Future<MetroSahelResult?>.value(null),
+        // [5] SNCFT Grandes Lignes
+        runSncft
+            ? _journeyRepository.findNextSncftL5Trip(
+                fromStationId: sncftFromId,
+                toStationId:   sncftToId,
+                searchDateTime: searchDateTime,
+              ).timeout(kTimeout, onTimeout: () => null)
+            : Future<MetroSahelResult?>.value(null),
+        // [6] STS Sahel
+        runSts
+            ? _journeyRepository.findNextStsSahelTrip(
+                fromStationId: fromStation.id,
+                toStationId:   toStation.id,
+                searchDateTime: searchDateTime,
+              ).timeout(kTimeout, onTimeout: () => null)
+            : Future<MetroSahelResult?>.value(null),
+        // [7] TRANSTU bus services
+        runBus
+            ? _busServiceRepository.findServicesConnectingStations(
+                fromStationId: fromStation.id,
+                toStationId:   toStation.id,
+              ).timeout(kTimeout, onTimeout: () => <BusService>[])
+            : Future<List<BusService>>.value(const []),
+        // [8] Taxi collectif — always runs
+        _taxiCollectifService.findRoute(
+          fromCityId: fromStation.cityId,
+          toCityId:   toStation.cityId,
+        ).timeout(kTimeout, onTimeout: () => null),
+      ]);
+
+      // Collect train results, respecting BN→BS priority gate.
       final List<MetroSahelResult> collectedTrainResults = [];
+      final bnResult    = branchResults[0] as MetroSahelResult?;
+      final metroResult = branchResults[1] as MetroSahelResult?;
+      final bsResult    = branchResults[2] as MetroSahelResult?;
+      final bdResult    = branchResults[3] as MetroSahelResult?;
+      final beResult    = branchResults[4] as MetroSahelResult?;
+      final sncftResult = branchResults[5] as MetroSahelResult?;
+      final stsResult   = branchResults[6] as MetroSahelResult?;
+      final busServices = branchResults[7] as List<BusService>;
+      final taxiResult  = branchResults[8] as TaxiCollectifResult?;
 
-      // BN matched → skip BS; they share physical stations and would duplicate results.
       bool bnMatched = false;
-      if (_isBnStationSet(fromStation.id, toStation.id)) {
-        if (kDebugMode) {
-          debugPrint('[JourneySearch] branch=banlieue_nabeul (priority)');
-        }
-        final bnResult = await _journeyRepository.findNextBanlieueNabeulTrip(
-          fromStationId: fromStation.id,
-          toStationId: toStation.id,
-          searchDateTime: searchDateTime,
-        );
-        if (bnResult != null) {
-          collectedTrainResults.add(bnResult);
-          bnMatched = true;
-        }
+      if (bnResult != null) {
+        collectedTrainResults.add(bnResult);
+        bnMatched = true;
       }
-
-      // Métro du Sahel.
-      if (_stationRepository.isMetroSahelStation(fromStation) &&
-          _stationRepository.isMetroSahelStation(toStation)) {
-        if (kDebugMode) debugPrint('[JourneySearch] branch=metro_sahel firing');
-        final metroResult = await _journeyRepository.findNextMetroSahelTrip(
-          fromStationId: fromStation.id,
-          toStationId: toStation.id,
-          searchDateTime: searchDateTime,
-        );
+      if (metroResult != null) {
         if (kDebugMode) debugPrint('[JourneySearch] metro_sahel result=$metroResult');
-        if (metroResult != null) collectedTrainResults.add(metroResult);
+        collectedTrainResults.add(metroResult);
       }
+      if (!bnMatched && bsResult != null) collectedTrainResults.add(bsResult);
+      if (bdResult    != null) collectedTrainResults.add(bdResult);
+      if (beResult    != null) collectedTrainResults.add(beResult);
+      if (sncftResult != null) collectedTrainResults.add(sncftResult);
+      if (stsResult   != null) collectedTrainResults.add(stsResult);
 
-      if (!bnMatched &&
-          _stationRepository.isBanlieueSudStation(fromStation) &&
-          _stationRepository.isBanlieueSudStation(toStation)) {
-        final bsResult = await _journeyRepository.findNextBanlieueSudTrip(
-          fromStationId: fromStation.id,
-          toStationId: toStation.id,
-          searchDateTime: searchDateTime,
-        );
-        if (bsResult != null) collectedTrainResults.add(bsResult);
-      }
-
-      // Banlieue Ligne D.
-      if (_stationRepository.isBanlieueDStation(fromStation) &&
-          _stationRepository.isBanlieueDStation(toStation)) {
-        final bdResult = await _journeyRepository.findNextBanlieueDTrip(
-          fromStationId: fromStation.id,
-          toStationId: toStation.id,
-          searchDateTime: searchDateTime,
-        );
-        if (bdResult != null) collectedTrainResults.add(bdResult);
-      }
-
-      // Banlieue Ligne E.
-      if (_stationRepository.isBanlieueEStation(fromStation) &&
-          _stationRepository.isBanlieueEStation(toStation)) {
-        final beResult = await _journeyRepository.findNextBanlieueETrip(
-          fromStationId: fromStation.id,
-          toStationId: toStation.id,
-          searchDateTime: searchDateTime,
-        );
-        if (beResult != null) collectedTrainResults.add(beResult);
-      }
-
-      // SNCFT Grandes Lignes — resolve cross-network hub aliases first
-      // (e.g. ms_sousse_bab_jedid → sncft_sousse_voyageurs).
-      {
-        final sncftFromId = _resolveSncftRouteStationId(fromStation.id);
-        final sncftToId = _resolveSncftRouteStationId(toStation.id);
-        final sncftFromMatch = _isSncftBranchStation(fromStation);
-        final sncftToMatch = _isSncftBranchStation(toStation);
-        if (sncftFromMatch && sncftToMatch) {
-          if (kDebugMode) {
-            debugPrint(
-              '[JourneySearch] branch=sncft_mainline from=$sncftFromId '
-              'to=$sncftToId',
-            );
-          }
-          final sncftResult = await _journeyRepository.findNextSncftL5Trip(
-            fromStationId: sncftFromId,
-            toStationId: sncftToId,
-            searchDateTime: searchDateTime,
-          );
-          if (sncftResult != null) collectedTrainResults.add(sncftResult);
-        }
-      }
-
-      // STS Sahel intercity bus (Sousse ↔ Mahdia via Sahel corridor).
-      if (_stationRepository.isStsSahelStation(fromStation) &&
-          _stationRepository.isStsSahelStation(toStation)) {
-        if (kDebugMode) {
-          debugPrint('[JourneySearch] branch=sts_sahel');
-        }
-        final stsResult = await _journeyRepository.findNextStsSahelTrip(
-          fromStationId: fromStation.id,
-          toStationId: toStation.id,
-          searchDateTime: searchDateTime,
-        );
-        if (stsResult != null) collectedTrainResults.add(stsResult);
-      }
-
-      // TRANSTU bus — departure must be a TRANSTU hub station.
+      // TRANSTU bus — process services list returned from the parallel call.
       BusService? bestBusService;
       String? bestBusDepartureTime;
       String? busHubName;
       String? busError;
       bool busIsReverse = false;
 
-      if (_stationRepository.isTranstuStation(fromStation)) {
-        if (kDebugMode) {
-          debugPrint('[JourneySearch] branch=transtu hub=${fromStation.id}');
-        }
-
-        final busServices =
-            await _busServiceRepository.findServicesConnectingStations(
-          fromStationId: fromStation.id,
-          toStationId: toStation.id,
-        );
-
+      if (runBus) {
         if (busServices.isNotEmpty) {
           int bestMinutes = -1;
 
@@ -489,13 +530,6 @@ class JourneySearchController extends ChangeNotifier {
               'Aucune ligne ne relie ${fromStation.name} à ${toStation.name}.';
         }
       }
-
-      // Taxi always runs. Uses cityId (not station name) to match seed data —
-      // station names contain suffixes like " - Bab Jedid" that break the lookup.
-      final taxiResult = await _taxiCollectifService.findRoute(
-        fromCityId: fromStation.cityId,
-        toCityId: toStation.cityId,
-      );
 
       if (collectedTrainResults.isEmpty &&
           bestBusService == null &&

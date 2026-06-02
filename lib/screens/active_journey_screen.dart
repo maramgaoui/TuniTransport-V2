@@ -34,8 +34,10 @@ class ActiveJourneyScreen extends StatefulWidget {
 
 class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
   Timer? _ticker;
+  Timer? _bannerTimer;
   DateTime? _departureDateTime;
   DateTime? _arrivalDateTime;
+  bool _showStartBanner = true;
 
   @override
   void initState() {
@@ -46,11 +48,15 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
     _ticker = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() {});
     });
+    _bannerTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _showStartBanner = false);
+    });
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
+    _bannerTimer?.cancel();
     super.dispose();
   }
 
@@ -170,7 +176,9 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
         widget.journey.transferStation!.isNotEmpty;
 
     return Scaffold(
-      body: SafeArea(
+      body: Stack(
+        children: [
+          SafeArea(
         child: Column(
           children: [
             Container(
@@ -386,6 +394,57 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
             ),
           ],
         ),
+      ),
+          if (_showStartBanner)
+            Positioned(
+              top: 0, left: 0, right: 0,
+              child: SafeArea(
+                child: AnimatedOpacity(
+                  opacity: _showStartBanner ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 400),
+                  child: Container(
+                    margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade600,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.18),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle,
+                            color: Colors.white, size: 22),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'Trajet démarré ! Bonne route 🚌',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () =>
+                              setState(() => _showStartBanner = false),
+                          child: const Icon(Icons.close,
+                              color: Colors.white70, size: 18),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
