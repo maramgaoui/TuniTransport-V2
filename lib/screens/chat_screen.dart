@@ -908,7 +908,9 @@ class _ChatScreenState extends State<ChatScreen>
             subtitle: l10n.publicDiscussion,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => context.go('/home/journey-input'),
+              onPressed: () => context.go(
+                widget.isAdminMode ? '/admin' : '/home/journey-input',
+              ),
             ),
           ),
           Expanded(

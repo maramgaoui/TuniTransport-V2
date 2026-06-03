@@ -140,7 +140,15 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
   Future<void> _onTerminer() async {
     await ActiveJourneyService.instance.clearActiveJourney();
     if (!mounted) return;
-    context.go('/home/journey-input');
+    // If the active journey screen was pushed on top of another screen
+    // (e.g. the user tapped "Voir le trajet actif" from a journey details
+    // screen they wanted to start), pop back to that screen so they can
+    // immediately start the new trip.  Otherwise fall back to home.
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/home/journey-input');
+    }
   }
 
   Future<void> _showRatingSheet() {

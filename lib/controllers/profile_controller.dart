@@ -182,6 +182,44 @@ class ProfileController {
     }
   }
 
+  /// True when the signed-in user authenticated via Google only (no password
+  /// provider linked). Used to show "Create password" instead of "Change password".
+  bool get isGoogleOnlyUser {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) return false;
+    final providers = user.providerData.map((p) => p.providerId).toSet();
+    return providers.contains('google.com') && !providers.contains('password');
+  }
+
+  /// Links an email/password credential to a Google-only account.
+  /// Returns null on success; a French error string on failure.
+  Future<String?> createPassword(String newPassword) async {
+    final firebaseUser = _firebaseAuth.currentUser;
+    if (firebaseUser == null) return _PasswordErrors.notAuthenticated;
+    if (newPassword.length < 6) return _PasswordErrors.tooShort;
+
+    try {
+      final credential = firebase_auth.EmailAuthProvider.credential(
+        email: firebaseUser.email ?? '',
+        password: newPassword,
+      );
+      await firebaseUser.linkWithCredential(credential);
+      return null;
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      developer.log('createPassword error (${e.code}): ${e.message}', name: 'ProfileController');
+      return switch (e.code) {
+        'weak-password'           => _PasswordErrors.tooWeak,
+        'provider-already-linked' => 'Ce compte possède déjà un mot de passe.',
+        'requires-recent-login'   => _PasswordErrors.requiresRecentLogin,
+        'too-many-requests'       => _PasswordErrors.tooManyRequests,
+        _                         => 'Échec de la création du mot de passe: ${e.message}',
+      };
+    } catch (e) {
+      developer.log('createPassword unexpected error: $e', name: 'ProfileController');
+      return _PasswordErrors.genericFailure;
+    }
+  }
+
   // Returns null on success; error strings are French constants (_PasswordErrors).
   // Controller has no BuildContext — l10n is the caller's responsibility.
   Future<String?> changePassword(String currentPassword, String newPassword) async {

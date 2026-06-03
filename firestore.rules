@@ -364,12 +364,12 @@ service cloud.firestore {
     }
 
     // Matricule → real Auth email mapping for promoted admins.
-    // get (single-doc by matricule ID) requires authentication so that only
-    // signed-in users can resolve a matricule → email (prevents unauthenticated
-    // enumeration of admin email addresses).
+    // get is public (no auth required) because login reads this collection
+    // before any Firebase Auth session exists — requiring auth would make
+    // the matricule login flow impossible.
     // list is blocked to prevent bulk enumeration of all admin matricules.
     match /admin_login_lookup/{matricule} {
-      allow get: if request.auth != null;
+      allow get: if true;
       allow list: if isSuperAdmin();
       allow write: if isSuperAdmin();
     }

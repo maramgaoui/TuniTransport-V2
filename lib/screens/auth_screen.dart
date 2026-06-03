@@ -131,24 +131,31 @@ class _AuthScreenState extends State<AuthScreen>
 
     setState(() => _isSendingReset = true);
 
+    final input = _forgotPasswordController.text.trim();
+    // Matricule (no '@') → resolve real email via admin_login_lookup first.
+    // Real email → send directly via Firebase Auth.
+    final sendReset = input.contains('@')
+        ? _authController.sendPasswordResetEmail(input)
+        : _authController.sendAdminPasswordResetRequest(input);
+
     try {
-      final email = _forgotPasswordController.text.trim();
-      await _authController.sendPasswordResetEmail(email);
+      await sendReset;
       if (!mounted) return;
       setState(() {
         _isSendingReset = false;
         _resetEmailSent = true;
-        _resetEmailAddress = email;
+        _resetEmailAddress = input;
       });
       _startResetCooldown();
     } catch (e) {
       if (!mounted) return;
       final rawCode = e.toString().replaceAll('Exception: ', '');
       final errorMsg = switch (rawCode) {
-        'auth.error.too_many_requests' => 'Trop de tentatives. Réessayez plus tard.',
-        'auth.error.invalid_email' => 'Adresse email invalide.',
+        'auth.error.too_many_requests'    => 'Trop de tentatives. Réessayez plus tard.',
+        'auth.error.invalid_email'        => 'Adresse email invalide.',
         'auth.error.password_reset_timeout' =>
           'La requête a pris trop de temps. Vérifiez votre connexion.',
+        'auth.error.matricule_not_found'  => 'Matricule non reconnu.',
         _ => 'Une erreur est survenue. Réessayez.',
       };
       setState(() => _isSendingReset = false);
@@ -182,6 +189,7 @@ class _AuthScreenState extends State<AuthScreen>
       'auth.error.account_deactivated'     => l10n.authErrorAccountDeactivated,
       'auth.error.account_banned_indefinite'       => l10n.accountBannedBody,
       'auth.error.google_account_already_exists'   => l10n.authErrorGeneric,
+      'auth.error.admin_use_admin_login'           => l10n.adminUseAdminLogin,
       _                                            => l10n.authErrorGeneric,
     };
   }
@@ -210,11 +218,36 @@ class _AuthScreenState extends State<AuthScreen>
       return;
     }
 
+    final input    = _loginEmailController.text.trim();
+    final password = _loginPasswordController.text;
+    // Matricule (no '@') → admin auth flow; real email → check if admin or user.
+    final isAdmin  = !input.contains('@');
+
     try {
-      await _authController.signInWithEmail(
-        email: _loginEmailController.text.trim(),
-        password: _loginPasswordController.text,
-      );
+      if (isAdmin) {
+        final result = await _authController.loginWithMatriculeOrEmail(
+          emailOrMatricule: input,
+          password: password,
+        );
+        if (!result.isAuthenticated) {
+          final err = result.errorMessage ?? l10n.authErrorGeneric;
+          setState(() { _errorMessage = err; _isLoading = false; });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(err), backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 3)),
+            );
+          }
+          return;
+        }
+        // Ensure admin UI is shown even if acting-as-user mode was left on.
+        AuthController.instance.switchToAdminMode();
+      } else {
+        await _authController.signInWithEmail(
+          email: input,
+          password: password,
+        );
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -497,6 +530,8 @@ class _AuthScreenState extends State<AuthScreen>
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -592,18 +627,18 @@ class _AuthScreenState extends State<AuthScreen>
             ),
             const SizedBox(height: 28),
             SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: canResend ? _handleResendReset : null,
-                child: _isResending
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : Text(
-                        _resetResendSeconds > 0
-                            ? 'Renvoyer l\'email ($_resetResendSeconds s)'
-                            : 'Renvoyer l\'email',
-                      ),
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: canResend ? _handleResendReset : null,
+                  child: _isResending
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      : Text(
+                          _resetResendSeconds > 0
+                              ? 'Renvoyer l\'email ($_resetResendSeconds s)'
+                              : 'Renvoyer l\'email',
+                        ),
+                ),
               ),
-            ),
           ],
         ),
       );
@@ -628,16 +663,26 @@ class _AuthScreenState extends State<AuthScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'Entrez votre email pour recevoir un lien de réinitialisation.',
+                'Entrez votre email ou votre matricule pour recevoir un lien de réinitialisation.',
                 style: TextStyle(fontSize: 14, color: AppTheme.mediumGrey),
               ),
               const SizedBox(height: 28),
-              ValidatedTextField(
+              TextFormField(
                 controller: _forgotPasswordController,
-                label: l10n.email,
-                hintText: 'votre@email.com',
-                prefixIcon: Icons.email_outlined,
-                validationType: 'email',
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: '${l10n.email} / Matricule',
+                  hintText: 'votre@email.com  ou  123456',
+                  prefixIcon: const Icon(Icons.badge_outlined),
+                ),
+                validator: (v) {
+                  final s = v?.trim() ?? '';
+                  if (s.isEmpty) return l10n.requiredField;
+                  if (s.contains('@') && !s.contains('.')) {
+                    return l10n.authErrorInvalidEmail;
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -691,14 +736,24 @@ class _AuthScreenState extends State<AuthScreen>
               style: TextStyle(fontSize: 14, color: AppTheme.mediumGrey),
             ),
             const SizedBox(height: 28),
-            // Email field with real-time validation
-            ValidatedTextField(
+            // Email or matricule — accepts both regular email and numeric matricule
+            TextFormField(
+              key: const Key('auth_login_email_field'),
               controller: _loginEmailController,
-              textFieldKey: const Key('auth_login_email_field'),
-              label: l10n.email,
-              hintText: 'votre@email.com',
-              prefixIcon: Icons.email_outlined,
-              validationType: 'email',
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: '${l10n.email} / Matricule',
+                hintText: 'votre@email.com  ou  123456',
+                prefixIcon: const Icon(Icons.badge_outlined),
+              ),
+              validator: (v) {
+                final s = v?.trim() ?? '';
+                if (s.isEmpty) return l10n.requiredField;
+                if (s.contains('@') && !s.contains('.')) {
+                  return l10n.authErrorInvalidEmail;
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 16),
             // Password field with real-time validation

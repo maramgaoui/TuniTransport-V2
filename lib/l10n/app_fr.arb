@@ -46,7 +46,7 @@
   "totalUsers": "Total utilisateurs",
   "totalAdmins": "Total admins",
   "switchToUserMode": "Passer en mode utilisateur",
-  "manageAdmins": "Gérer les administrateurs",
+  "manageAdmins": "Gérer les rôles",
   "promoteToAdmin": "Promouvoir en administrateur",
   "revokeAdminAccess": "Révoquer l'accès admin",
   "activateAdminAccount": "Activer",
@@ -131,6 +131,8 @@
   "city": "Ville",
   "addCity": "Ajouter une ville",
   "changePassword": "Changer le mot de passe",
+  "createPassword": "Créer un mot de passe",
+  "passwordCreatedSuccessfully": "Mot de passe créé avec succès.",
   "currentPassword": "Mot de passe actuel",
   "newPassword": "Nouveau mot de passe",
   "confirmNewPassword": "Confirmer le nouveau mot de passe",
@@ -208,6 +210,7 @@
   "signupFailed": "Inscription échouée",
   "googleSignInSuccess": "Connecté avec Google!",
   "googleSignInFailed": "Connexion Google échouée",
+  "adminUseAdminLogin": "Les comptes administrateurs doivent se connecter via la page Connexion Admin, pas avec Google.",
   "signInWithGoogle": "Connexion avec Google",
   "signUpWithGoogle": "S'inscrire avec Google",
   "favoriteUpdateFailed": "Échec de la mise à jour des favoris.",
@@ -235,6 +238,7 @@
   "banFor7Days": "Bannir 7 jours",
   "blockPermanently": "Bloquer définitivement",
   "unblockUser": "Débloquer l'utilisateur",
+  "unbanUser": "Lever le bannissement",
   "userBannedDays": "Utilisateur banni pour {days} jours.",
   "@userBannedDays": {
     "placeholders": {

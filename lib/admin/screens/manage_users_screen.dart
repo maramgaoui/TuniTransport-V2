@@ -488,45 +488,69 @@ class _ManageUsersScreenState extends State<ManageUsersScreen>
   }
 
   Future<void> _showAdminActions(BuildContext context, String userId) async {
+    // Find the current status from the already-loaded docs to avoid extra reads.
+    final doc = _loadedDocs.where((d) => d.id == userId).firstOrNull;
+    final status = (doc?.data()['status'] ?? 'active').toString();
+
+    final l10n = AppLocalizations.of(context)!;
+
     await showDialog<void>(
       context: context,
       builder: (ctx) {
-        final l10n = AppLocalizations.of(ctx)!;
         return AlertDialog(
           title: Text(l10n.adminActions),
           content: Text(l10n.adminActionsPrompt),
           actions: [
+            // Active users: can be banned or blocked.
+            if (status == 'active') ...[
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(ctx).pop();
+                  await banUserWithFeedback(context, userId, days: 3);
+                  await _loadInitialUsers();
+                },
+                child: Text(l10n.banFor3Days),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(ctx).pop();
+                  await banUserWithFeedback(context, userId, days: 7);
+                  await _loadInitialUsers();
+                },
+                child: Text(l10n.banFor7Days),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(ctx).pop();
+                  await blockUserWithFeedback(context, userId);
+                  await _loadInitialUsers();
+                },
+                child: Text(l10n.blockPermanently),
+              ),
+            ],
+            // Banned users: can only be unbanned.
+            if (status == 'banned')
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(ctx).pop();
+                  await unblockUserWithFeedback(context, userId);
+                  await _loadInitialUsers();
+                },
+                child: Text(l10n.unbanUser),
+              ),
+            // Blocked users: can only be unblocked.
+            if (status == 'blocked')
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(ctx).pop();
+                  await unblockUserWithFeedback(context, userId);
+                  await _loadInitialUsers();
+                },
+                child: Text(l10n.unblockUser),
+              ),
             TextButton(
-              onPressed: () async {
-                Navigator.of(ctx).pop();
-                await banUserWithFeedback(context, userId, days: 3);
-                await _loadInitialUsers();
-              },
-              child: Text(l10n.banFor3Days),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(ctx).pop();
-                await banUserWithFeedback(context, userId, days: 7);
-                await _loadInitialUsers();
-              },
-              child: Text(l10n.banFor7Days),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(ctx).pop();
-                await blockUserWithFeedback(context, userId);
-                await _loadInitialUsers();
-              },
-              child: Text(l10n.blockPermanently),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(ctx).pop();
-                await unblockUserWithFeedback(context, userId);
-                await _loadInitialUsers();
-              },
-              child: Text(l10n.unblockUser),
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(l10n.cancel),
             ),
           ],
         );

@@ -4,8 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../admin/screens/admin_dashboard.dart';
-import '../admin/screens/admin_login_screen.dart';
-import '../admin/screens/admin_profile_screen.dart';
+import '../screens/profile_screen.dart';
 import '../admin/screens/manage_users_screen.dart';
 import '../admin/screens/manage_journeys_screen.dart';
 import '../admin/screens/manage_tariffs_screen.dart';
@@ -19,91 +18,62 @@ import '../models/taxi_collectif_result.dart';
 import '../screens/auth_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/active_journey_screen.dart';
-import '../screens/login_screen.dart';
 import '../screens/journey_details_screen.dart';
 import '../screens/journey_results_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/super_admin_dashboard.dart';
 import '../screens/route_map_screen.dart';
-import 'package:tuni_transport/services/settings_service.dart';
-
 class AppRouter {
   AppRouter._();
 
-  static const Set<String> _restorableRoutes = {
-    '/home/journey-input',
-    '/home/favorites',
-    '/home/notifications',
-    '/home/chat',
-    '/home/profile',
-    '/admin',
-    '/admin/manage-users',
-    '/admin/manage-journeys',
-    '/admin/manage-tariffs',
-    '/admin/manage-admins',
-    '/admin/send-notifications',
-    '/admin/profile',
-    '/super-admin/dashboard',
-  };
-
-  static bool _isRestorableRoute(String location) {
-    final path = Uri.tryParse(location)?.path ?? location;
-    return _restorableRoutes.contains(path);
-  }
-
   static GoRouter create({
     required AuthController authController,
-    required SettingsService settingsService,
   }) {
     final refresh = _GoRouterRefreshStream(authController.authStateChanges);
 
     const adminLocation = '/admin';
-    const superAdminLoginLocation = '/super-admin/login';
 
     return GoRouter(
       initialLocation: '/splash',
       refreshListenable: refresh,
       redirect: (context, state) async {
         final path = state.uri.path;
-        final location = state.uri.toString();
         final user = authController.currentUser;
-        final savedRoute = settingsService.getLastRoute();
+        debugPrint('[Router] path=$path uid=${user?.uid} cached=${authController.cachedSession?.role.name} acting=${authController.isActingAsUser}');
 
         final isSuperAdminRoute = path.startsWith('/super-admin');
-        final isPublic =
-          path == '/auth' ||
-          path == '/admin/login' ||
-          path == '/splash' ||
-          path == superAdminLoginLocation;
-
-        if (_isRestorableRoute(location)) {
-          unawaited(settingsService.setLastRoute(location));
-        }
+        final isPublic = path == '/auth' || path == '/splash';
 
         if (user == null) {
           if (path == '/splash') return '/auth';
-          if (isSuperAdminRoute && path != superAdminLoginLocation) {
-            return superAdminLoginLocation;
+          // Grace period: a transient Firebase null auth event (common during
+          // Google sign-in on web, or token refresh) must not kick an admin
+          // who just landed on /admin back to /auth.
+          final cachedPrivileged =
+              authController.cachedSession?.isPrivileged ?? false;
+          if (cachedPrivileged &&
+              (path.startsWith('/admin') || isSuperAdminRoute)) {
+            return null;
           }
+          if (isSuperAdminRoute) return '/auth';
           if (isPublic) return null;
           return '/auth';
         }
 
-        // Fast path: for home tab switching, use the in-memory cached session
-        // directly without hitting Firestore or even awaiting a microtask.
-        // This eliminates ANR caused by piling up redirect microtasks on rapid
-        // tab presses.
+        // Fast path: for home tab switching use the cached session to avoid
+        // a Firestore round-trip on every tab press.
         if (path.startsWith('/home')) {
           final cached = authController.cachedSession;
           if (cached != null) {
             final actingAsUser = authController.isActingAsUser;
-            if (cached.isUser || actingAsUser) return null;
             if (cached.isPrivileged && !actingAsUser) return adminLocation;
+            if (actingAsUser) return null;
+            if (cached.isUser) return null;
           }
         }
 
-        // On a transient Firestore failure, keep the user where they are.
-        // Splash is the only exception — it has no UI, so fall back to /auth.
+        // On a transient Firestore failure keep the user where they are.
+        // Splash has no UI, so fall back to /auth.
         SessionResult session;
         try {
           session = await authController.resolveSession(user);
@@ -118,39 +88,22 @@ class AppRouter {
         final actingAsUser = authController.isActingAsUser;
 
         if (session.isSuperAdmin && !actingAsUser) {
-          if (path == '/splash') {
-            if (savedRoute != null &&
-                _isRestorableRoute(savedRoute) &&
-                (savedRoute.startsWith('/admin') ||
-                    savedRoute.startsWith('/super-admin'))) {
-              return savedRoute;
-            }
+          if (path == '/splash' || path == '/auth' || path.startsWith('/home')) {
             return adminLocation;
           }
-          if (path == superAdminLoginLocation || path == '/auth') {
-            return adminLocation;
-          }
-          if (path.startsWith('/home')) return adminLocation;
           return null;
         }
 
         if (session.isAdmin && !actingAsUser) {
-          if (path == '/splash') {
-            if (savedRoute != null &&
-                _isRestorableRoute(savedRoute) &&
-                savedRoute.startsWith('/admin')) {
-              return savedRoute;
-            }
+          if (path == '/splash' || path == '/auth' || path.startsWith('/home')) {
             return adminLocation;
           }
-          if (path == '/admin/login') return adminLocation;
-          if (path == '/auth' || path.startsWith('/home')) return adminLocation;
           if (path == '/admin/manage-admins') return adminLocation;
           if (isSuperAdminRoute) return adminLocation;
           return null;
         }
 
-        // Privileged user in user mode — block them from navigating back to admin areas.
+        // Privileged user in user mode — block navigation back to admin areas.
         if (actingAsUser && session.isPrivileged) {
           if (path.startsWith('/admin') || isSuperAdminRoute) {
             return '/home/journey-input';
@@ -158,20 +111,10 @@ class AppRouter {
         }
 
         if (path.startsWith('/admin')) return '/home/journey-input';
-        if (isSuperAdminRoute && path != superAdminLoginLocation) {
+        if (isSuperAdminRoute) return '/home/journey-input';
+        if (path == '/splash' || path == '/auth' || path == '/') {
           return '/home/journey-input';
         }
-
-        if (path == '/splash') {
-          if (savedRoute != null &&
-              _isRestorableRoute(savedRoute) &&
-              savedRoute.startsWith('/home')) {
-            return savedRoute;
-          }
-          return '/home/journey-input';
-        }
-
-        if (path == '/auth' || path == '/') return '/home/journey-input';
 
         return null;
       },
@@ -286,10 +229,6 @@ class AppRouter {
           builder: (context, state) => const AdminDashboard(),
         ),
         GoRoute(
-          path: '/admin/login',
-          builder: (context, state) => const AdminLoginScreen(),
-        ),
-        GoRoute(
           path: '/admin/manage-users',
           builder: (context, state) => const ManageUsersScreen(),
         ),
@@ -311,11 +250,7 @@ class AppRouter {
         ),
         GoRoute(
           path: '/admin/profile',
-          builder: (context, state) => const AdminProfileScreen(),
-        ),
-        GoRoute(
-          path: '/super-admin/login',
-          builder: (context, state) => const LoginScreen(),
+          builder: (context, state) => const ProfileScreen(isAdminContext: true),
         ),
         GoRoute(
           path: '/super-admin/dashboard',

@@ -122,7 +122,6 @@ class _MyAppState extends State<MyApp> {
 
     _router = AppRouter.create(
       authController: _authController,
-      settingsService: widget.settingsService,
     );
 
     _onThemeChanged = _updateThemeMode;

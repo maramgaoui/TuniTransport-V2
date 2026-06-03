@@ -100,9 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 isSuperAdmin: AuthController.instance.cachedSession?.isSuperAdmin ?? false,
                 onSwitch: () {
                   AuthController.instance.switchToAdminMode();
-                  final isSuperAdmin =
-                      AuthController.instance.cachedSession?.isSuperAdmin ?? false;
-                  context.go(isSuperAdmin ? '/super-admin/dashboard' : '/admin');
+                  context.go('/admin');
                 },
               ),
             Expanded(

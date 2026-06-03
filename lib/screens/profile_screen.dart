@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:avatar_plus/avatar_plus.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/constants/avatar_options.dart';
 import 'package:tuni_transport/controllers/profile_controller.dart';
@@ -11,6 +10,7 @@ import 'package:tuni_transport/utils/validation_utils.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_header.dart';
 import '../widgets/app_settings.dart';
+import '../widgets/profile_shared_widgets.dart';
 import '../widgets/validated_text_field.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -19,11 +19,13 @@ class ProfileScreen extends StatefulWidget {
     this.showAppBar = true,
     this.showInlineActions = true,
     this.onActionStateChanged,
+    this.isAdminContext = false,
   });
 
   final bool showAppBar;
   final bool showInlineActions;
   final VoidCallback? onActionStateChanged;
+  final bool isAdminContext;
 
   @override
   State<ProfileScreen> createState() => ProfileScreenState();
@@ -44,6 +46,15 @@ class ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _usernameController;
 
   final _formKey = GlobalKey<FormState>();
+
+  String _adminTypeLabel(String? type) => switch (type) {
+    'bus'            => 'Admin Bus (TRANSTU)',
+    'metro_train'    => 'Admin Métro / Train',
+    'taxicollectifs' => 'Admin Taxi Collectifs',
+    'louage'         => 'Admin Louage',
+    'super_admin'    => 'Super Admin',
+    _                => type ?? '-',
+  };
 
   bool get _isPrivilegedReadOnlyMode {
     return _authController.isActingAsUser &&
@@ -85,6 +96,20 @@ class ProfileScreenState extends State<ProfileScreen> {
     _firstNameController = TextEditingController();
     _lastNameController = TextEditingController();
     _usernameController = TextEditingController();
+
+    // Safety net: an admin not in user-mode should never land on the user
+    // profile screen. Skip this redirect when explicitly in admin context
+    // (e.g. /admin/profile or embedded in AdminDashboard).
+    if (!widget.isAdminContext) {
+      final session = _authController.cachedSession;
+      if (session != null &&
+          session.isPrivileged &&
+          !_authController.isActingAsUser) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.go('/admin');
+        });
+      }
+    }
   }
 
   bool _prefsLoaded = false;
@@ -207,95 +232,124 @@ class ProfileScreenState extends State<ProfileScreen> {
   Future<void> _showAvatarPicker(User profile) async {
     if (!mounted) return;
     final l10n = AppLocalizations.of(context)!;
-    String selectedAvatarId = profile.avatarId ?? avatarOptions.first;
-    bool confirmed = false;
 
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          title: Text(l10n.chooseAvatar),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: SingleChildScrollView(
-              child: GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: avatarOptions.length,
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                ),
-                itemBuilder: (dialogContext, index) {
-                  final avatarId = avatarOptions[index];
-                  final isSelected = selectedAvatarId == avatarId;
-                  return GestureDetector(
-                    onTap: () =>
-                        setDialogState(() => selectedAvatarId = avatarId),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected
-                              ? AppTheme.primaryTeal
-                              : Colors.transparent,
-                          width: 2.5,
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(2),
-                      child: ClipOval(
-                        child: AvatarPlus(
-                          avatarId,
-                          width: 56,
-                          height: 56,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(l10n.cancel),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                confirmed = true;
-                Navigator.of(dialogContext).pop();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryTeal,
-              ),
-              child: Text(
-                l10n.save,
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        ),
-      ),
+    final newAvatarId = await showAvatarPickerDialog(
+      context,
+      currentAvatarId: profile.avatarId ?? avatarOptions.first,
     );
-
-    if (!mounted || !confirmed) return;
+    if (!mounted || newAvatarId == null) return;
 
     final success = await _profileController.updateProfileFields({
-      'avatarId': selectedAvatarId,
+      'avatarId': newAvatarId,
       'customAvatarUrl': null,
     });
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          success ? l10n.avatarUpdated : l10n.avatarUpdateFailed,
-        ),
+        content: Text(success ? l10n.avatarUpdated : l10n.avatarUpdateFailed),
         backgroundColor: success ? AppTheme.primaryTeal : Colors.red,
+      ),
+    );
+  }
+
+  void _showCreatePasswordDialog() {
+    final l10n = AppLocalizations.of(context)!;
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool obscureNew = true;
+    bool obscureConfirm = true;
+
+    showDialog<void>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(l10n.createPassword),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ValidatedTextField(
+                  controller: newPasswordController,
+                  label: l10n.newPassword,
+                  hintText: '••••••••',
+                  prefixIcon: Icons.lock_outline,
+                  validationType: 'password',
+                  obscureText: obscureNew,
+                  isPasswordField: true,
+                  onVisibilityToggle: () =>
+                      setDialogState(() => obscureNew = !obscureNew),
+                  onValidationChanged: (_) => setDialogState(() {}),
+                ),
+                const SizedBox(height: 16),
+                ValidatedTextField(
+                  controller: confirmPasswordController,
+                  label: l10n.confirmNewPassword,
+                  hintText: '••••••••',
+                  prefixIcon: Icons.lock_outline,
+                  validationType: 'confirm_password',
+                  confirmPasswordValue: newPasswordController.text,
+                  obscureText: obscureConfirm,
+                  isPasswordField: true,
+                  onVisibilityToggle: () =>
+                      setDialogState(() => obscureConfirm = !obscureConfirm),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(l10n.cancel),
+            ),
+            TextButton(
+              onPressed: () async {
+                final rootMessenger = ScaffoldMessenger.of(this.context);
+                if (newPasswordController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(l10n.enterNewPassword)),
+                  );
+                  return;
+                }
+                if (newPasswordController.text != confirmPasswordController.text) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(l10n.passwordsDoNotMatch)),
+                  );
+                  return;
+                }
+                final strengthError =
+                    ValidationUtils.validatePassword(newPasswordController.text);
+                if (strengthError != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(strengthError),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                final error = await _profileController
+                    .createPassword(newPasswordController.text);
+
+                if (!context.mounted) return;
+                Navigator.pop(context);
+                if (!mounted) return;
+                rootMessenger.showSnackBar(
+                  error == null
+                      ? SnackBar(
+                          content: Text(l10n.passwordCreatedSuccessfully),
+                          backgroundColor: AppTheme.primaryTeal,
+                        )
+                      : SnackBar(
+                          content: Text(error),
+                          backgroundColor: Colors.red,
+                        ),
+                );
+              },
+              child: Text(l10n.createPassword),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -446,6 +500,108 @@ class ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _handleAdminChangePassword() async {
+    final l10n = AppLocalizations.of(context)!;
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool obscureCurrent = true, obscureNew = true, obscureConfirm = true;
+
+    final shouldSubmit = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (_, setDialogState) => AlertDialog(
+          title: Text(l10n.changePassword),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              TextField(
+                controller: currentPasswordController,
+                obscureText: obscureCurrent,
+                decoration: InputDecoration(
+                  labelText: l10n.currentPassword,
+                  suffixIcon: IconButton(
+                    icon: Icon(obscureCurrent
+                        ? Icons.visibility_off
+                        : Icons.visibility),
+                    onPressed: () =>
+                        setDialogState(() => obscureCurrent = !obscureCurrent),
+                  ),
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ValidatedTextField(
+                controller: newPasswordController,
+                label: l10n.newPassword,
+                hintText: '••••••••',
+                prefixIcon: Icons.lock_outline,
+                validationType: 'password',
+                obscureText: obscureNew,
+                isPasswordField: true,
+                onVisibilityToggle: () =>
+                    setDialogState(() => obscureNew = !obscureNew),
+                onValidationChanged: (_) => setDialogState(() {}),
+              ),
+              const SizedBox(height: 16),
+              ValidatedTextField(
+                controller: confirmPasswordController,
+                label: l10n.confirmNewPassword,
+                hintText: '••••••••',
+                prefixIcon: Icons.lock_outline,
+                validationType: 'confirm_password',
+                confirmPasswordValue: newPasswordController.text,
+                obscureText: obscureConfirm,
+                isPasswordField: true,
+                onVisibilityToggle: () =>
+                    setDialogState(() => obscureConfirm = !obscureConfirm),
+              ),
+            ]),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(l10n.cancel),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryTeal),
+              child: Text(l10n.save,
+                  style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final currentPassword = currentPasswordController.text;
+    final newPassword = newPasswordController.text;
+    currentPasswordController.dispose();
+    newPasswordController.dispose();
+    confirmPasswordController.dispose();
+
+    if (shouldSubmit != true || !mounted) return;
+
+    try {
+      await _authController.changeAdminPassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.passwordChangedSuccessfully),
+        backgroundColor: AppTheme.primaryTeal,
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(e.toString().replaceFirst('Exception: ', '')),
+        backgroundColor: Colors.red,
+      ));
+    }
   }
 
   void _showSettingsDialog() {
@@ -610,7 +766,8 @@ class ProfileScreenState extends State<ProfileScreen> {
               title: l10n.profile,
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => context.go('/home/journey-input'),
+                onPressed: () => context.go(
+                    widget.isAdminContext ? '/admin' : '/home/journey-input'),
               ),
               trailing: !widget.showInlineActions
                   ? null
@@ -650,7 +807,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                                     }
                                   },
                           ),
-                        if (!_isPrivilegedReadOnlyMode)
+                        if (!_isPrivilegedReadOnlyMode && !widget.isAdminContext)
                           IconButton(
                             icon: const Icon(Icons.settings, color: Colors.white),
                             onPressed: _showSettingsDialog,
@@ -728,7 +885,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                                     }
                                   },
                           ),
-                        if (!_isPrivilegedReadOnlyMode)
+                        if (!_isPrivilegedReadOnlyMode && !widget.isAdminContext)
                           IconButton(
                             icon: const Icon(Icons.settings),
                             tooltip: l10n.settings,
@@ -742,63 +899,14 @@ class ProfileScreenState extends State<ProfileScreen> {
                   child: Column(
                     children: [
                       // User avatar with avatar picker
-                      Stack(
-                        children: [
-                          ClipOval(
-                            child: (profile.customAvatarUrl != null && profile.customAvatarUrl!.isNotEmpty)
-                                ? Image.network(
-                                    profile.customAvatarUrl!,
-                                    width: 120,
-                                    height: 120,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return AvatarPlus(
-                                        profile.avatarId ??
-                                            (profile.username?.isNotEmpty == true
-                                                ? profile.username!
-                                                : profile.email),
-                                        width: 120,
-                                        height: 120,
-                                        fit: BoxFit.cover,
-                                      );
-                                    },
-                                  )
-                                : AvatarPlus(
-                                    profile.avatarId ??
-                                        (profile.username?.isNotEmpty == true
-                                            ? profile.username!
-                                            : profile.email),
-                                    width: 120,
-                                    height: 120,
-                                    fit: BoxFit.cover,
-                                  ),
-                          ),
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: GestureDetector(
-                              onTap: _isPrivilegedReadOnlyMode
-                                  ? null
-                                  : () => _showAvatarPicker(profile),
-                              child: Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: _isPrivilegedReadOnlyMode
-                                      ? Colors.grey
-                                      : AppTheme.primaryTeal,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
-                                ),
-                                child: const Icon(
-                                  Icons.edit,
-                                  color: Colors.white,
-                                  size: 18,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                      ProfileAvatarStack(
+                        avatarId: profile.avatarId ??
+                            (profile.username?.isNotEmpty == true
+                                ? profile.username!
+                                : profile.email),
+                        customAvatarUrl: profile.customAvatarUrl,
+                        onTap: () => _showAvatarPicker(profile),
+                        disabled: _isPrivilegedReadOnlyMode,
                       ),
                       const SizedBox(height: 16),
                       // Full Name
@@ -830,24 +938,65 @@ class ProfileScreenState extends State<ProfileScreen> {
                           color: AppTheme.mediumGrey,
                         ),
                       ),
+                      // Admin-type badge (admin context only)
+                      if (widget.isAdminContext && profile.adminType != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryTeal.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                                color: AppTheme.primaryTeal
+                                    .withValues(alpha: 0.30)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.workspace_premium_outlined,
+                                  size: 16, color: AppTheme.primaryTeal),
+                              const SizedBox(width: 6),
+                              Text(
+                                _adminTypeLabel(profile.adminType),
+                                style: const TextStyle(
+                                  color: AppTheme.primaryTeal,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(height: 32),
                 // Profile Form or Details
                 if (_isEditing)
-                  _buildEditForm()
+                  _buildEditForm(profile)
                 else
                   _buildProfileDetails(profile),
                 const SizedBox(height: 32),
-                // Change Password Button
+                // Password button — admin context always shows "Change";
+                // user context shows "Create" for Google-only accounts.
                 if (!_isPrivilegedReadOnlyMode)
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: _showChangePasswordDialog,
+                      onPressed: widget.isAdminContext
+                          ? _handleAdminChangePassword
+                          : (_profileController.isGoogleOnlyUser
+                              ? _showCreatePasswordDialog
+                              : _showChangePasswordDialog),
                       icon: const Icon(Icons.lock),
-                      label: Text(l10n.changePassword),
+                      label: Text(
+                        (widget.isAdminContext ||
+                                !_profileController.isGoogleOnlyUser)
+                            ? l10n.changePassword
+                            : l10n.createPassword,
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.darkTeal,
                         foregroundColor: Colors.white,
@@ -887,80 +1036,82 @@ class ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Required fields - always show
-        _buildDetailRow(l10n.username, profile.username ?? l10n.notSet),
-        _buildDetailRow(l10n.firstName, profile.firstName ?? l10n.notSet),
-        _buildDetailRow(l10n.lastName, profile.lastName ?? l10n.notSet),
-        _buildDetailRow(l10n.email, profile.email),
-        
+        ProfileDetailRow(label: l10n.username, value: profile.username ?? l10n.notSet),
+        ProfileDetailRow(label: l10n.firstName, value: profile.firstName ?? l10n.notSet),
+        ProfileDetailRow(label: l10n.lastName, value: profile.lastName ?? l10n.notSet),
+        ProfileDetailRow(label: l10n.email, value: profile.email),
+        if (widget.isAdminContext && (profile.matricule?.isNotEmpty ?? false))
+          ProfileDetailRow(
+              label: l10n.matricule, value: profile.matricule!, locked: true),
       ],
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppTheme.mediumGrey,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 16,
-              color: AppTheme.textDark,
-            ),
-          ),
-          const Divider(color: AppTheme.lightGrey),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEditForm() {
+  Widget _buildEditForm(User profile) {
     final l10n = AppLocalizations.of(context)!;
     return Form(
       key: _formKey,
       child: Column(
         children: [
-          ValidatedTextField(
-            controller: _firstNameController,
-            label: l10n.firstName,
-            hintText: l10n.firstName,
-            prefixIcon: Icons.person_outline,
-            validationType: 'name',
-            nameFieldType: l10n.firstName,
-            maxLength: 30,
+          ProfileEditFields(
+            firstNameController: _firstNameController,
+            lastNameController: _lastNameController,
+            usernameController: _usernameController,
           ),
-          const SizedBox(height: 16),
-          ValidatedTextField(
-            controller: _lastNameController,
-            label: l10n.lastName,
-            hintText: l10n.lastName,
-            prefixIcon: Icons.person_outline,
-            validationType: 'name',
-            nameFieldType: l10n.lastName,
-            maxLength: 30,
-          ),
-          const SizedBox(height: 16),
-          ValidatedTextField(
-            controller: _usernameController,
-            label: l10n.username,
-            hintText: l10n.username,
-            prefixIcon: Icons.person_add_outlined,
-            validationType: 'username',
-            maxLength: 20,
-          ),
+          // Admin-only locked fields (visible in edit mode but not editable)
+          if (widget.isAdminContext && profile.adminType != null) ...[
+            const SizedBox(height: 16),
+            _buildLockedField(
+              icon: Icons.workspace_premium_outlined,
+              label: l10n.role,
+              value: _adminTypeLabel(profile.adminType),
+            ),
+          ],
+          if (widget.isAdminContext &&
+              (profile.matricule?.isNotEmpty ?? false)) ...[
+            const SizedBox(height: 16),
+            _buildLockedField(
+              icon: Icons.badge_outlined,
+              label: l10n.matricule,
+              value: profile.matricule!,
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildLockedField({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(children: [
+        Icon(icon, color: AppTheme.mediumGrey, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 12, color: AppTheme.mediumGrey)),
+              const SizedBox(height: 2),
+              Text(value,
+                  style: const TextStyle(
+                      fontSize: 16, color: AppTheme.textDark)),
+            ],
+          ),
+        ),
+        const Icon(Icons.lock_outline, size: 16, color: AppTheme.mediumGrey),
+      ]),
     );
   }
 }

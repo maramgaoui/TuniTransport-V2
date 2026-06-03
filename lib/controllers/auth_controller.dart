@@ -8,12 +8,30 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer' as developer;
 import '../models/user_model.dart';
 import '../models/session_result.dart';
+import '../utils/firebase_error_handler.dart';
 import '../utils/role_guard.dart';
 import '../utils/validation_utils.dart';
 import '../constants/firestore_collections.dart';
 import '../services/active_journey_service.dart';
 import 'notification_controller.dart';
 import '../services/notification_service.dart';
+
+/// Result returned by [AuthController.loginWithMatriculeOrEmail].
+class AdminAuthResult {
+  final bool isAuthenticated;
+  final String? role;
+  final String? name;
+  final String? matricule;
+  final String? errorMessage;
+
+  const AdminAuthResult({
+    required this.isAuthenticated,
+    this.role,
+    this.name,
+    this.matricule,
+    this.errorMessage,
+  });
+}
 
 class AuthController {
   AuthController({
@@ -249,6 +267,12 @@ class AuthController {
               _lastObservedUserRole    = currentRole;
               _lastObservedAdminType   = currentAdminType;
               _invalidateSessionCache(uid: uid);
+
+              // Force sign-out immediately when the user is banned or blocked
+              // so the session ends without waiting for the next auth event.
+              if (currentStatus == 'blocked' || currentStatus == 'banned') {
+                unawaited(_safeSignOut());
+              }
             }
           },
           onError: (Object error) {
@@ -294,20 +318,40 @@ class AuthController {
       firebase_auth.User? user,
     ) async {
       if (user == null) {
+        _actingAsUser = false;   // always exit user-mode when session ends
         _invalidateAuthStreamCache();
         await _cancelUserStatusListener();
         return null;
       }
 
-      // Block unverified email/password accounts — but exempt admin accounts
-      // ({matricule}@admin.local) which are created by the super admin and
-      // never go through the user-facing email verification flow.
+      // Block unverified email/password accounts — exempt admins because
+      // their accounts are created by a super-admin and may not go through
+      // the self-service email verification flow.
       final isEmailPasswordUser = user.providerData
           .any((p) => p.providerId == 'password');
-      final isAdminAccount = user.email?.endsWith('@admin.local') ?? false;
-      if (isEmailPasswordUser && !user.emailVerified && !isAdminAccount) {
-        _invalidateAuthStreamCache();
-        return null;
+      if (isEmailPasswordUser && !user.emailVerified) {
+        // Quick privilege check so admins with real (non-@admin.local) emails
+        // are not blocked. Only reads Firestore when verification is missing.
+        bool isPrivileged = false;
+        try {
+          final snap = await _firestore
+              .collection(Col.users)
+              .doc(user.uid)
+              .get();
+          isPrivileged = RoleGuard.isPrivileged(
+              snap.data()?['role']?.toString() ?? '');
+          if (!isPrivileged) {
+            isPrivileged = (await _firestore
+                    .collection(Col.admins)
+                    .doc(user.uid)
+                    .get())
+                .exists;
+          }
+        } catch (_) {}
+        if (!isPrivileged) {
+          _invalidateAuthStreamCache();
+          return null;
+        }
       }
 
       if (_cachedAuthStreamUser != null &&
@@ -387,8 +431,7 @@ class AuthController {
 
     final isEmailPasswordUser = firebaseUser.providerData
         .any((p) => p.providerId == 'password');
-    final isAdminAccount = firebaseUser.email?.endsWith('@admin.local') ?? false;
-    if (isEmailPasswordUser && !firebaseUser.emailVerified && !isAdminAccount) return null;
+    if (isEmailPasswordUser && !firebaseUser.emailVerified) return null;
 
     return User(uid: firebaseUser.uid, email: firebaseUser.email ?? '');
   }
@@ -569,6 +612,12 @@ class AuthController {
     required String email,
     required String password,
   }) async {
+    _actingAsUser = false; // clear any stale user-mode from a previous session
+    // Eagerly wipe the persisted session so a stale 'user' cache in
+    // SharedPreferences cannot be read by resolveSession's catch-block
+    // fallback during the redirect that fires immediately after sign-in.
+    final previousUid = _firebaseAuth.currentUser?.uid;
+    if (previousUid != null) await _clearPersistedSession(previousUid);
     try {
       final normalizedEmail = _normalizeEmail(email);
       final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
@@ -691,6 +740,9 @@ class AuthController {
   }
 
   Future<User?> signInWithGoogle({bool isSignUp = false}) async {
+    _actingAsUser = false; // clear any stale user-mode from a previous session
+    final previousUid = _firebaseAuth.currentUser?.uid;
+    if (previousUid != null) await _clearPersistedSession(previousUid);
     try {
       // Clear cached Google account so Android always shows the chooser.
       // Without this, GoogleSignIn may silently reuse the previous account.
@@ -743,6 +795,12 @@ class AuthController {
           throw Exception(accessError);
         }
         _invalidateSessionCache(uid: firebaseUser.uid);
+        // Pre-warm the session cache immediately so the router's fast path
+        // finds the correct role (admin/user) before authStateChanges fires.
+        // Without this, a null-event race can cause the router to redirect
+        // a Google-authenticated admin to the user home screen.
+        final prewarmUser = User(uid: firebaseUser.uid, email: firebaseUser.email ?? '');
+        unawaited(resolveSession(prewarmUser));
         final existingData = Map<String, dynamic>.from(userDoc.data() ?? {});
         // Backfill username for existing Google users who never had one set.
         if ((existingData['username'] ?? '').toString().isEmpty) {
@@ -762,6 +820,38 @@ class AuthController {
         unawaited(NotificationService.instance.onUserLoggedIn());
         return User.fromMap(existingData);
       } else {
+        // Guard: if this Google email already belongs to an admin (either in
+        // the users collection under a different UID, or still in the legacy
+        // admins collection), block the sign-in instead of silently creating a
+        // new regular-user document that would shadow their admin role.
+        final normalizedEmail = (firebaseUser.email ?? '').toLowerCase().trim();
+        if (normalizedEmail.isNotEmpty) {
+          final usersByEmail = await _firestore
+              .collection(Col.users)
+              .where('email', isEqualTo: normalizedEmail)
+              .limit(1)
+              .get();
+          if (usersByEmail.docs.isNotEmpty) {
+            final existingRole =
+                (usersByEmail.docs.first.data()['role'] ?? 'user').toString();
+            if (RoleGuard.isAdmin(existingRole) ||
+                RoleGuard.isSuperAdmin(existingRole)) {
+              await _firebaseAuth.signOut();
+              throw Exception('auth.error.admin_use_admin_login');
+            }
+          }
+
+          final adminsByEmail = await _firestore
+              .collection(Col.admins)
+              .where('email', isEqualTo: normalizedEmail)
+              .limit(1)
+              .get();
+          if (adminsByEmail.docs.isNotEmpty) {
+            await _firebaseAuth.signOut();
+            throw Exception('auth.error.admin_use_admin_login');
+          }
+        }
+
         var generatedUsername = _generateUsername(
           displayName: googleUser.displayName,
           email: firebaseUser.email ?? '',
@@ -992,10 +1082,13 @@ class AuthController {
       }
 
       final persisted = await _loadPersistedSession(current.uid);
-      if (persisted != null) {
+      // Only restore a persisted session when it grants a privileged role.
+      // A stale 'user' cache must never silently demote an admin and prevent
+      // the router from redirecting them to /admin.
+      if (persisted != null && persisted.isPrivileged) {
         _cacheSession(current.uid, persisted);
         developer.log(
-          'resolveSession restored cached role after transient failure: $e',
+          'resolveSession restored cached privileged role after transient failure: $e',
           name: 'AuthController',
         );
         return persisted;
@@ -1024,7 +1117,6 @@ class AuthController {
     String? firstName,
     String? lastName,
     String? avatarId,
-    String? city,
   }) async {
     try {
       final updateData = <String, dynamic>{};
@@ -1032,7 +1124,6 @@ class AuthController {
       if (firstName != null) updateData['firstName'] = firstName;
       if (lastName != null) updateData['lastName'] = lastName;
       if (avatarId != null) updateData['avatarId'] = avatarId;
-      if (city != null) updateData['city'] = city;
       if (updateData.isEmpty) return;
       updateData['updatedAt'] = FieldValue.serverTimestamp();
 
@@ -1071,6 +1162,234 @@ class AuthController {
       throw Exception(
         'auth.error.password_reset_failed',
       );
+    }
+  }
+
+  // ── Admin / privileged sign-in methods ──────────────────────────────────────
+
+  /// Signs in an admin or super-admin using their real email or matricule + password.
+  /// For matricule input (no '@'), the real email is resolved from
+  /// [Col.adminLoginLookup] — no @admin.local format is ever used.
+  Future<AdminAuthResult> loginWithMatriculeOrEmail({
+    required String emailOrMatricule,
+    required String password,
+  }) async {
+    _actingAsUser = false;
+    // Clear any stale session before sign-in so the router's resolveSession()
+    // call (triggered by the Firebase Auth stream) reads fresh from Firestore
+    // instead of returning a cached role from a previous session.
+    final previousUid = _firebaseAuth.currentUser?.uid;
+    if (previousUid != null) await _clearPersistedSession(previousUid);
+    _invalidateSessionCache();
+
+    final sanitizedInput = emailOrMatricule.trim();
+
+    if (sanitizedInput.isEmpty || password.isEmpty) {
+      return const AdminAuthResult(
+        isAuthenticated: false,
+        errorMessage: 'Email/matricule et mot de passe sont requis.',
+      );
+    }
+
+    try {
+      // Resolve email: if input has '@' use it directly, otherwise look up
+      // the real email from admin_login_lookup by matricule.
+      String email;
+      if (sanitizedInput.contains('@')) {
+        email = sanitizedInput.toLowerCase();
+      } else {
+        final lookupDoc = await _firestore
+            .collection(Col.adminLoginLookup)
+            .doc(sanitizedInput.toLowerCase())
+            .get();
+        final resolved =
+            (lookupDoc.data()?['email'] as String? ?? '').trim().toLowerCase();
+        if (resolved.isEmpty) {
+          return const AdminAuthResult(
+            isAuthenticated: false,
+            errorMessage: 'Matricule non reconnu. Vérifiez votre matricule ou connectez-vous avec votre email.',
+          );
+        }
+        email = resolved;
+      }
+
+      final firebase_auth.UserCredential credential;
+      try {
+        credential = await _firebaseAuth.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+      } on firebase_auth.FirebaseAuthException {
+        rethrow;
+      }
+
+      final uid = credential.user?.uid;
+      if (uid == null) {
+        return const AdminAuthResult(
+          isAuthenticated: false,
+          errorMessage: 'Authentication failed: no user returned.',
+        );
+      }
+
+      Map<String, dynamic>? adminData;
+      final userDoc = await _firestore.collection(Col.users).doc(uid).get();
+      final userRole = userDoc.data()?['role']?.toString() ?? '';
+      if (userDoc.exists && RoleGuard.isPrivileged(userRole)) {
+        adminData = userDoc.data();
+      } else {
+        final adminDoc =
+            await _firestore.collection(Col.admins).doc(uid).get();
+        if (adminDoc.exists) adminData = adminDoc.data();
+      }
+
+      if (adminData == null) {
+        await _firebaseAuth.signOut();
+        return const AdminAuthResult(
+          isAuthenticated: false,
+          errorMessage: 'Admin profile not found.',
+        );
+      }
+
+      final status = (adminData['status'] ?? 'active').toString();
+      if (status == 'suspended' || status == 'inactive') {
+        await _firebaseAuth.signOut();
+        return const AdminAuthResult(
+          isAuthenticated: false,
+          errorMessage:
+              'Ce compte administrateur a été désactivé. Contactez un super administrateur.',
+        );
+      }
+
+      final firstName = (adminData['firstName'] as String?)?.trim() ?? '';
+      final lastName = (adminData['lastName'] as String?)?.trim() ?? '';
+      final legacyName = (adminData['name'] as String?)?.trim() ?? '';
+      final resolvedName = firstName.isNotEmpty
+          ? [firstName, lastName].where((s) => s.isNotEmpty).join(' ')
+          : legacyName.isNotEmpty
+          ? legacyName
+          : null;
+      final resolvedType =
+          (adminData['adminType'] as String?) ?? (adminData['role'] as String?);
+
+      // Ensure resolveSession() re-reads from Firestore on the next router
+      // redirect rather than returning a stale cache written during this call.
+      _invalidateSessionCache(uid: uid);
+
+      return AdminAuthResult(
+        isAuthenticated: true,
+        role: resolvedType,
+        name: resolvedName,
+        matricule: (adminData['matricule'] ?? sanitizedInput).toString(),
+      );
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      return AdminAuthResult(
+        isAuthenticated: false,
+        errorMessage: FirebaseErrorHandler.getMessage(e),
+      );
+    } catch (e) {
+      return AdminAuthResult(
+        isAuthenticated: false,
+        errorMessage: FirebaseErrorHandler.getMessage(e),
+      );
+    }
+  }
+
+  /// Sends a password-reset email to an admin using their email or matricule.
+  /// If [emailOrMatricule] has no '@', it is treated as a matricule and the
+  /// real email is resolved from [Col.adminLoginLookup] before sending.
+  Future<void> sendAdminPasswordResetRequest(String emailOrMatricule) async {
+    final input = emailOrMatricule.trim();
+    if (input.contains('@')) {
+      return sendPasswordResetEmail(input);
+    }
+    // Matricule path: look up real email from Firestore.
+    final lookupDoc = await _firestore
+        .collection(Col.adminLoginLookup)
+        .doc(input.toLowerCase())
+        .get();
+    final email =
+        (lookupDoc.data()?['email'] as String? ?? '').trim().toLowerCase();
+    if (email.isEmpty) {
+      throw Exception('auth.error.matricule_not_found');
+    }
+    return sendPasswordResetEmail(email);
+  }
+
+  /// Changes the password of the currently signed-in admin.
+  /// Reauthenticates with [currentPassword] before applying [newPassword].
+  Future<void> changeAdminPassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      throw const FormatException('No authenticated admin session found.');
+    }
+
+    if (currentPassword.trim().isEmpty || newPassword.trim().isEmpty) {
+      throw const FormatException(
+          'Current password and new password are required.');
+    }
+    if (newPassword.length < 6) {
+      throw const FormatException(
+          'New password must be at least 6 characters.');
+    }
+    if (currentPassword == newPassword) {
+      throw const FormatException(
+          'New password must be different from the current one.');
+    }
+
+    final email = user.email;
+    if (email == null || email.isEmpty) {
+      throw const FormatException('Unable to determine admin account email.');
+    }
+
+    try {
+      final credential = firebase_auth.EmailAuthProvider.credential(
+        email: email,
+        password: currentPassword,
+      );
+      await user
+          .reauthenticateWithCredential(credential)
+          .timeout(const Duration(seconds: 10));
+      await user
+          .updatePassword(newPassword)
+          .timeout(const Duration(seconds: 10));
+
+      // Stamp audit field — fire-and-forget so a Firestore hiccup does not
+      // fail a password change that already succeeded in Firebase Auth.
+      _firestore
+          .collection(Col.users)
+          .doc(user.uid)
+          .update({'passwordChangedAt': FieldValue.serverTimestamp()})
+          .catchError((_) {});
+
+      await user.reload();
+    } on TimeoutException {
+      throw Exception(
+          'Operation timeout. Please check your network and try again.');
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      final lowerMsg = (e.message ?? '').toLowerCase();
+      final message = switch (e.code) {
+        'wrong-password' ||
+        'invalid-credential' ||
+        'invalid-login-credentials' ||
+        'user-mismatch' ||
+        'user-not-found' =>
+          'Le mot de passe actuel est incorrect.',
+        'weak-password' => 'New password is too weak.',
+        'network-request-failed' =>
+          'Erreur reseau. Vérifiez votre connexion Internet.',
+        'requires-recent-login' =>
+          'Please log in again before changing your password.',
+        'too-many-requests' => 'Too many attempts. Please try again later.',
+        _ => (lowerMsg.contains('credential') ||
+                lowerMsg.contains('password') ||
+                lowerMsg.contains('mot de passe'))
+            ? 'Le mot de passe actuel est incorrect.'
+            : (e.message ?? 'Authentication error while changing password.'),
+      };
+      throw Exception(message);
     }
   }
 

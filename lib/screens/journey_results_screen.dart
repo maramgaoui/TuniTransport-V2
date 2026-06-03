@@ -40,6 +40,9 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
   UserProfile _profile = UserProfile.balanced;
   JourneyRecommendation? _recommendation;
   Map<String, ({double avg, int count})> _communityByType = {};
+  // True while profile is loading and search hasn't been triggered yet — keeps
+  // the spinner visible so the screen never flashes an empty-state message.
+  bool _isInitializing = true;
 
   @override
   void initState() {
@@ -53,12 +56,18 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
   Future<void> _initWithProfile() async {
     final p = await UserPreferenceService.instance.getProfile();
     if (!mounted) return;
-    setState(() => _profile = p);
+    setState(() {
+      _profile = p;
+      _isInitializing = false;
+    });
     if (widget.fromStationId != null && widget.toStationId != null) {
       _searchController.search(
         fromStationId: widget.fromStationId!,
         toStationId:   widget.toStationId!,
       );
+    } else {
+      // No station IDs — show "no route" immediately instead of a blank screen.
+      // Nothing to search; the empty state in the builder handles the message.
     }
   }
 
@@ -312,7 +321,7 @@ class _JourneyResultsScreenState extends State<JourneyResultsScreen> {
                       state.bestBusService != null ||
                       state.taxiCollectifResult != null;
 
-                  if (isLoading) {
+                  if (_isInitializing || isLoading) {
                     return const Center(child: CircularProgressIndicator());
                   }
 

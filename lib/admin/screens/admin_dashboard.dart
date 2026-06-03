@@ -8,6 +8,7 @@ import 'package:tuni_transport/screens/chat_screen.dart';
 import 'package:tuni_transport/theme/app_theme.dart';
 import '../../widgets/app_header.dart';
 import 'package:tuni_transport/utils/notification_l10n.dart';
+import 'package:tuni_transport/screens/profile_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -19,6 +20,9 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   int _selectedIndex = 0;
   SessionResult? _session;
+  // Only mount a tab the first time it is selected — avoids initialising
+  // the profile screen until the user actually navigates to the profile tab.
+  final Set<int> _mountedTabs = {0};
 
   @override
   void initState() {
@@ -30,7 +34,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final currentUser = AuthController.instance.currentUser;
     if (currentUser == null) {
       if (!mounted) return;
-      context.go('/admin/login');
+      context.go('/auth');
       return;
     }
 
@@ -40,7 +44,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       if (!mounted) return;
 
       if (session.isGuest) {
-        context.go('/admin/login');
+        context.go('/auth');
         return;
       }
 
@@ -49,7 +53,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       });
     } catch (_) {
       if (!mounted) return;
-      context.go('/admin/login');
+      context.go('/auth');
     }
   }
 
@@ -75,47 +79,44 @@ class _AdminDashboardState extends State<AdminDashboard> {
         adminRole: trustedRole,
       ),
       const _AdminNotificationsTab(),
+      // Profile tab is inline — pass the already-verified session so the screen
+      // never calls resolveSession independently and can't navigate away.
+      const ProfileScreen(isAdminContext: true),
     ];
 
     return Scaffold(
       key: const Key('admin_dashboard_screen'),
-      appBar: _selectedIndex == 1
+      // Tabs 0 (dashboard), 1 (chat) and 3 (profile) manage their own header.
+      // Tab 2 (notifications) gets a shared AppHeader with a back button.
+      appBar: (_selectedIndex != 2)
           ? null
           : PreferredSize(
               preferredSize: const Size.fromHeight(80),
               child: AppHeader(
-                title: switch (_selectedIndex) {
-                  0 => l10n.adminDashboard,
-                  2 => l10n.notifications,
-                  _ => l10n.profile,
-                },
-                subtitle: switch (_selectedIndex) {
-                  0 => 'Tableau de bord',
-                  2 => l10n.notificationsSubtitle,
-                  _ => null,
-                },
-                trailing: IconButton(
-                  tooltip: l10n.profile,
-                  icon: const Icon(Icons.account_circle_outlined, color: Colors.white),
-                  onPressed: () => context.go('/admin/profile'),
+                title: l10n.notifications,
+                subtitle: l10n.notificationsSubtitle,
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => setState(() => _selectedIndex = 0),
                 ),
               ),
             ),
-      body: IndexedStack(index: _selectedIndex, children: pages),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: List.generate(
+          pages.length,
+          (i) => _mountedTabs.contains(i) ? pages[i] : const SizedBox.shrink(),
+        ),
+      ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        currentIndex: GoRouterState.of(context).uri.path == '/admin/profile'
-            ? 3
-            : _selectedIndex,
+        currentIndex: _selectedIndex,
         onTap: (index) {
-          if (index == 3) {
-            context.go('/admin/profile');
-            return;
-          }
-          if (index == 1) {
-            NotificationController.instance.markAllChatAsRead();
-          }
-          setState(() => _selectedIndex = index);
+          if (index == 1) NotificationController.instance.markAllChatAsRead();
+          setState(() {
+            _selectedIndex = index;
+            _mountedTabs.add(index);
+          });
         },
         items: [
           BottomNavigationBarItem(
@@ -292,8 +293,8 @@ class _DashboardTab extends StatelessWidget {
     ];
 
     final actions = <_AdminAction>[
-      ...commonActions,
       if (isSuperAdmin) ...superAdminActions,
+      ...commonActions,
     ];
 
     return Padding(

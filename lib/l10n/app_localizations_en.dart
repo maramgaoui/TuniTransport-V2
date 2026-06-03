@@ -150,7 +150,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get switchToUserMode => 'Switch to user mode';
 
   @override
-  String get manageAdmins => 'Manage Admins';
+  String get manageAdmins => 'Manage Roles';
 
   @override
   String get promoteToAdmin => 'Promote to Admin';
@@ -379,6 +379,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get changePassword => 'Change password';
 
   @override
+  String get createPassword => 'Create password';
+
+  @override
+  String get passwordCreatedSuccessfully => 'Password created successfully.';
+
+  @override
   String get currentPassword => 'Current password';
 
   @override
@@ -552,6 +558,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get googleSignInFailed => 'Google sign in failed';
 
   @override
+  String get adminUseAdminLogin => 'Admin accounts must sign in via the Admin Login page, not with Google.';
+
+  @override
   String get signInWithGoogle => 'Sign in with Google';
 
   @override
@@ -618,6 +627,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get unblockUser => 'Unblock user';
+
+  @override
+  String get unbanUser => 'Unban user';
 
   @override
   String userBannedDays(int days) {

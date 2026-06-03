@@ -1303,10 +1303,41 @@ class _JourneyDetailsScreenState extends State<JourneyDetailsScreen> {
                                 elevation: 0,
                               ),
                               onPressed: () async {
+                                if (ActiveJourneyService.instance.hasActiveJourney) {
+                                  if (!context.mounted) return;
+                                  final confirmed = await showDialog<bool>(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: const Text('Trajet en cours'),
+                                      content: const Text(
+                                        'Vous avez déjà un trajet en cours. '
+                                        'Veuillez le terminer avant d\'en démarrer un nouveau.',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.of(ctx).pop(false),
+                                          child: const Text('Annuler'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () => Navigator.of(ctx).pop(true),
+                                          child: const Text('Voir le trajet actif'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                  if (confirmed == true && context.mounted) {
+                                    // push (not go) so this details screen stays
+                                    // in the stack — after ending the active trip
+                                    // the user lands back here to start this one.
+                                    context.push('/home/active-journey',
+                                        extra: ActiveJourneyService.instance.activeJourney!);
+                                  }
+                                  return;
+                                }
                                 await ActiveJourneyService.instance
                                     .setActiveJourney(_journey);
                                 if (!context.mounted) return;
-                                context.go('/home/active-journey',
+                                context.push('/home/active-journey',
                                     extra: <String, dynamic>{
                                       'journey':       _journey,
                                       'fromStationId': _effectiveMetroResult?.fromStationId,

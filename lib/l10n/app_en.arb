@@ -46,7 +46,7 @@
   "totalUsers": "Total users",
   "totalAdmins": "Total admins",
   "switchToUserMode": "Switch to user mode",
-  "manageAdmins": "Manage Admins",
+  "manageAdmins": "Manage Roles",
   "promoteToAdmin": "Promote to Admin",
   "revokeAdminAccess": "Revoke Admin Access",
   "activateAdminAccount": "Activate",
@@ -131,6 +131,8 @@
   "city": "City",
   "addCity": "Add a city",
   "changePassword": "Change password",
+  "createPassword": "Create password",
+  "passwordCreatedSuccessfully": "Password created successfully.",
   "currentPassword": "Current password",
   "newPassword": "New password",
   "confirmNewPassword": "Confirm new password",
@@ -208,6 +210,7 @@
   "signupFailed": "Sign up failed",
   "googleSignInSuccess": "Signed in with Google!",
   "googleSignInFailed": "Google sign in failed",
+  "adminUseAdminLogin": "Admin accounts must sign in via the Admin Login page, not with Google.",
   "signInWithGoogle": "Sign in with Google",
   "signUpWithGoogle": "Sign up with Google",
   "favoriteUpdateFailed": "Failed to update favorites.",
@@ -235,6 +238,7 @@
   "banFor7Days": "Ban for 7 days",
   "blockPermanently": "Block permanently",
   "unblockUser": "Unblock user",
+  "unbanUser": "Unban user",
   "userBannedDays": "User banned for {days} days.",
   "@userBannedDays": {
     "placeholders": {

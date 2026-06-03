@@ -150,7 +150,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get switchToUserMode => 'التبديل إلى وضع المستخدم';
 
   @override
-  String get manageAdmins => 'إدارة المشرفين';
+  String get manageAdmins => 'إدارة الأدوار';
 
   @override
   String get promoteToAdmin => 'ترقية إلى مشرف';
@@ -379,6 +379,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get changePassword => 'تغيير كلمة المرور';
 
   @override
+  String get createPassword => 'إنشاء كلمة مرور';
+
+  @override
+  String get passwordCreatedSuccessfully => 'تم إنشاء كلمة المرور بنجاح.';
+
+  @override
   String get currentPassword => 'كلمة المرور الحالية';
 
   @override
@@ -552,6 +558,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get googleSignInFailed => 'فشل تسجيل الدخول عبر Google';
 
   @override
+  String get adminUseAdminLogin => 'يجب على حسابات المسؤولين تسجيل الدخول عبر صفحة تسجيل دخول المسؤول، وليس عبر Google.';
+
+  @override
   String get signInWithGoogle => 'تسجيل الدخول عبر Google';
 
   @override
@@ -618,6 +627,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get unblockUser => 'رفع الحظر';
+
+  @override
+  String get unbanUser => 'رفع الحظر المؤقت';
 
   @override
   String userBannedDays(int days) {

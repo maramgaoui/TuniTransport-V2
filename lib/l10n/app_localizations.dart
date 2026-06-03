@@ -158,6 +158,9 @@ abstract class AppLocalizations {
   String get notifications;
 
   /// No description provided for @notificationsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Alerts and updates'**
   String get notificationsSubtitle;
 
   /// No description provided for @home.
@@ -379,7 +382,7 @@ abstract class AppLocalizations {
   /// No description provided for @manageAdmins.
   ///
   /// In en, this message translates to:
-  /// **'Manage Admins'**
+  /// **'Manage Roles'**
   String get manageAdmins;
 
   /// No description provided for @promoteToAdmin.
@@ -739,7 +742,7 @@ abstract class AppLocalizations {
   /// No description provided for @publicDiscussion.
   ///
   /// In en, this message translates to:
-  /// **'Public discussion'**
+  /// **'Travellers\' exchanges'**
   String get publicDiscussion;
 
   /// No description provided for @writeMessageHint.
@@ -825,6 +828,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Change password'**
   String get changePassword;
+
+  /// No description provided for @createPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Create password'**
+  String get createPassword;
+
+  /// No description provided for @passwordCreatedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Password created successfully.'**
+  String get passwordCreatedSuccessfully;
 
   /// No description provided for @currentPassword.
   ///
@@ -1156,6 +1171,12 @@ abstract class AppLocalizations {
   /// **'Google sign in failed'**
   String get googleSignInFailed;
 
+  /// No description provided for @adminUseAdminLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin accounts must sign in via the Admin Login page, not with Google.'**
+  String get adminUseAdminLogin;
+
   /// No description provided for @signInWithGoogle.
   ///
   /// In en, this message translates to:
@@ -1287,6 +1308,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unblock user'**
   String get unblockUser;
+
+  /// No description provided for @unbanUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Unban user'**
+  String get unbanUser;
 
   /// No description provided for @userBannedDays.
   ///
