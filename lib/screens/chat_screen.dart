@@ -22,12 +22,14 @@ class ChatScreen extends StatefulWidget {
     this.adminRole,
     this.firestore,
     this.authController,
+    this.onBack,
   });
 
   final bool isAdminMode;
   final String? adminMatricule;
   final String? adminName;
   final String? adminRole;
+  final VoidCallback? onBack;
   final FirebaseFirestore? firestore;
   final AuthController? authController;
 
@@ -908,9 +910,13 @@ class _ChatScreenState extends State<ChatScreen>
             subtitle: l10n.publicDiscussion,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => context.go(
-                widget.isAdminMode ? '/admin' : '/home/journey-input',
-              ),
+              onPressed: () {
+                if (widget.onBack != null) {
+                  widget.onBack!();
+                } else {
+                  context.go(widget.isAdminMode ? '/admin' : '/home/journey-input');
+                }
+              },
             ),
           ),
           Expanded(

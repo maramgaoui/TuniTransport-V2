@@ -159,32 +159,6 @@ class NotificationController extends ChangeNotifier {
     );
   }
 
-  void addExampleChatNotification(String username, String previewText) {
-    addNotification(
-      NotificationModel(
-        id: 'example_chat_${DateTime.now().microsecondsSinceEpoch}',
-        title: _l10nToken('newMessageNotification'),
-        body: '$username: $previewText',
-        type: NotificationType.chat,
-        timestamp: DateTime.now(),
-        isRead: false,
-      ),
-    );
-  }
-
-  void addExampleJourneyNotification(String departure, String arrival) {
-    addNotification(
-      NotificationModel(
-        id: 'example_journey_${DateTime.now().microsecondsSinceEpoch}',
-        title: _l10nToken('newJourneyNotification'),
-        body: '$departure → $arrival',
-        type: NotificationType.journey,
-        timestamp: DateTime.now(),
-        isRead: false,
-      ),
-    );
-  }
-
   Future<void> ensureSystemAnnouncement() async {
     final hasAnnouncement = _notifications.any(
       (notification) => notification.type == NotificationType.system,
@@ -260,25 +234,6 @@ class NotificationController extends ChangeNotifier {
     notifyListeners();
     _persistToStorage();
     unawaited(_markIdsReadInFirestore(unreadChatIds));
-  }
-
-  Future<void> deleteNotification(String id) async {
-    final index = _notifications.indexWhere((n) => n.id == id);
-    if (index == -1) return;
-
-    _notifications.removeAt(index);
-    notifyListeners();
-    await _persistToStorage();
-    unawaited(_deleteIdFromFirestore(id));
-  }
-
-  void clearAllNotifications() {
-    if (_notifications.isEmpty) return;
-    final ids = _notifications.map((n) => n.id).toList();
-    _notifications.clear();
-    notifyListeners();
-    _persistToStorage();
-    unawaited(_deleteIdsFromFirestore(ids));
   }
 
   Future<void> _loadFromStorage() async {
@@ -425,31 +380,6 @@ class NotificationController extends ChangeNotifier {
       await batch.commit();
     } catch (e) {
       if (kDebugMode) debugPrint('[NotificationController] Firestore batch update failed: $e');
-    }
-  }
-
-  Future<void> _deleteIdFromFirestore(String id) async {
-    final ref = _notifRef();
-    if (ref == null) return;
-    try {
-      await ref.doc(id).delete();
-    } catch (e) {
-      if (kDebugMode) debugPrint('[NotificationController] Firestore delete failed: $e');
-    }
-  }
-
-  Future<void> _deleteIdsFromFirestore(List<String> ids) async {
-    if (ids.isEmpty) return;
-    final ref = _notifRef();
-    if (ref == null) return;
-    try {
-      final batch = GetIt.I<FirebaseFirestore>().batch();
-      for (final id in ids) {
-        batch.delete(ref.doc(id));
-      }
-      await batch.commit();
-    } catch (e) {
-      if (kDebugMode) debugPrint('[NotificationController] Firestore batch delete failed: $e');
     }
   }
 

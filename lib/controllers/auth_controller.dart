@@ -650,6 +650,7 @@ class AuthController {
     // fallback during the redirect that fires immediately after sign-in.
     final previousUid = _firebaseAuth.currentUser?.uid;
     if (previousUid != null) await _clearPersistedSession(previousUid);
+    _invalidateSessionCache(); // prevent stale in-memory session from fast-pathing the router
     try {
       final normalizedEmail = _normalizeEmail(email);
       final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
@@ -780,6 +781,7 @@ class AuthController {
     _actingAsUser = false; // clear any stale user-mode from a previous session
     final previousUid = _firebaseAuth.currentUser?.uid;
     if (previousUid != null) await _clearPersistedSession(previousUid);
+    _invalidateSessionCache(); // prevent stale in-memory session from fast-pathing the router
     try {
       // Clear cached Google account so Android always shows the chooser.
       // Without this, GoogleSignIn may silently reuse the previous account.

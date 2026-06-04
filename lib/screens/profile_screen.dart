@@ -20,12 +20,14 @@ class ProfileScreen extends StatefulWidget {
     this.showInlineActions = true,
     this.onActionStateChanged,
     this.isAdminContext = false,
+    this.onBack,
   });
 
   final bool showAppBar;
   final bool showInlineActions;
   final VoidCallback? onActionStateChanged;
   final bool isAdminContext;
+  final VoidCallback? onBack;
 
   @override
   State<ProfileScreen> createState() => ProfileScreenState();
@@ -563,8 +565,13 @@ class ProfileScreenState extends State<ProfileScreen> {
               subtitle: l10n.profileSubtitle,
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => context.go(
-                    widget.isAdminContext ? '/admin' : '/home/journey-input'),
+                onPressed: () {
+                  if (widget.onBack != null) {
+                    widget.onBack!();
+                  } else {
+                    context.go(widget.isAdminContext ? '/admin' : '/home/journey-input');
+                  }
+                },
               ),
               trailing: !widget.showInlineActions
                   ? null
