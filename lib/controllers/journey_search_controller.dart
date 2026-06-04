@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
-import 'journey_search_state.dart';
+import '../models/journey_search_state.dart';
 import '../models/bus_service_model.dart';
 import '../models/metro_sahel_result.dart';
 import '../models/station_model.dart';

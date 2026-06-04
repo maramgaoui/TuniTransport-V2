@@ -58,12 +58,25 @@ class AuthController {
   final firebase_auth.FirebaseAuth _firebaseAuth;
   final FirebaseFirestore _firestore;
   GoogleSignIn? _googleSignIn;
+
+  // Fires whenever a privileged session is cached so the router can redirect
+  // to the admin dashboard without waiting for a new auth-state event.
+  final _sessionRefreshController = StreamController<void>.broadcast();
+  Stream<void> get sessionChanges => _sessionRefreshController.stream;
+
   SessionResult? _cachedSession;
   DateTime? _sessionCachedAt;
   String? _cachedSessionUid;
   User? _cachedAuthStreamUser;
   DateTime? _authStreamCachedAt;
   String? _cachedAuthStreamUid;
+
+  // Holds the Google credential that could not complete sign-in because the
+  // email already belongs to an email/password account. The linking dialog
+  // reads pendingLinkEmail and calls linkGoogleToPendingAccount(password).
+  firebase_auth.AuthCredential? _pendingLinkCredential;
+  String? _pendingLinkEmail;
+
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
       _userStatusSubscription;
   String? _userStatusListenerUid;
@@ -122,13 +135,12 @@ class AuthController {
     _cachedSession = session;
     _sessionCachedAt = DateTime.now();
     _cachedSessionUid = uid;
-    unawaited(
-      _persistSession(
-        uid,
-        session,
-        accountStatus: accountStatus,
-      ),
-    );
+    unawaited(_persistSession(uid, session, accountStatus: accountStatus));
+    // Notify the router immediately when a privileged session is cached so it
+    // can redirect to /admin without waiting for the next auth-state event.
+    if (session.isPrivileged && !_sessionRefreshController.isClosed) {
+      _sessionRefreshController.add(null);
+    }
   }
 
   String _sessionCacheKey(String uid) => '$_sessionCachePrefix$uid';
@@ -424,6 +436,18 @@ class AuthController {
   /// Null until the first snapshot arrives. Stays current across ban/unban events.
   String? get currentUserStatus => _lastObservedUserStatus;
 
+  /// The email address that triggered the pending Google-link flow.
+  /// Non-null only between the account-exists-with-different-credential error
+  /// and a successful [linkGoogleToPendingAccount] or [clearPendingLink] call.
+  String? get pendingLinkEmail => _pendingLinkEmail;
+
+  /// Discards the stored Google credential and email without linking.
+  /// Call this when the user cancels the link dialog.
+  void clearPendingLink() {
+    _pendingLinkCredential = null;
+    _pendingLinkEmail = null;
+  }
+
   // uid + email only — use fetchCurrentUser() when profile fields are needed
   User? get currentUser {
     final firebaseUser = _firebaseAuth.currentUser;
@@ -431,7 +455,15 @@ class AuthController {
 
     final isEmailPasswordUser = firebaseUser.providerData
         .any((p) => p.providerId == 'password');
-    if (isEmailPasswordUser && !firebaseUser.emailVerified) return null;
+    if (isEmailPasswordUser && !firebaseUser.emailVerified) {
+      // Admin accounts created by super-admin never go through email
+      // verification. Allow them through if the session cache confirms
+      // a privileged role for this UID.
+      final isPrivilegedCached = _cachedSession != null &&
+          _cachedSessionUid == firebaseUser.uid &&
+          _cachedSession!.isPrivileged;
+      if (!isPrivilegedCached) return null;
+    }
 
     return User(uid: firebaseUser.uid, email: firebaseUser.email ?? '');
   }
@@ -635,6 +667,14 @@ class AuthController {
         throw Exception('email_not_verified:${firebaseUser.email ?? ''}');
       }
 
+      // Kick off resolveSession() immediately so the session cache is
+      // populated before the router's redirect fires — same pattern as
+      // loginWithMatriculeOrEmail(). Without this, an admin signing in via
+      // email lands on the user home screen due to the async race.
+      unawaited(resolveSession(
+        User(uid: firebaseUser.uid, email: firebaseUser.email ?? ''),
+      ));
+
       final accessError = await _validateAndNormalizeUserAccess(
         uid: firebaseUser.uid,
         enforceRestriction: true,
@@ -650,7 +690,6 @@ class AuthController {
       final userDoc = await userDocRef.get();
 
       if (userDoc.exists) {
-        _invalidateSessionCache(uid: firebaseUser.uid);
         unawaited(NotificationService.instance.onUserLoggedIn());
         return User.fromMap(userDoc.data() ?? {});
       }
@@ -665,7 +704,6 @@ class AuthController {
           developer.log('Creating Firestore doc from pending profile for ${firebaseUser.uid}', name: 'AuthController');
           await userDocRef.set(pendingData);
           await prefs.remove('pending_profile_${firebaseUser.uid}');
-          _invalidateSessionCache(uid: firebaseUser.uid);
           unawaited(NotificationService.instance.onUserLoggedIn());
           return User.fromMap(pendingData);
         } catch (e) {
@@ -673,7 +711,6 @@ class AuthController {
         }
       }
 
-      _invalidateSessionCache(uid: firebaseUser.uid);
       unawaited(NotificationService.instance.onUserLoggedIn());
       return User(uid: firebaseUser.uid, email: firebaseUser.email ?? '');
     } on firebase_auth.FirebaseAuthException catch (e) {
@@ -776,10 +813,48 @@ class AuthController {
         throw Exception('Failed to create Firebase user');
       }
 
-      final userDoc = await _firestore
-          .collection(Col.users)
-          .doc(firebaseUser.uid)
-          .get();
+      final uid = firebaseUser.uid;
+      final email = (firebaseUser.email ?? '').trim().toLowerCase();
+
+      // Run all three reads in parallel to minimise the window between
+      // signInWithCredential() firing the auth stream and the router calling
+      // resolveSession(). The faster we detect admin and set the cache, the
+      // less chance there is of the router landing on the user home screen.
+      // Email-based collection queries may fail with permission-denied for
+      // non-privileged users (users limit>1, admins list query). Fall back to
+      // reading only the UID-keyed doc so regular sign-ins are not blocked.
+      late final DocumentSnapshot<Map<String, dynamic>> userDoc;
+      QuerySnapshot<Map<String, dynamic>>? usersByEmail;
+      QuerySnapshot<Map<String, dynamic>>? legacyAdmins;
+
+      try {
+        final results = await Future.wait([
+          _firestore.collection(Col.users).doc(uid).get(),
+          if (email.isNotEmpty)
+            _firestore
+                .collection(Col.users)
+                .where('email', isEqualTo: email)
+                .limit(2)
+                .get()
+          else
+            Future.value(null),
+          if (email.isNotEmpty)
+            _firestore
+                .collection(Col.admins)
+                .where('email', isEqualTo: email)
+                .limit(1)
+                .get()
+          else
+            Future.value(null),
+        ]);
+        userDoc = results[0] as DocumentSnapshot<Map<String, dynamic>>;
+        usersByEmail = results[1] as QuerySnapshot<Map<String, dynamic>>?;
+        legacyAdmins = results[2] as QuerySnapshot<Map<String, dynamic>>?;
+      } on FirebaseException catch (e) {
+        if (e.code != 'permission-denied') rethrow;
+        // Regular user — collection queries denied; read only own doc.
+        userDoc = await _firestore.collection(Col.users).doc(uid).get();
+      }
 
       if (userDoc.exists) {
         if (isSignUp) {
@@ -787,19 +862,74 @@ class AuthController {
           throw Exception('auth.error.google_account_already_exists');
         }
         final accessError = await _validateAndNormalizeUserAccess(
-          uid: firebaseUser.uid,
+          uid: uid,
           enforceRestriction: true,
         );
         if (accessError != null) {
           await _firebaseAuth.signOut();
           throw Exception(accessError);
         }
-        _invalidateSessionCache(uid: firebaseUser.uid);
-        // Pre-warm the session cache immediately so the router's fast path
-        // finds the correct role (admin/user) before authStateChanges fires.
-        // Without this, a null-event race can cause the router to redirect
-        // a Google-authenticated admin to the user home screen.
-        final prewarmUser = User(uid: firebaseUser.uid, email: firebaseUser.email ?? '');
+
+        // If this Google account has role:'user' but the same email belongs
+        // to an admin account under a different UID (two-account problem),
+        // promote the Google account immediately so both methods work.
+        final googleRole = userDoc.data()?['role']?.toString() ?? 'user';
+        if (!RoleGuard.isPrivileged(googleRole) && email.isNotEmpty) {
+          Map<String, dynamic>? linkedAdminData;
+
+          for (final doc in usersByEmail?.docs ?? <QueryDocumentSnapshot<Map<String, dynamic>>>[]) {
+            if (doc.id != uid &&
+                RoleGuard.isPrivileged(
+                    doc.data()['role']?.toString() ?? '')) {
+              linkedAdminData = doc.data();
+              break;
+            }
+          }
+          linkedAdminData ??= legacyAdmins?.docs.isNotEmpty == true
+              ? legacyAdmins!.docs.first.data()
+              : null;
+
+          if (linkedAdminData != null) {
+            final adminRole = linkedAdminData['role']?.toString() ?? 'admin';
+            final sessionRole = RoleGuard.isSuperAdmin(adminRole)
+                ? SessionRole.superAdmin
+                : SessionRole.admin;
+
+            // Set the session cache IMMEDIATELY (synchronous) so the router's
+            // fast path finds admin before authStateChanges emits.
+            _cacheSession(
+              uid,
+              SessionResult(
+                role: sessionRole,
+                adminType: linkedAdminData['adminType'] as String?,
+                adminRole: adminRole,
+                adminMatricule:
+                    (linkedAdminData['matricule'] ?? '').toString(),
+                adminName: (linkedAdminData['firstName'] ??
+                        linkedAdminData['name'] ??
+                        '')
+                    .toString(),
+              ),
+            );
+
+            // Repair Firestore doc in the background so next sign-in is instant.
+            final updates = <String, dynamic>{'role': adminRole};
+            if (linkedAdminData['adminType'] != null) {
+              updates['adminType'] = linkedAdminData['adminType'];
+            }
+            if ((linkedAdminData['matricule'] ?? '').toString().isNotEmpty) {
+              updates['matricule'] = linkedAdminData['matricule'];
+            }
+            unawaited(_firestore
+                .collection(Col.users)
+                .doc(uid)
+                .update(updates)
+                .catchError((_) {}));
+          }
+        }
+
+        // Pre-warm the session cache (will be a cache hit if promotion ran).
+        final prewarmUser = User(uid: uid, email: firebaseUser.email ?? '');
         unawaited(resolveSession(prewarmUser));
         final existingData = Map<String, dynamic>.from(userDoc.data() ?? {});
         // Backfill username for existing Google users who never had one set.
@@ -832,23 +962,40 @@ class AuthController {
               .limit(1)
               .get();
           if (usersByEmail.docs.isNotEmpty) {
+            final existingDoc = usersByEmail.docs.first;
             final existingRole =
-                (usersByEmail.docs.first.data()['role'] ?? 'user').toString();
+                (existingDoc.data()['role'] ?? 'user').toString();
             if (RoleGuard.isAdmin(existingRole) ||
                 RoleGuard.isSuperAdmin(existingRole)) {
               await _firebaseAuth.signOut();
               throw Exception('auth.error.admin_use_admin_login');
             }
+            // Mode B (multiple-accounts-per-email): Firebase created a new UID
+            // for the Google sign-in but a regular-user doc already exists for
+            // this email under a different UID. Roll back the new account and
+            // offer linking instead of silently duplicating the user.
+            if (existingDoc.id != uid) {
+              await _firebaseAuth.signOut();
+              await firebaseUser.delete().catchError((_) {});
+              _pendingLinkCredential = credential;
+              _pendingLinkEmail = normalizedEmail;
+              throw Exception('auth.error.link_required');
+            }
           }
 
-          final adminsByEmail = await _firestore
-              .collection(Col.admins)
-              .where('email', isEqualTo: normalizedEmail)
-              .limit(1)
-              .get();
-          if (adminsByEmail.docs.isNotEmpty) {
-            await _firebaseAuth.signOut();
-            throw Exception('auth.error.admin_use_admin_login');
+          try {
+            final adminsByEmail = await _firestore
+                .collection(Col.admins)
+                .where('email', isEqualTo: normalizedEmail)
+                .limit(1)
+                .get();
+            if (adminsByEmail.docs.isNotEmpty) {
+              await _firebaseAuth.signOut();
+              throw Exception('auth.error.admin_use_admin_login');
+            }
+          } on FirebaseException catch (e) {
+            if (e.code != 'permission-denied') rethrow;
+            // Non-privileged users can't list admins — safe to proceed.
           }
         }
 
@@ -895,6 +1042,13 @@ class AuthController {
         return user;
       }
     } on firebase_auth.FirebaseAuthException catch (e) {
+      if (e.code == 'account-exists-with-different-credential') {
+        // Mode A (one-account-per-email): store the Google credential so the
+        // UI can prompt for the password and call linkGoogleToPendingAccount().
+        _pendingLinkCredential = e.credential;
+        _pendingLinkEmail = (e.email ?? '').toLowerCase().trim();
+        throw Exception('auth.error.link_required');
+      }
       throw _handleAuthException(e);
     } on Exception {
       rethrow;
@@ -903,6 +1057,67 @@ class AuthController {
       throw Exception(
         'An error occurred during Google sign in. Please try again.',
       );
+    }
+  }
+
+  /// Signs in with the existing email/password account and links the pending
+  /// Google credential to it. After this call the user can authenticate with
+  /// either provider. Throws if [password] is wrong, the email is unverified,
+  /// or the account is banned/blocked.
+  Future<User?> linkGoogleToPendingAccount(String password) async {
+    final pendingCredential = _pendingLinkCredential;
+    final email = _pendingLinkEmail;
+    if (pendingCredential == null || email == null || email.isEmpty) {
+      throw Exception('auth.error.generic');
+    }
+    _actingAsUser = false;
+    try {
+      final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final firebaseUser = userCredential.user;
+      if (firebaseUser == null) throw Exception('auth.error.generic');
+
+      if (!firebaseUser.emailVerified) {
+        await _firebaseAuth.signOut();
+        throw Exception('email_not_verified:$email');
+      }
+
+      final accessError = await _validateAndNormalizeUserAccess(
+        uid: firebaseUser.uid,
+        enforceRestriction: true,
+      );
+      if (accessError != null) {
+        await _firebaseAuth.signOut();
+        throw Exception(accessError);
+      }
+
+      // Attach Google as a second sign-in provider to the existing account.
+      await firebaseUser.linkWithCredential(pendingCredential);
+      _pendingLinkCredential = null;
+      _pendingLinkEmail = null;
+
+      unawaited(resolveSession(
+        User(uid: firebaseUser.uid, email: firebaseUser.email ?? ''),
+      ));
+
+      final userDoc = await _firestore
+          .collection(Col.users)
+          .doc(firebaseUser.uid)
+          .get();
+      unawaited(NotificationService.instance.onUserLoggedIn());
+      if (userDoc.exists) {
+        return User.fromMap(userDoc.data() ?? {});
+      }
+      return User(uid: firebaseUser.uid, email: firebaseUser.email ?? '');
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    } on Exception {
+      rethrow;
+    } catch (e) {
+      developer.log('linkGoogleToPendingAccount error: $e', name: 'AuthController');
+      throw Exception('auth.error.generic');
     }
   }
 
@@ -1021,7 +1236,32 @@ class AuthController {
           return restrictedResult;
         }
 
-        const result = SessionResult(role: SessionRole.user);
+      // Belt-and-suspenders: users doc exists with role 'user', but check the
+      // admins collection in case this account was promoted and the users doc
+      // role was never updated (e.g. legacy admin with a users doc shadow).
+      final adminFallback =
+          await _firestore.collection(Col.admins).doc(current.uid).get();
+      if (adminFallback.exists) {
+        final ad = adminFallback.data() ?? {};
+        // Repair the users doc so this extra read doesn't happen again.
+        unawaited(
+          _firestore.collection(Col.users).doc(current.uid).update({
+            'role': 'admin',
+            'adminType': ad['role'],
+          }).catchError((_) {}),
+        );
+        final fallbackResult = SessionResult(
+          role: SessionRole.admin,
+          adminType: ad['role'] as String?,
+          adminRole: ad['role'] as String?,
+          adminMatricule: (ad['matricule'] ?? '').toString(),
+          adminName: ad['name'] as String?,
+        );
+        _cacheSession(current.uid, fallbackResult);
+        return fallbackResult;
+      }
+
+      const result = SessionResult(role: SessionRole.user);
         _cacheSession(current.uid, result);
         return result;
       }
@@ -1137,6 +1377,27 @@ class AuthController {
   Future<void> sendPasswordResetEmail(String email) async {
     try {
       final normalizedEmail = _normalizeEmail(email);
+
+      // Block password reset for Google-only accounts. Sending a reset link to
+      // a Google-only user would let them set a password and bypass the
+      // "sign in with Google only" policy.
+      // fetchSignInMethodsForEmail is the only client-side way to distinguish
+      // Google-only accounts without a backend; the deprecation affects web
+      // enumeration attacks but is acceptable here on mobile. If Email
+      // Enumeration Protection is enabled server-side this call is swallowed
+      // and we fall through to the normal Firebase reset path.
+      try {
+        final methods = await _firebaseAuth.fetchSignInMethodsForEmail(normalizedEmail); // ignore: deprecated_member_use
+        if (methods.isNotEmpty &&
+            methods.contains('google.com') &&
+            !methods.contains('password')) {
+          throw Exception('auth.error.google_only_use_google');
+        }
+      } on firebase_auth.FirebaseAuthException catch (_) {
+        // fetchSignInMethodsForEmail unavailable (e.g. Email Enumeration
+        // Protection enabled) — proceed with the normal reset path.
+      }
+
       developer.log(
         'Sending password reset email to: $normalizedEmail',
         name: 'AuthController',
@@ -1153,15 +1414,15 @@ class AuthController {
         error: e,
       );
       throw _handleAuthException(e);
+    } on Exception {
+      rethrow;
     } catch (e) {
       developer.log(
         'Send password reset email error: $e',
         name: 'AuthController',
         error: e,
       );
-      throw Exception(
-        'auth.error.password_reset_failed',
-      );
+      throw Exception('auth.error.password_reset_failed');
     }
   }
 
@@ -1231,6 +1492,13 @@ class AuthController {
         );
       }
 
+      // Kick off resolveSession() immediately after sign-in so the session
+      // cache is populated before the router's redirect fires.
+      // resolveSession() checks the admins collection as a fallback (Fix 2),
+      // so it correctly returns admin role even for legacy accounts where
+      // users/{uid} has role:"user".
+      unawaited(resolveSession(User(uid: uid, email: email)));
+
       Map<String, dynamic>? adminData;
       final userDoc = await _firestore.collection(Col.users).doc(uid).get();
       final userRole = userDoc.data()?['role']?.toString() ?? '';
@@ -1271,9 +1539,23 @@ class AuthController {
       final resolvedType =
           (adminData['adminType'] as String?) ?? (adminData['role'] as String?);
 
-      // Ensure resolveSession() re-reads from Firestore on the next router
-      // redirect rather than returning a stale cache written during this call.
-      _invalidateSessionCache(uid: uid);
+      // Pre-warm the session cache with the confirmed admin role so the router
+      // routes to /admin immediately when the Firebase Auth stream fires,
+      // without waiting for resolveSession() to re-read Firestore.
+      final sessionRole = RoleGuard.isSuperAdmin(resolvedType)
+          ? SessionRole.superAdmin
+          : SessionRole.admin;
+      _cacheSession(
+        uid,
+        SessionResult(
+          role: sessionRole,
+          adminType: resolvedType,
+          adminRole: resolvedType,
+          adminMatricule: (adminData['matricule'] ?? sanitizedInput).toString(),
+          adminName: resolvedName,
+        ),
+        accountStatus: (adminData['status'] ?? 'active').toString(),
+      );
 
       return AdminAuthResult(
         isAuthenticated: true,
@@ -1315,84 +1597,6 @@ class AuthController {
     return sendPasswordResetEmail(email);
   }
 
-  /// Changes the password of the currently signed-in admin.
-  /// Reauthenticates with [currentPassword] before applying [newPassword].
-  Future<void> changeAdminPassword({
-    required String currentPassword,
-    required String newPassword,
-  }) async {
-    final user = _firebaseAuth.currentUser;
-    if (user == null) {
-      throw const FormatException('No authenticated admin session found.');
-    }
-
-    if (currentPassword.trim().isEmpty || newPassword.trim().isEmpty) {
-      throw const FormatException(
-          'Current password and new password are required.');
-    }
-    if (newPassword.length < 6) {
-      throw const FormatException(
-          'New password must be at least 6 characters.');
-    }
-    if (currentPassword == newPassword) {
-      throw const FormatException(
-          'New password must be different from the current one.');
-    }
-
-    final email = user.email;
-    if (email == null || email.isEmpty) {
-      throw const FormatException('Unable to determine admin account email.');
-    }
-
-    try {
-      final credential = firebase_auth.EmailAuthProvider.credential(
-        email: email,
-        password: currentPassword,
-      );
-      await user
-          .reauthenticateWithCredential(credential)
-          .timeout(const Duration(seconds: 10));
-      await user
-          .updatePassword(newPassword)
-          .timeout(const Duration(seconds: 10));
-
-      // Stamp audit field — fire-and-forget so a Firestore hiccup does not
-      // fail a password change that already succeeded in Firebase Auth.
-      _firestore
-          .collection(Col.users)
-          .doc(user.uid)
-          .update({'passwordChangedAt': FieldValue.serverTimestamp()})
-          .catchError((_) {});
-
-      await user.reload();
-    } on TimeoutException {
-      throw Exception(
-          'Operation timeout. Please check your network and try again.');
-    } on firebase_auth.FirebaseAuthException catch (e) {
-      final lowerMsg = (e.message ?? '').toLowerCase();
-      final message = switch (e.code) {
-        'wrong-password' ||
-        'invalid-credential' ||
-        'invalid-login-credentials' ||
-        'user-mismatch' ||
-        'user-not-found' =>
-          'Le mot de passe actuel est incorrect.',
-        'weak-password' => 'New password is too weak.',
-        'network-request-failed' =>
-          'Erreur reseau. Vérifiez votre connexion Internet.',
-        'requires-recent-login' =>
-          'Please log in again before changing your password.',
-        'too-many-requests' => 'Too many attempts. Please try again later.',
-        _ => (lowerMsg.contains('credential') ||
-                lowerMsg.contains('password') ||
-                lowerMsg.contains('mot de passe'))
-            ? 'Le mot de passe actuel est incorrect.'
-            : (e.message ?? 'Authentication error while changing password.'),
-      };
-      throw Exception(message);
-    }
-  }
-
   // Maps Firebase error codes to l10n keys; callers translate via AppLocalizations.
   Exception _handleAuthException(firebase_auth.FirebaseAuthException e) {
     return Exception(switch (e.code) {
@@ -1403,6 +1607,7 @@ class AuthController {
       'user-not-found' => 'auth.error.user_not_found',
       'wrong-password' || 'invalid-credential' => 'auth.error.wrong_password',
       'too-many-requests' => 'auth.error.too_many_requests',
+      'account-exists-with-different-credential' => 'auth.error.link_required',
       _ => 'auth.error.generic',
     });
   }

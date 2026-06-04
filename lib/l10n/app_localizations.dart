@@ -2082,6 +2082,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resend in {seconds}s'**
   String sendNotificationResend(int seconds);
+
+  /// No description provided for @linkGoogleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Link your Google account'**
+  String get linkGoogleTitle;
+
+  /// No description provided for @linkGoogleBody.
+  ///
+  /// In en, this message translates to:
+  /// **'An account already exists for {email}. Enter your password to link Google to this account — you will then be able to sign in with either method.'**
+  String linkGoogleBody(Object email);
+
+  /// No description provided for @linkGoogleSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Link account'**
+  String get linkGoogleSubmit;
+
+  /// No description provided for @googleAccountLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'Account linked! You can now sign in with your email or Google.'**
+  String get googleAccountLinked;
+
+  /// No description provided for @googleOnlyAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Google account only'**
+  String get googleOnlyAccountTitle;
+
+  /// No description provided for @googleOnlyAccountBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This email address is linked to a Google account. Password reset is not available for this account. Use \"Sign in with Google\" to access your account.'**
+  String get googleOnlyAccountBody;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

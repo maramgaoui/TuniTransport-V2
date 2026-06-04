@@ -4,8 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:avatar_plus/avatar_plus.dart';
-import 'package:tuni_transport/admin/mixins/admin_moderation_mixin.dart';
-import 'package:tuni_transport/admin/mixins/admin_user_status_mixin.dart';
+import 'package:tuni_transport/mixins/admin_moderation_mixin.dart';
+import 'package:tuni_transport/mixins/admin_user_status_mixin.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 
 import '../controllers/auth_controller.dart';

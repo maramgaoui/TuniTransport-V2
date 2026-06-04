@@ -1038,4 +1038,24 @@ class AppLocalizationsFr extends AppLocalizations {
   String sendNotificationResend(int seconds) {
     return 'Renvoyer dans ${seconds}s';
   }
+
+  @override
+  String get linkGoogleTitle => 'Lier votre compte Google';
+
+  @override
+  String linkGoogleBody(Object email) {
+    return 'Un compte existe déjà avec l\'adresse $email. Entrez votre mot de passe pour lier Google à ce compte — vous pourrez ensuite vous connecter avec les deux méthodes.';
+  }
+
+  @override
+  String get linkGoogleSubmit => 'Lier le compte';
+
+  @override
+  String get googleAccountLinked => 'Compte lié ! Vous pouvez maintenant vous connecter avec votre email ou Google.';
+
+  @override
+  String get googleOnlyAccountTitle => 'Compte Google uniquement';
+
+  @override
+  String get googleOnlyAccountBody => 'Cette adresse email est associée à un compte Google. Vous ne pouvez pas réinitialiser un mot de passe pour ce compte. Utilisez \"Se connecter avec Google\" pour accéder à votre compte.';
 }

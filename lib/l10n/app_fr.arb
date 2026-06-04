@@ -439,5 +439,16 @@
     "placeholders": {
       "seconds": { "type": "int" }
     }
-  }
+  },
+  "linkGoogleTitle": "Lier votre compte Google",
+  "linkGoogleBody": "Un compte existe déjà avec l'adresse {email}. Entrez votre mot de passe pour lier Google à ce compte — vous pourrez ensuite vous connecter avec les deux méthodes.",
+  "@linkGoogleBody": {
+    "placeholders": {
+      "email": {}
+    }
+  },
+  "linkGoogleSubmit": "Lier le compte",
+  "googleAccountLinked": "Compte lié ! Vous pouvez maintenant vous connecter avec votre email ou Google.",
+  "googleOnlyAccountTitle": "Compte Google uniquement",
+  "googleOnlyAccountBody": "Cette adresse email est associée à un compte Google. Vous ne pouvez pas réinitialiser un mot de passe pour ce compte. Utilisez \"Se connecter avec Google\" pour accéder à votre compte."
 }

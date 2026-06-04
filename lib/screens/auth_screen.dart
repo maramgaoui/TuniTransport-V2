@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:avatar_plus/avatar_plus.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/controllers/auth_controller.dart';
 import 'package:tuni_transport/constants/avatar_options.dart';
@@ -150,12 +151,20 @@ class _AuthScreenState extends State<AuthScreen>
     } catch (e) {
       if (!mounted) return;
       final rawCode = e.toString().replaceAll('Exception: ', '');
+
+      // Google-only account — redirect to Google sign-in instead of
+      // showing a generic error.
+      if (rawCode == 'auth.error.google_only_use_google') {
+        setState(() => _isSendingReset = false);
+        await _showGoogleOnlyResetDialog();
+        return;
+      }
+
       final errorMsg = switch (rawCode) {
-        'auth.error.too_many_requests'    => 'Trop de tentatives. Réessayez plus tard.',
-        'auth.error.invalid_email'        => 'Adresse email invalide.',
-        'auth.error.password_reset_timeout' =>
-          'La requête a pris trop de temps. Vérifiez votre connexion.',
-        'auth.error.matricule_not_found'  => 'Matricule non reconnu.',
+        'auth.error.too_many_requests'      => 'Trop de tentatives. Réessayez plus tard.',
+        'auth.error.invalid_email'          => 'Adresse email invalide.',
+        'auth.error.password_reset_timeout' => 'La requête a pris trop de temps. Vérifiez votre connexion.',
+        'auth.error.matricule_not_found'    => 'Matricule non reconnu.',
         _ => 'Une erreur est survenue. Réessayez.',
       };
       setState(() => _isSendingReset = false);
@@ -167,6 +176,42 @@ class _AuthScreenState extends State<AuthScreen>
         ),
       );
     }
+  }
+
+  /// Shown when the user enters a Google-only email in the reset-password form.
+  /// Redirects them to Google sign-in instead of sending a reset link.
+  Future<void> _showGoogleOnlyResetDialog() async {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.g_mobiledata, size: 28, color: Color(0xFF4285F4)),
+            const SizedBox(width: 8),
+            Flexible(child: Text(l10n.googleOnlyAccountTitle)),
+          ],
+        ),
+        content: Text(l10n.googleOnlyAccountBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              // Return to the login tab and launch Google sign-in.
+              setState(() => _showForgotPassword = false);
+              _handleGoogleSignIn();
+            },
+            icon: const Icon(Icons.g_mobiledata, size: 20),
+            label: Text(l10n.signInWithGoogle),
+          ),
+        ],
+      ),
+    );
   }
 
   String _resolveAuthError(String raw, AppLocalizations l10n) {
@@ -192,6 +237,51 @@ class _AuthScreenState extends State<AuthScreen>
       'auth.error.admin_use_admin_login'           => l10n.adminUseAdminLogin,
       _                                            => l10n.authErrorGeneric,
     };
+  }
+
+  /// Shows the password-confirmation dialog that links a Google credential to
+  /// the user's existing email/password account. Called when Google sign-in
+  /// fails with account-exists-with-different-credential.
+  Future<void> _showLinkGoogleDialog() async {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _LinkGoogleDialog(
+        email: _authController.pendingLinkEmail ?? '',
+        authController: _authController,
+        l10n: l10n,
+        onLinked: () async {
+          Navigator.of(ctx).pop();
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.googleAccountLinked),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          // Mirror the admin-redirect logic from _handleGoogleSignIn so an
+          // admin who links Google is sent to /admin immediately.
+          final user = _authController.currentUser;
+          if (user != null) {
+            final session = await _authController.resolveSession(user);
+            if (!mounted) return;
+            if (session.isPrivileged &&
+                !AuthController.instance.isActingAsUser) {
+              AuthController.instance.switchToAdminMode();
+              context.go('/admin');
+            }
+          }
+        },
+        onCancel: () {
+          Navigator.of(ctx).pop();
+          _authController.clearPendingLink();
+        },
+      ),
+    );
   }
 
   Future<void> _handleLogin() async {
@@ -242,11 +332,29 @@ class _AuthScreenState extends State<AuthScreen>
         }
         // Ensure admin UI is shown even if acting-as-user mode was left on.
         AuthController.instance.switchToAdminMode();
+        // Navigate directly — don't wait for the router's async redirect which
+        // can race with the Firebase Auth stream and land on the wrong screen.
+        if (mounted) {
+          context.go('/admin');
+          return;
+        }
       } else {
         await _authController.signInWithEmail(
           email: input,
           password: password,
         );
+        // Resolve role and navigate directly if admin — same logic as
+        // matricule login so the async router redirect race is avoided.
+        final user = _authController.currentUser;
+        if (user != null) {
+          final session = await _authController.resolveSession(user);
+          if (!mounted) return;
+          if (session.isPrivileged && !AuthController.instance.isActingAsUser) {
+            AuthController.instance.switchToAdminMode();
+            context.go('/admin');
+            return;
+          }
+        }
       }
 
       if (mounted) {
@@ -354,13 +462,14 @@ class _AuthScreenState extends State<AuthScreen>
 
   Future<void> _showEmailAlreadyInUseDialog(String email) async {
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
 
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Email déjà utilisé'),
         content: const Text(
-          'Ce compte existe déjà. Choisissez "Se connecter" ou lancez une réinitialisation du mot de passe.',
+          'Un compte existe déjà avec cet email. Connectez-vous avec votre mot de passe ou via Google si vous vous êtes inscrit avec cette méthode.',
         ),
         actions: <Widget>[
           TextButton(
@@ -369,9 +478,9 @@ class _AuthScreenState extends State<AuthScreen>
               _tabController.animateTo(0);
               _loginEmailController.text = email;
             },
-            child: const Text('Se connecter'),
+            child: const Text('Connexion email'),
           ),
-          FilledButton(
+          TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
               _tabController.animateTo(0);
@@ -380,7 +489,15 @@ class _AuthScreenState extends State<AuthScreen>
                 _forgotPasswordController.text = email;
               });
             },
-            child: const Text('Réinitialiser mot de passe'),
+            child: const Text('Mot de passe oublié'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _handleGoogleSignIn();
+            },
+            icon: const Icon(Icons.g_mobiledata, size: 20),
+            label: Text(l10n.signInWithGoogle),
           ),
         ],
       ),
@@ -476,6 +593,21 @@ class _AuthScreenState extends State<AuthScreen>
     try {
       await _authController.signInWithGoogle(isSignUp: isSignUp);
 
+      // Resolve role and navigate directly if admin — same logic as
+      // matricule login so the async router redirect race is avoided.
+      if (!isSignUp) {
+        final user = _authController.currentUser;
+        if (user != null) {
+          final session = await _authController.resolveSession(user);
+          if (!mounted) return;
+          if (session.isPrivileged && !AuthController.instance.isActingAsUser) {
+            AuthController.instance.switchToAdminMode();
+            context.go('/admin');
+            return;
+          }
+        }
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -487,6 +619,14 @@ class _AuthScreenState extends State<AuthScreen>
       }
     } catch (e) {
       final rawCode = e.toString().replaceAll('Exception: ', '');
+
+      // An existing email/password account owns this Google email → show
+      // the linking dialog so the user can confirm with their password.
+      if (rawCode == 'auth.error.link_required' && mounted) {
+        setState(() => _isLoading = false);
+        await _showLinkGoogleDialog();
+        return;
+      }
 
       if (isSignUp && rawCode == 'auth.error.google_account_already_exists' && mounted) {
         setState(() => _isLoading = false);
@@ -1032,6 +1172,141 @@ class _AuthScreenState extends State<AuthScreen>
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Account-linking dialog ──────────────────────────────────────────────────
+// Shown when the user attempts Google sign-in but the same email already
+// belongs to an email/password account. The user confirms their password and
+// the Google credential is linked to the existing account.
+
+class _LinkGoogleDialog extends StatefulWidget {
+  const _LinkGoogleDialog({
+    required this.email,
+    required this.authController,
+    required this.l10n,
+    required this.onLinked,
+    required this.onCancel,
+  });
+
+  final String email;
+  final AuthController authController;
+  final AppLocalizations l10n;
+  final Future<void> Function() onLinked;
+  final VoidCallback onCancel;
+
+  @override
+  State<_LinkGoogleDialog> createState() => _LinkGoogleDialogState();
+}
+
+class _LinkGoogleDialogState extends State<_LinkGoogleDialog> {
+  final _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  bool _loading = false;
+  bool _obscure = true;
+  String? _error;
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await widget.authController.linkGoogleToPendingAccount(
+        _passwordController.text,
+      );
+      await widget.onLinked();
+    } catch (e) {
+      final rawCode = e.toString().replaceAll('Exception: ', '');
+      final l10n = widget.l10n;
+      final msg = switch (rawCode) {
+        'auth.error.wrong_password'    => l10n.authErrorWrongPassword,
+        'auth.error.user_not_found'    => l10n.authErrorUserNotFound,
+        'auth.error.too_many_requests' => l10n.authErrorTooManyRequests,
+        'auth.error.user_disabled'     => l10n.authErrorUserDisabled,
+        'auth.error.account_blocked'   => l10n.accountBlockedBody,
+        _                              => l10n.authErrorGeneric,
+      };
+      if (mounted) setState(() { _loading = false; _error = msg; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = widget.l10n;
+    return AlertDialog(
+      title: Row(
+        children: [
+          const Icon(Icons.link, color: Color(0xFF009688)),
+          const SizedBox(width: 8),
+          Flexible(child: Text(l10n.linkGoogleTitle)),
+        ],
+      ),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.linkGoogleBody(widget.email)),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _passwordController,
+              obscureText: _obscure,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: l10n.password,
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscure
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                  onPressed: () => setState(() => _obscure = !_obscure),
+                ),
+              ),
+              validator: (v) =>
+                  (v == null || v.isEmpty) ? l10n.requiredField : null,
+              onFieldSubmitted: (_) => _loading ? null : _submit(),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                style: const TextStyle(color: Colors.red, fontSize: 13),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _loading ? null : widget.onCancel,
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: _loading ? null : _submit,
+          child: _loading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text(l10n.linkGoogleSubmit),
+        ),
+      ],
     );
   }
 }

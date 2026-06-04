@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import '../controllers/journey_search_controller.dart';
-import '../controllers/journey_search_state.dart';
+import '../models/journey_search_state.dart';
 import '../models/bus_service_model.dart';
 import '../models/journey_model.dart';
 import '../models/journey_recommendation.dart';

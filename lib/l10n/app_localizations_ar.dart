@@ -1038,4 +1038,24 @@ class AppLocalizationsAr extends AppLocalizations {
   String sendNotificationResend(int seconds) {
     return 'إعادة الإرسال خلال $secondsث';
   }
+
+  @override
+  String get linkGoogleTitle => 'ربط حساب Google الخاص بك';
+
+  @override
+  String linkGoogleBody(Object email) {
+    return 'يوجد حساب بالفعل للبريد الإلكتروني $email. أدخل كلمة المرور لربط Google بهذا الحساب — ستتمكن بعد ذلك من تسجيل الدخول بأي من الطريقتين.';
+  }
+
+  @override
+  String get linkGoogleSubmit => 'ربط الحساب';
+
+  @override
+  String get googleAccountLinked => 'تم الربط! يمكنك الآن تسجيل الدخول بالبريد الإلكتروني أو Google.';
+
+  @override
+  String get googleOnlyAccountTitle => 'حساب Google فقط';
+
+  @override
+  String get googleOnlyAccountBody => 'هذا البريد الإلكتروني مرتبط بحساب Google. لا يمكن إعادة تعيين كلمة المرور لهذا الحساب. استخدم \"تسجيل الدخول عبر Google\" للوصول إلى حسابك.';
 }

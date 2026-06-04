@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../admin/screens/admin_dashboard.dart';
+import '../screens/admin_dashboard.dart';
 import '../screens/profile_screen.dart';
-import '../admin/screens/manage_users_screen.dart';
-import '../admin/screens/manage_journeys_screen.dart';
-import '../admin/screens/manage_tariffs_screen.dart';
-import '../admin/screens/manage_admins_screen.dart';
-import '../admin/screens/send_notifications_screen.dart';
+import '../screens/manage_users_screen.dart';
+import '../screens/manage_journeys_screen.dart';
+import '../screens/manage_tariffs_screen.dart';
+import '../screens/manage_admins_screen.dart';
+import '../screens/send_notifications_screen.dart';
 import '../controllers/auth_controller.dart';
 import '../models/journey_model.dart';
 import '../models/metro_sahel_result.dart';
@@ -29,7 +29,10 @@ class AppRouter {
   static GoRouter create({
     required AuthController authController,
   }) {
-    final refresh = _GoRouterRefreshStream(authController.authStateChanges);
+    final refresh = _GoRouterRefreshStream(
+      authController.authStateChanges,
+      authController.sessionChanges,
+    );
 
     const adminLocation = '/admin';
 
@@ -60,20 +63,36 @@ class AppRouter {
           return '/auth';
         }
 
-        // Fast path: for home tab switching use the cached session to avoid
-        // a Firestore round-trip on every tab press.
-        if (path.startsWith('/home')) {
-          final cached = authController.cachedSession;
-          if (cached != null) {
-            final actingAsUser = authController.isActingAsUser;
-            if (cached.isPrivileged && !actingAsUser) return adminLocation;
-            if (actingAsUser) return null;
-            if (cached.isUser) return null;
+        // Fast path: use the cached session for all paths to avoid a Firestore
+        // round-trip and eliminate the async race that causes admin to land on
+        // the user home screen on subsequent sign-ins.
+        final cached = authController.cachedSession;
+        if (cached != null) {
+          final actingAsUser = authController.isActingAsUser;
+          if (cached.isPrivileged && !actingAsUser) {
+            // Cached admin session — redirect everywhere except admin area.
+            if (path == '/auth' ||
+                path == '/splash' ||
+                path.startsWith('/home') ||
+                path == '/') {
+              return adminLocation;
+            }
+            // Admin on admin area — stay.
+            if (path.startsWith('/admin') || isSuperAdminRoute) return null;
+          }
+          if (cached.isUser || actingAsUser) {
+            if (path == '/auth' || path == '/splash' || path == '/') {
+              return '/home/journey-input';
+            }
+            if (path.startsWith('/admin') || isSuperAdminRoute) {
+              return actingAsUser ? '/home/journey-input' : null;
+            }
+            return null;
           }
         }
 
-        // On a transient Firestore failure keep the user where they are.
-        // Splash has no UI, so fall back to /auth.
+        // Slow path: cache miss — resolve from Firestore.
+        // Splash has no UI, so fall back to /auth on failure.
         SessionResult session;
         try {
           session = await authController.resolveSession(user);
@@ -269,17 +288,21 @@ class AppRouter {
 /// If GoRouter ever changes this contract, the owning widget must call
 /// `dispose()` explicitly.
 class _GoRouterRefreshStream extends ChangeNotifier {
-  _GoRouterRefreshStream(Stream<dynamic> stream) {
-    _subscription = stream.listen((_) {
-      notifyListeners();
-    });
+  _GoRouterRefreshStream(
+    Stream<dynamic> authStream,
+    Stream<void> sessionStream,
+  ) {
+    _authSub = authStream.listen((_) => notifyListeners());
+    _sessionSub = sessionStream.listen((_) => notifyListeners());
   }
 
-  late final StreamSubscription<dynamic> _subscription;
+  late final StreamSubscription<dynamic> _authSub;
+  late final StreamSubscription<void> _sessionSub;
 
   @override
   void dispose() {
-    _subscription.cancel();
+    _authSub.cancel();
+    _sessionSub.cancel();
     super.dispose();
   }
 }

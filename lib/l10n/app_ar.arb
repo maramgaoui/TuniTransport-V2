@@ -420,5 +420,16 @@
     "placeholders": {
       "seconds": { "type": "int" }
     }
-  }
+  },
+  "linkGoogleTitle": "ربط حساب Google الخاص بك",
+  "linkGoogleBody": "يوجد حساب بالفعل للبريد الإلكتروني {email}. أدخل كلمة المرور لربط Google بهذا الحساب — ستتمكن بعد ذلك من تسجيل الدخول بأي من الطريقتين.",
+  "@linkGoogleBody": {
+    "placeholders": {
+      "email": {}
+    }
+  },
+  "linkGoogleSubmit": "ربط الحساب",
+  "googleAccountLinked": "تم الربط! يمكنك الآن تسجيل الدخول بالبريد الإلكتروني أو Google.",
+  "googleOnlyAccountTitle": "حساب Google فقط",
+  "googleOnlyAccountBody": "هذا البريد الإلكتروني مرتبط بحساب Google. لا يمكن إعادة تعيين كلمة المرور لهذا الحساب. استخدم \"تسجيل الدخول عبر Google\" للوصول إلى حسابك."
 }

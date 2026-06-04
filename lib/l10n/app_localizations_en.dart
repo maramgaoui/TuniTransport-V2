@@ -1038,4 +1038,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String sendNotificationResend(int seconds) {
     return 'Resend in ${seconds}s';
   }
+
+  @override
+  String get linkGoogleTitle => 'Link your Google account';
+
+  @override
+  String linkGoogleBody(Object email) {
+    return 'An account already exists for $email. Enter your password to link Google to this account — you will then be able to sign in with either method.';
+  }
+
+  @override
+  String get linkGoogleSubmit => 'Link account';
+
+  @override
+  String get googleAccountLinked => 'Account linked! You can now sign in with your email or Google.';
+
+  @override
+  String get googleOnlyAccountTitle => 'Google account only';
+
+  @override
+  String get googleOnlyAccountBody => 'This email address is linked to a Google account. Password reset is not available for this account. Use \"Sign in with Google\" to access your account.';
 }

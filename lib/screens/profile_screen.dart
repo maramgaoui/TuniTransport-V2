@@ -252,108 +252,6 @@ class ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showCreatePasswordDialog() {
-    final l10n = AppLocalizations.of(context)!;
-    final newPasswordController = TextEditingController();
-    final confirmPasswordController = TextEditingController();
-    bool obscureNew = true;
-    bool obscureConfirm = true;
-
-    showDialog<void>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(l10n.createPassword),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ValidatedTextField(
-                  controller: newPasswordController,
-                  label: l10n.newPassword,
-                  hintText: '••••••••',
-                  prefixIcon: Icons.lock_outline,
-                  validationType: 'password',
-                  obscureText: obscureNew,
-                  isPasswordField: true,
-                  onVisibilityToggle: () =>
-                      setDialogState(() => obscureNew = !obscureNew),
-                  onValidationChanged: (_) => setDialogState(() {}),
-                ),
-                const SizedBox(height: 16),
-                ValidatedTextField(
-                  controller: confirmPasswordController,
-                  label: l10n.confirmNewPassword,
-                  hintText: '••••••••',
-                  prefixIcon: Icons.lock_outline,
-                  validationType: 'confirm_password',
-                  confirmPasswordValue: newPasswordController.text,
-                  obscureText: obscureConfirm,
-                  isPasswordField: true,
-                  onVisibilityToggle: () =>
-                      setDialogState(() => obscureConfirm = !obscureConfirm),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(l10n.cancel),
-            ),
-            TextButton(
-              onPressed: () async {
-                final rootMessenger = ScaffoldMessenger.of(this.context);
-                if (newPasswordController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.enterNewPassword)),
-                  );
-                  return;
-                }
-                if (newPasswordController.text != confirmPasswordController.text) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.passwordsDoNotMatch)),
-                  );
-                  return;
-                }
-                final strengthError =
-                    ValidationUtils.validatePassword(newPasswordController.text);
-                if (strengthError != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(strengthError),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                  return;
-                }
-
-                final error = await _profileController
-                    .createPassword(newPasswordController.text);
-
-                if (!context.mounted) return;
-                Navigator.pop(context);
-                if (!mounted) return;
-                rootMessenger.showSnackBar(
-                  error == null
-                      ? SnackBar(
-                          content: Text(l10n.passwordCreatedSuccessfully),
-                          backgroundColor: AppTheme.primaryTeal,
-                        )
-                      : SnackBar(
-                          content: Text(error),
-                          backgroundColor: Colors.red,
-                        ),
-                );
-              },
-              child: Text(l10n.createPassword),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showChangePasswordDialog() {
     final l10n = AppLocalizations.of(context)!;
     final currentPasswordController = TextEditingController();
@@ -500,108 +398,6 @@ class ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
-  }
-
-  Future<void> _handleAdminChangePassword() async {
-    final l10n = AppLocalizations.of(context)!;
-    final currentPasswordController = TextEditingController();
-    final newPasswordController = TextEditingController();
-    final confirmPasswordController = TextEditingController();
-    bool obscureCurrent = true, obscureNew = true, obscureConfirm = true;
-
-    final shouldSubmit = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (_, setDialogState) => AlertDialog(
-          title: Text(l10n.changePassword),
-          content: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(
-                controller: currentPasswordController,
-                obscureText: obscureCurrent,
-                decoration: InputDecoration(
-                  labelText: l10n.currentPassword,
-                  suffixIcon: IconButton(
-                    icon: Icon(obscureCurrent
-                        ? Icons.visibility_off
-                        : Icons.visibility),
-                    onPressed: () =>
-                        setDialogState(() => obscureCurrent = !obscureCurrent),
-                  ),
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              ValidatedTextField(
-                controller: newPasswordController,
-                label: l10n.newPassword,
-                hintText: '••••••••',
-                prefixIcon: Icons.lock_outline,
-                validationType: 'password',
-                obscureText: obscureNew,
-                isPasswordField: true,
-                onVisibilityToggle: () =>
-                    setDialogState(() => obscureNew = !obscureNew),
-                onValidationChanged: (_) => setDialogState(() {}),
-              ),
-              const SizedBox(height: 16),
-              ValidatedTextField(
-                controller: confirmPasswordController,
-                label: l10n.confirmNewPassword,
-                hintText: '••••••••',
-                prefixIcon: Icons.lock_outline,
-                validationType: 'confirm_password',
-                confirmPasswordValue: newPasswordController.text,
-                obscureText: obscureConfirm,
-                isPasswordField: true,
-                onVisibilityToggle: () =>
-                    setDialogState(() => obscureConfirm = !obscureConfirm),
-              ),
-            ]),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: Text(l10n.cancel),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryTeal),
-              child: Text(l10n.save,
-                  style: const TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    final currentPassword = currentPasswordController.text;
-    final newPassword = newPasswordController.text;
-    currentPasswordController.dispose();
-    newPasswordController.dispose();
-    confirmPasswordController.dispose();
-
-    if (shouldSubmit != true || !mounted) return;
-
-    try {
-      await _authController.changeAdminPassword(
-        currentPassword: currentPassword,
-        newPassword: newPassword,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(l10n.passwordChangedSuccessfully),
-        backgroundColor: AppTheme.primaryTeal,
-      ));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(e.toString().replaceFirst('Exception: ', '')),
-        backgroundColor: Colors.red,
-      ));
-    }
   }
 
   void _showSettingsDialog() {
@@ -979,24 +775,13 @@ class ProfileScreenState extends State<ProfileScreen> {
                 else
                   _buildProfileDetails(profile),
                 const SizedBox(height: 32),
-                // Password button — admin context always shows "Change";
-                // user context shows "Create" for Google-only accounts.
-                if (!_isPrivilegedReadOnlyMode)
+                if (!_isPrivilegedReadOnlyMode && !_profileController.isGoogleOnlyUser)
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: widget.isAdminContext
-                          ? _handleAdminChangePassword
-                          : (_profileController.isGoogleOnlyUser
-                              ? _showCreatePasswordDialog
-                              : _showChangePasswordDialog),
+                      onPressed: _showChangePasswordDialog,
                       icon: const Icon(Icons.lock),
-                      label: Text(
-                        (widget.isAdminContext ||
-                                !_profileController.isGoogleOnlyUser)
-                            ? l10n.changePassword
-                            : l10n.createPassword,
-                      ),
+                      label: Text(l10n.changePassword),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.darkTeal,
                         foregroundColor: Colors.white,
@@ -1004,7 +789,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                   ),
-                if (!_isPrivilegedReadOnlyMode) const SizedBox(height: 16),
+                if (!_isPrivilegedReadOnlyMode && !_profileController.isGoogleOnlyUser)
+                  const SizedBox(height: 16),
                 // Sign Out Button
                 SizedBox(
                   width: double.infinity,
