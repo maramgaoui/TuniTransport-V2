@@ -1058,4 +1058,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get googleOnlyAccountBody => 'This email address is linked to a Google account. Password reset is not available for this account. Use \"Sign in with Google\" to access your account.';
+
+  @override
+  String get manageUsersSubtitle => 'Accounts & status';
+
+  @override
+  String get manageJourneysSubtitle => 'Routes & activity';
+
+  @override
+  String get manageAdminsSubtitle => 'Roles & permissions';
+
+  @override
+  String get manageTariffsSubtitle => 'Prices & fares';
+
+  @override
+  String get sendNotificationsSubtitle => 'Alerts & announcements';
+
+  @override
+  String get adminDashboardSubtitle => 'Administrative supervision';
+
+  @override
+  String get profileSubtitle => 'Personal information';
 }

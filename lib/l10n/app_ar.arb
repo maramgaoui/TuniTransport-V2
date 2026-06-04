@@ -431,5 +431,12 @@
   "linkGoogleSubmit": "ربط الحساب",
   "googleAccountLinked": "تم الربط! يمكنك الآن تسجيل الدخول بالبريد الإلكتروني أو Google.",
   "googleOnlyAccountTitle": "حساب Google فقط",
-  "googleOnlyAccountBody": "هذا البريد الإلكتروني مرتبط بحساب Google. لا يمكن إعادة تعيين كلمة المرور لهذا الحساب. استخدم \"تسجيل الدخول عبر Google\" للوصول إلى حسابك."
+  "googleOnlyAccountBody": "هذا البريد الإلكتروني مرتبط بحساب Google. لا يمكن إعادة تعيين كلمة المرور لهذا الحساب. استخدم \"تسجيل الدخول عبر Google\" للوصول إلى حسابك.",
+  "manageUsersSubtitle": "الحسابات والحالات",
+  "manageJourneysSubtitle": "الرحلات والنشاط",
+  "manageAdminsSubtitle": "الأدوار والصلاحيات",
+  "manageTariffsSubtitle": "الأسعار والتعريفات",
+  "sendNotificationsSubtitle": "التنبيهات والإعلانات",
+  "adminDashboardSubtitle": "الإشراف الإداري",
+  "profileSubtitle": "المعلومات الشخصية"
 }

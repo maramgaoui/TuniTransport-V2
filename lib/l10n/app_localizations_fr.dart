@@ -1058,4 +1058,25 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get googleOnlyAccountBody => 'Cette adresse email est associée à un compte Google. Vous ne pouvez pas réinitialiser un mot de passe pour ce compte. Utilisez \"Se connecter avec Google\" pour accéder à votre compte.';
+
+  @override
+  String get manageUsersSubtitle => 'Comptes et états';
+
+  @override
+  String get manageJourneysSubtitle => 'Trajets et activité';
+
+  @override
+  String get manageAdminsSubtitle => 'Rôles et permissions';
+
+  @override
+  String get manageTariffsSubtitle => 'Prix et tarifs';
+
+  @override
+  String get sendNotificationsSubtitle => 'Alertes et annonces';
+
+  @override
+  String get adminDashboardSubtitle => 'Supervision administrative';
+
+  @override
+  String get profileSubtitle => 'Informations personnelles';
 }

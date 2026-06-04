@@ -1058,4 +1058,25 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get googleOnlyAccountBody => 'هذا البريد الإلكتروني مرتبط بحساب Google. لا يمكن إعادة تعيين كلمة المرور لهذا الحساب. استخدم \"تسجيل الدخول عبر Google\" للوصول إلى حسابك.';
+
+  @override
+  String get manageUsersSubtitle => 'الحسابات والحالات';
+
+  @override
+  String get manageJourneysSubtitle => 'الرحلات والنشاط';
+
+  @override
+  String get manageAdminsSubtitle => 'الأدوار والصلاحيات';
+
+  @override
+  String get manageTariffsSubtitle => 'الأسعار والتعريفات';
+
+  @override
+  String get sendNotificationsSubtitle => 'التنبيهات والإعلانات';
+
+  @override
+  String get adminDashboardSubtitle => 'الإشراف الإداري';
+
+  @override
+  String get profileSubtitle => 'المعلومات الشخصية';
 }

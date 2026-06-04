@@ -48,10 +48,10 @@ class ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
 
   String _adminTypeLabel(String? type) => switch (type) {
-    'bus'            => 'Admin Bus (TRANSTU)',
-    'metro_train'    => 'Admin Métro / Train',
-    'taxicollectifs' => 'Admin Taxi Collectifs',
-    'louage'         => 'Admin Louage',
+    'bus'            => 'Bus',
+    'metro_train'    => 'Métro / Train',
+    'taxicollectifs' => 'Taxi Collectif',
+    'louage'         => 'Louage',
     'super_admin'    => 'Super Admin',
     _                => type ?? '-',
   };
@@ -560,6 +560,7 @@ class ProfileScreenState extends State<ProfileScreen> {
           if (widget.showAppBar)
             AppHeader(
               title: l10n.profile,
+              subtitle: l10n.profileSubtitle,
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
                 onPressed: () => context.go(
@@ -603,7 +604,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                                     }
                                   },
                           ),
-                        if (!_isPrivilegedReadOnlyMode && !widget.isAdminContext)
+                        if (!_isPrivilegedReadOnlyMode)
                           IconButton(
                             icon: const Icon(Icons.settings, color: Colors.white),
                             onPressed: _showSettingsDialog,
@@ -681,7 +682,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                                     }
                                   },
                           ),
-                        if (!_isPrivilegedReadOnlyMode && !widget.isAdminContext)
+                        if (!_isPrivilegedReadOnlyMode)
                           IconButton(
                             icon: const Icon(Icons.settings),
                             tooltip: l10n.settings,

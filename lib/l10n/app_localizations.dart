@@ -2118,6 +2118,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This email address is linked to a Google account. Password reset is not available for this account. Use \"Sign in with Google\" to access your account.'**
   String get googleOnlyAccountBody;
+
+  /// No description provided for @manageUsersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts & status'**
+  String get manageUsersSubtitle;
+
+  /// No description provided for @manageJourneysSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Routes & activity'**
+  String get manageJourneysSubtitle;
+
+  /// No description provided for @manageAdminsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Roles & permissions'**
+  String get manageAdminsSubtitle;
+
+  /// No description provided for @manageTariffsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Prices & fares'**
+  String get manageTariffsSubtitle;
+
+  /// No description provided for @sendNotificationsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Alerts & announcements'**
+  String get sendNotificationsSubtitle;
+
+  /// No description provided for @adminDashboardSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Administrative supervision'**
+  String get adminDashboardSubtitle;
+
+  /// No description provided for @profileSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal information'**
+  String get profileSubtitle;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -104,13 +104,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
             Expanded(
-              child: IndexedStack(
-                index: selectedIndex,
-                children: List.generate(
-                  _screens.length,
-                  (i) => _mountedTabs.contains(i)
-                      ? _screens[i]
-                      : const SizedBox.shrink(),
+              child: MediaQuery.removePadding(
+                context: context,
+                removeTop: AuthController.instance.isActingAsUser,
+                child: IndexedStack(
+                  index: selectedIndex,
+                  children: List.generate(
+                    _screens.length,
+                    (i) => _mountedTabs.contains(i)
+                        ? _screens[i]
+                        : const SizedBox.shrink(),
+                  ),
                 ),
               ),
             ),

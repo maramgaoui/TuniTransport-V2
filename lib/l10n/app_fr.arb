@@ -450,5 +450,12 @@
   "linkGoogleSubmit": "Lier le compte",
   "googleAccountLinked": "Compte lié ! Vous pouvez maintenant vous connecter avec votre email ou Google.",
   "googleOnlyAccountTitle": "Compte Google uniquement",
-  "googleOnlyAccountBody": "Cette adresse email est associée à un compte Google. Vous ne pouvez pas réinitialiser un mot de passe pour ce compte. Utilisez \"Se connecter avec Google\" pour accéder à votre compte."
+  "googleOnlyAccountBody": "Cette adresse email est associée à un compte Google. Vous ne pouvez pas réinitialiser un mot de passe pour ce compte. Utilisez \"Se connecter avec Google\" pour accéder à votre compte.",
+  "manageUsersSubtitle": "Comptes et états",
+  "manageJourneysSubtitle": "Trajets et activité",
+  "manageAdminsSubtitle": "Rôles et permissions",
+  "manageTariffsSubtitle": "Prix et tarifs",
+  "sendNotificationsSubtitle": "Alertes et annonces",
+  "adminDashboardSubtitle": "Supervision administrative",
+  "profileSubtitle": "Informations personnelles"
 }
