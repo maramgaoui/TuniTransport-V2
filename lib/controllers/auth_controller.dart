@@ -523,6 +523,13 @@ class AuthController {
     return User(uid: firebaseUser.uid, email: firebaseUser.email ?? '');
   }
 
+  /// The account's creation time straight from Firebase Auth. Unlike the
+  /// Firestore `createdAt` serverTimestamp (which is briefly null right after
+  /// signup), this is available immediately and reliably — used to hide admin
+  /// notifications that predate the account.
+  DateTime? get accountCreationTime =>
+      _firebaseAuth.currentUser?.metadata.creationTime;
+
   // Returns a minimal User on Firestore errors so callers are never blocked.
   Future<User?> fetchCurrentUser() async {
     final firebaseUser = _firebaseAuth.currentUser;
@@ -1097,6 +1104,10 @@ class AuthController {
         userData['status'] = 'active';
         userData['banUntil'] = null;
         userData['authProvider'] = 'google.com';
+        // Registration timestamp — used to hide admin broadcasts sent before
+        // this account existed (matches the email-signup profile).
+        userData['createdAt'] = FieldValue.serverTimestamp();
+        userData['updatedAt'] = FieldValue.serverTimestamp();
         try {
           await _firestore
               .collection(Col.users)

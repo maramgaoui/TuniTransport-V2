@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tuni_transport/models/notification_model.dart';
 
 import '../constants/firestore_collections.dart';
+import '../utils/role_guard.dart';
 import 'auth_controller.dart';
 
 class NotificationController extends ChangeNotifier {
@@ -47,10 +48,36 @@ class NotificationController extends ChangeNotifier {
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _broadcastSub;
   String? _broadcastListenerUid;
 
+  // Audience derived from the Firestore role read at listener start, used as a
+  // floor when the live session hasn't resolved yet. Targets are otherwise read
+  // dynamically from the cached session on every snapshot/refresh.
+  List<String> _fallbackTargets = const ['all'];
+
+  // Last broadcast snapshot, kept so refresh() can re-filter it once the
+  // session resolves (the role can be unknown at the instant the listener
+  // starts, right after sign-in).
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _lastBroadcastDocs =
+      const [];
+
   // The signed-in user's account creation time. Broadcasts created before this
   // are skipped so a freshly registered user does not inherit older admin
   // notifications. Null = no filter (unknown registration time).
   DateTime? _registeredAt;
+
+  // Current broadcast audience: the widest of the live session role and the
+  // role read at listener start (targets are nested: all ⊂ admins ⊂ super).
+  List<String> _currentBroadcastTargets() {
+    final session = AuthController.instance.cachedSession;
+    List<String> sessionTargets = const ['all'];
+    if (session != null && session.isSuperAdmin) {
+      sessionTargets = const ['all', 'admins', 'super_admins'];
+    } else if (session != null && session.isAdmin) {
+      sessionTargets = const ['all', 'admins'];
+    }
+    return sessionTargets.length >= _fallbackTargets.length
+        ? sessionTargets
+        : _fallbackTargets;
+  }
 
   /// Clears only the in-memory list on sign-out so the UI does not show the
   /// previous user's notifications. The persisted copy (per-user local cache +
@@ -69,14 +96,16 @@ class NotificationController extends ChangeNotifier {
   }
 
   static List<String> _broadcastTargetsForRole(String role) {
-    switch (role) {
-      case 'super_admin':
-        return const ['all', 'admins', 'super_admins'];
-      case 'admin':
-        return const ['all', 'admins'];
-      default:
-        return const ['all'];
+    // Use RoleGuard so admin sub-types (admin_bus, admin_metro, …) are also
+    // treated as admins — otherwise they fall through to ['all'] and never
+    // receive notifications targeted at "admins".
+    if (RoleGuard.isSuperAdmin(role)) {
+      return const ['all', 'admins', 'super_admins'];
     }
+    if (RoleGuard.isAdmin(role)) {
+      return const ['all', 'admins'];
+    }
+    return const ['all'];
   }
 
   /// Adds any broadcast docs the user is targeted by that aren't already in the
@@ -98,16 +127,20 @@ class NotificationController extends ChangeNotifier {
       final body = (data['message'] as String?) ?? '';
       if (title.isEmpty && body.isEmpty) continue;
 
-      final ts = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
-      // Skip broadcasts sent before this user registered.
-      if (_registeredAt != null && ts.isBefore(_registeredAt!)) continue;
+      final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+      // Registration filter: hide broadcasts predating the account. A broadcast
+      // with no createdAt is treated as OLD (skip) rather than "now", so a
+      // missing timestamp can't leak an old notification to a new user.
+      if (_registeredAt != null) {
+        if (createdAt == null || createdAt.isBefore(_registeredAt!)) continue;
+      }
 
       _notifications.add(NotificationModel(
         id: broadcastId,
         title: title,
         body: body,
         type: NotificationType.system,
-        timestamp: ts,
+        timestamp: createdAt ?? DateTime.now(),
         isRead: false,
       ));
       changed = true;
@@ -129,14 +162,38 @@ class NotificationController extends ChangeNotifier {
     await _broadcastSub?.cancel();
     _broadcastListenerUid = uid;
 
+    // Baseline: hide broadcasts predating the account. Firebase Auth's creation
+    // time is reliable immediately after signup (the Firestore createdAt
+    // serverTimestamp may still be pending), so prefer it.
+    _registeredAt = AuthController.instance.accountCreationTime;
+
+    // Audience floor from a best-effort Firestore role read. The live session
+    // (read dynamically per-snapshot in _currentBroadcastTargets) is preferred,
+    // but the role can be unknown the instant the listener starts right after
+    // sign-in (the gRPC connection resets / resolveSession hasn't finished), so
+    // this read backstops it. Use the doc's createdAt as a baseline fallback.
+    _fallbackTargets = const ['all'];
     final db = GetIt.I<FirebaseFirestore>();
-    var targets = const ['all'];
-    try {
-      final userDoc = await db.collection(Col.users).doc(uid).get();
-      final role = (userDoc.data()?['role'] as String?) ?? 'user';
-      targets = _broadcastTargetsForRole(role);
-      _registeredAt = (userDoc.data()?['createdAt'] as Timestamp?)?.toDate();
-    } catch (_) {}
+    // Retry the role read: right after sign-in the gRPC connection resets, so a
+    // single attempt can fail and leave a privileged user on ['all'].
+    for (var attempt = 0; attempt < 4; attempt++) {
+      try {
+        final userDoc = await db.collection(Col.users).doc(uid).get();
+        final data = userDoc.data();
+        if (data != null && data['role'] != null) {
+          _fallbackTargets = _broadcastTargetsForRole(data['role'] as String);
+          _registeredAt ??= (data['createdAt'] as Timestamp?)?.toDate();
+          break;
+        }
+      } catch (_) {}
+      await Future<void>.delayed(Duration(milliseconds: 250 * (attempt + 1)));
+    }
+
+    if (kDebugMode) {
+      debugPrint('[NotificationController] Broadcast listener started '
+          'uid=$uid targets=${_currentBroadcastTargets()} '
+          'registeredAt=$_registeredAt');
+    }
 
     _broadcastSub = db
         .collection(Col.notifications)
@@ -145,7 +202,8 @@ class NotificationController extends ChangeNotifier {
         .snapshots()
         .listen(
       (snap) {
-        if (_ingestBroadcastDocs(snap.docs, targets)) {
+        _lastBroadcastDocs = snap.docs;
+        if (_ingestBroadcastDocs(snap.docs, _currentBroadcastTargets())) {
           notifyListeners();
         }
       },
@@ -161,6 +219,8 @@ class NotificationController extends ChangeNotifier {
     unawaited(_broadcastSub?.cancel());
     _broadcastSub = null;
     _broadcastListenerUid = null;
+    _fallbackTargets = const ['all'];
+    _lastBroadcastDocs = const [];
   }
 
   @override
@@ -186,11 +246,13 @@ class NotificationController extends ChangeNotifier {
     try {
       await _loadFromStorage();
       await _loadFromFirestore();
-      await _loadBroadcastNotifications();
       await ensureSystemAnnouncement();
       _initialized = true;
       _initializedForUid = uid;
-      // Subscribe for live admin broadcasts so they arrive without a refresh.
+      // The real-time listener is the SINGLE source for admin broadcasts: its
+      // first snapshot does the initial load and it keeps the list live. This
+      // avoids a second code path (and the duplicates that came with it) and
+      // applies the registration-time filter consistently.
       await _startBroadcastListener();
     } catch (e) {
       if (kDebugMode) debugPrint('[NotificationController] Initialization error: $e');
@@ -203,17 +265,22 @@ class NotificationController extends ChangeNotifier {
     }
   }
 
-  /// Re-fetches notifications from Firestore + admin broadcasts WITHOUT clearing
-  /// the in-memory list (loaders dedupe by id). Use this to pick up new admin
-  /// broadcasts while the user is already signed in — e.g. when the
-  /// notifications tab is opened.
+  /// Re-fetches per-user notifications and makes sure the broadcast listener is
+  /// running, WITHOUT clearing the in-memory list (loaders dedupe by id). Used
+  /// when the notifications tab is opened. Admin broadcasts arrive via the live
+  /// listener, so they are not re-fetched here.
   Future<void> refresh() async {
     if (_isLoading) return;
     _isLoading = true;
     try {
       await _loadFromFirestore();
-      await _loadBroadcastNotifications();
       await ensureSystemAnnouncement();
+      await _startBroadcastListener();
+      // Re-filter the last broadcast snapshot against the now-resolved session.
+      // If the role was unknown when the listener first loaded (sign-in race),
+      // admin/super_admin-targeted broadcasts would have been skipped; this
+      // recovers them when the user opens the notifications tab.
+      _ingestBroadcastDocs(_lastBroadcastDocs, _currentBroadcastTargets());
     } catch (e) {
       if (kDebugMode) debugPrint('[NotificationController] Refresh error: $e');
     } finally {
@@ -282,6 +349,15 @@ class NotificationController extends ChangeNotifier {
     }
 
     final type = _typeFromString(data['type']?.toString());
+
+    // Safety net for the sender: a broadcast push can arrive without a readable
+    // docId, yet the real-time listener already surfaced the same notification
+    // (it fires on the local write echo the instant the admin sends). Skip an
+    // FCM copy whose content already exists so the sender doesn't see it twice.
+    if (_notifications.any(
+        (n) => n.type == type && n.title == title && n.body == body)) {
+      return;
+    }
 
     // Broadcasts already returned above, so this is a non-broadcast push.
     final String id;
@@ -433,29 +509,6 @@ class NotificationController extends ChangeNotifier {
         .collection(Col.notifications);
   }
 
-  Future<void> _loadBroadcastNotifications() async {
-    final uid = AuthController.instance.currentUser?.uid;
-    if (uid == null) return;
-    try {
-      final db = GetIt.I<FirebaseFirestore>();
-      final userDoc = await db.collection(Col.users).doc(uid).get();
-      final role = (userDoc.data()?['role'] as String?) ?? 'user';
-      final targets = _broadcastTargetsForRole(role);
-
-      // Order by createdAt only (single-field, no composite index) and filter
-      // the audience in-memory via _ingestBroadcastDocs.
-      final snap = await db
-          .collection(Col.notifications)
-          .orderBy('createdAt', descending: true)
-          .limit(50)
-          .get();
-
-      _ingestBroadcastDocs(snap.docs, targets);
-    } catch (e) {
-      if (kDebugMode) debugPrint('[NotificationController] Broadcast load failed: $e');
-    }
-  }
-
   Future<void> _loadFromFirestore() async {
     final ref = _notifRef();
     if (ref == null) return;
@@ -465,7 +518,12 @@ class NotificationController extends ChangeNotifier {
           .limit(100)
           .get();
       for (final doc in snap.docs) {
+        // Broadcasts are owned exclusively by the global listener. Skip any
+        // stray broadcast copies that older builds wrote into the per-user
+        // subcollection, otherwise they would show as duplicates.
+        if (doc.id.startsWith('broadcast_')) continue;
         final model = NotificationModel.fromJson(doc.data());
+        if (model.id.startsWith('broadcast_')) continue;
         if (!_notifications.any((n) => n.id == model.id)) {
           _notifications.add(model);
         }
