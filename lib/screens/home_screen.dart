@@ -114,18 +114,33 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
             Expanded(
-              child: MediaQuery.removePadding(
-                context: context,
-                removeTop: AuthController.instance.isActingAsUser,
-                child: IndexedStack(
-                  index: selectedIndex,
-                  children: List.generate(
-                    _screens.length,
-                    (i) => _mountedTabs.contains(i)
-                        ? _screens[i]
-                        : const SizedBox.shrink(),
-                  ),
-                ),
+              child: Builder(
+                builder: (context) {
+                  var mq = MediaQuery.of(context);
+                  if (AuthController.instance.isActingAsUser) {
+                    mq = mq.removePadding(removeTop: true);
+                  }
+                  // When this outer Scaffold resizes for the keyboard
+                  // (selectedIndex != 0), it has already consumed the bottom
+                  // inset. Zero it out here so nested screens with their own
+                  // Scaffold (e.g. ChatScreen) don't subtract the keyboard
+                  // height a second time and collapse their content.
+                  if (selectedIndex != 0) {
+                    mq = mq.removeViewInsets(removeBottom: true);
+                  }
+                  return MediaQuery(
+                    data: mq,
+                    child: IndexedStack(
+                      index: selectedIndex,
+                      children: List.generate(
+                        _screens.length,
+                        (i) => _mountedTabs.contains(i)
+                            ? _screens[i]
+                            : const SizedBox.shrink(),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ],
