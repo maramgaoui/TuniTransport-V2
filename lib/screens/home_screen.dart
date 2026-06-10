@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tuni_transport/l10n/app_localizations.dart';
 import 'package:tuni_transport/theme/app_theme.dart';
 import '../controllers/auth_controller.dart';
+import '../controllers/notification_controller.dart';
 import '../services/active_journey_service.dart';
 import 'journey_input_screen.dart';
 import 'favorites_screen.dart';
@@ -73,6 +74,11 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedIndex = index;
       _mountedTabs.add(index);
     });
+    // Pull any newly pushed admin broadcasts when the notifications tab opens,
+    // so they appear without requiring a logout/login or app restart.
+    if (index == 2) {
+      NotificationController.instance.refresh();
+    }
     context.go(_tabPaths[index]);
   }
 
@@ -93,6 +99,10 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         child: Scaffold(
         key: const Key('home_screen'),
+        // On the journey-input tab (index 0) keep the layout fixed under the
+        // keyboard so the search fields don't roll up. Other tabs (e.g. chat)
+        // still resize so their text input stays above the keyboard.
+        resizeToAvoidBottomInset: selectedIndex != 0,
         body: Column(
           children: [
             if (AuthController.instance.isActingAsUser)

@@ -107,8 +107,14 @@ class NotificationService {
   /// Called when a user logs in. Ensures FCM token is saved to Firestore
   /// (in case the initial attempt in initialize() happened before auth).
   Future<void> onUserLoggedIn() async {
+    // Reload this user's notifications on every login. The app only calls
+    // NotificationController.initialize() once at startup, so without this a
+    // logout → login cycle (same app session) would leave the list empty and
+    // newly pushed admin broadcasts would never be fetched.
+    unawaited(NotificationController.instance.initialize());
+
     if (!_isMessagingSupported) return;
-    
+
     try {
       final token = await _messaging.getToken();
       if (token != null && token.isNotEmpty) {

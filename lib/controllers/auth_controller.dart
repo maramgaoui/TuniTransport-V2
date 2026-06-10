@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -103,6 +104,60 @@ class AuthController {
     return error.code == 'unavailable' ||
         error.code == 'deadline-exceeded' ||
         error.code == 'aborted';
+  }
+
+  /// Reads a document FROM THE SERVER, retrying on transient Firestore errors
+  /// (`unavailable` / `deadline-exceeded` / `aborted`).
+  ///
+  /// `Source.server` is critical. Right after a Google sign-in the auth token
+  /// changes and Firestore's gRPC channel resets (the "SSL shutdown / connection
+  /// abort" seen in logs). A default `.get()` would then fall back to the local
+  /// cache — and with offline persistence disabled that cache only holds the
+  /// in-flight `fcmToken` pending write, NOT the real server fields. The read
+  /// comes back `exists=true` but `role=null`, so resolveSession defaults the
+  /// user to `user` and caches that wrong role for 5 minutes, routing an
+  /// admin/super-admin to the user home screen.
+  ///
+  /// Forcing `Source.server` makes an unreachable server throw `unavailable`
+  /// instead of returning a partial cached doc; the retry loop then waits for
+  /// the connection to recover and returns the COMPLETE document.
+  Future<DocumentSnapshot<Map<String, dynamic>>> _getDocWithRetry(
+    DocumentReference<Map<String, dynamic>> ref, {
+    int maxAttempts = 6,
+    String? requireField,
+  }) async {
+    var attempt = 0;
+    while (true) {
+      attempt++;
+      try {
+        final snap = await ref.get(const GetOptions(source: Source.server));
+        // An existing doc missing a field we know must always be present means
+        // we read a partial/stale snapshot (e.g. only the in-flight `fcmToken`
+        // pending write). Retry instead of trusting it — this is exactly what
+        // poisoned an admin's session with role `user`.
+        if (requireField != null &&
+            snap.exists &&
+            snap.data()?[requireField] == null &&
+            attempt < maxAttempts) {
+          developer.log(
+            'Partial doc (missing "$requireField") on attempt $attempt; retrying',
+            name: 'AuthController',
+          );
+          await Future<void>.delayed(Duration(milliseconds: 250 * attempt));
+          continue;
+        }
+        return snap;
+      } on FirebaseException catch (e) {
+        if (!_isTransientFirestoreError(e) || attempt >= maxAttempts) {
+          rethrow;
+        }
+        developer.log(
+          'Transient Firestore error (${e.code}) on attempt $attempt; retrying',
+          name: 'AuthController',
+        );
+        await Future<void>.delayed(Duration(milliseconds: 250 * attempt));
+      }
+    }
   }
 
   void _invalidateAuthStreamCache() {
@@ -559,6 +614,7 @@ class AuthController {
         'role': 'user',
         'status': 'active',
         'banUntil': null,
+        'authProvider': 'password',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       };
@@ -574,6 +630,7 @@ class AuthController {
         'role': 'user',
         'status': 'active',
         'banUntil': null,
+        'authProvider': 'password',
       };
 
       try {
@@ -930,9 +987,28 @@ class AuthController {
           }
         }
 
-        // Pre-warm the session cache (will be a cache hit if promotion ran).
+        // Resolve and cache the session SYNCHRONOUSLY (awaited) before this
+        // method returns. This mirrors loginWithMatriculeOrEmail, which caches
+        // the admin role before the auth screen reads it.
+        //
+        // Why awaiting matters for Google sign-in: an admin account created via
+        // createUserWithEmailAndPassword carries a 'password' provider, so the
+        // `currentUser` getter returns null while emailVerified is false UNLESS
+        // a privileged session is already cached. With a fire-and-forget
+        // resolveSession the cache was still empty when _handleGoogleSignIn
+        // checked currentUser, so the screen's direct `context.go('/admin')`
+        // was skipped and the admin landed on the user home screen until the
+        // async resolve finished and a later navigation re-triggered the
+        // router. Awaiting guarantees the admin session is cached first.
         final prewarmUser = User(uid: uid, email: firebaseUser.email ?? '');
-        unawaited(resolveSession(prewarmUser));
+        final prewarmSession = await resolveSession(prewarmUser);
+        developer.log(
+          '[GoogleDbg] signInWithGoogle existing-doc branch: uid=$uid '
+          'docRole=${userDoc.data()?['role']} '
+          'resolvedRole=${prewarmSession.role.name} '
+          'isPrivileged=${prewarmSession.isPrivileged}',
+          name: 'AuthController',
+        );
         final existingData = Map<String, dynamic>.from(userDoc.data() ?? {});
         // Backfill username for existing Google users who never had one set.
         if ((existingData['username'] ?? '').toString().isEmpty) {
@@ -1020,6 +1096,7 @@ class AuthController {
         final userData = user.toMap();
         userData['status'] = 'active';
         userData['banUntil'] = null;
+        userData['authProvider'] = 'google.com';
         try {
           await _firestore
               .collection(Col.users)
@@ -1150,14 +1227,41 @@ class AuthController {
         _sessionCachedAt != null &&
         _cachedSessionUid == current.uid &&
         DateTime.now().difference(_sessionCachedAt!) < _sessionTtl) {
+      developer.log(
+        '[GoogleDbg] resolveSession CACHE HIT uid=${current.uid} '
+        'role=${_cachedSession!.role.name}',
+        name: 'AuthController',
+      );
       return _cachedSession!;
     }
 
     try {
-      final userDoc = await _firestore
-          .collection(Col.users)
-          .doc(current.uid)
-          .get();
+      // Retry transient `unavailable` errors here: this is the read that
+      // decides admin vs user routing, and it frequently fires `unavailable`
+      // in the window right after a Google sign-in (see _getDocWithRetry).
+      final userDoc = await _getDocWithRetry(
+        _firestore.collection(Col.users).doc(current.uid),
+        requireField: 'role',
+      );
+
+      developer.log(
+        '[GoogleDbg] resolveSession READ uid=${current.uid} '
+        'exists=${userDoc.exists} role=${userDoc.data()?['role']}',
+        name: 'AuthController',
+      );
+
+      // Safety net: an existing doc with no `role` is a partial/stale read
+      // (a real user doc always has a role). Never cache a guessed `user` for
+      // it — that mis-routes an admin to the user home screen for 5 minutes.
+      // Return guest WITHOUT caching so the next resolve re-reads cleanly.
+      if (userDoc.exists && (userDoc.data()?['role'] == null)) {
+        developer.log(
+          '[GoogleDbg] resolveSession PARTIAL READ (role missing) — '
+          'returning guest without caching uid=${current.uid}',
+          name: 'AuthController',
+        );
+        return const SessionResult(role: SessionRole.guest);
+      }
 
       if (userDoc.exists) {
         final data = userDoc.data() ?? {};
@@ -1310,6 +1414,11 @@ class AuthController {
       }
 
       // Race between auth and Firestore write (new signup) — default to user role.
+      developer.log(
+        '[GoogleDbg] resolveSession DOC-MISSING race default → user '
+        'uid=${current.uid}',
+        name: 'AuthController',
+      );
       const result = SessionResult(role: SessionRole.user);
       _cacheSession(current.uid, result);
       return result;
@@ -1380,24 +1489,44 @@ class AuthController {
     try {
       final normalizedEmail = _normalizeEmail(email);
 
-      // Block password reset for Google-only accounts. Sending a reset link to
-      // a Google-only user would let them set a password and bypass the
-      // "sign in with Google only" policy.
-      // fetchSignInMethodsForEmail is the only client-side way to distinguish
-      // Google-only accounts without a backend; the deprecation affects web
-      // enumeration attacks but is acceptable here on mobile. If Email
-      // Enumeration Protection is enabled server-side this call is swallowed
-      // and we fall through to the normal Firebase reset path.
+      // Block password reset for Google-only accounts.
+      //
+      // This check MUST run server-side. During the forgot-password flow the
+      // user is signed out, so the client cannot read the `users` collection
+      // (Firestore rules require an authenticated caller) and the deprecated
+      // fetchSignInMethodsForEmail returns an empty list when Email Enumeration
+      // Protection is enabled. The `getEmailSignInProviders` Cloud Function uses
+      // the Admin SDK to read the account's real linked providers.
+      //
+      // Fail-open policy: if the function is unreachable we proceed with the
+      // reset so a transient outage cannot block every legitimate email/password
+      // user. The Google-only block only takes effect once the function returns
+      // isGoogleOnly == true.
       try {
-        final methods = await _firebaseAuth.fetchSignInMethodsForEmail(normalizedEmail); // ignore: deprecated_member_use
-        if (methods.isNotEmpty &&
-            methods.contains('google.com') &&
-            !methods.contains('password')) {
+        final result = await FirebaseFunctions.instance
+            .httpsCallable('getEmailSignInProviders')
+            .call<dynamic>(<String, dynamic>{'email': normalizedEmail});
+        final data = Map<String, dynamic>.from(result.data as Map);
+        developer.log(
+          'getEmailSignInProviders($normalizedEmail) → $data',
+          name: 'AuthController',
+        );
+        if (data['isGoogleOnly'] == true) {
+          developer.log(
+            'Rejecting password reset for Google-only account: $normalizedEmail',
+            name: 'AuthController',
+          );
           throw Exception('auth.error.google_only_use_google');
         }
-      } on firebase_auth.FirebaseAuthException catch (_) {
-        // fetchSignInMethodsForEmail unavailable (e.g. Email Enumeration
-        // Protection enabled) — proceed with the normal reset path.
+      } on Exception catch (e) {
+        if (e.toString().contains('auth.error.google_only_use_google')) {
+          rethrow;
+        }
+        // Function unavailable / network error — fail open and continue.
+        developer.log(
+          'getEmailSignInProviders check failed, proceeding with reset: $e',
+          name: 'AuthController',
+        );
       }
 
       developer.log(
@@ -1618,7 +1747,11 @@ class AuthController {
     required String uid,
     required bool enforceRestriction,
   }) async {
-    final userDoc = await _firestore.collection(Col.users).doc(uid).get();
+    // Retry transient `unavailable` errors so a Firestore connection blip right
+    // after Google sign-in doesn't abort the whole sign-in flow.
+    final userDoc = await _getDocWithRetry(
+      _firestore.collection(Col.users).doc(uid),
+    );
     if (!userDoc.exists) {
       return null;
     }

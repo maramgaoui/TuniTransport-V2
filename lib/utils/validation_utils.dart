@@ -103,6 +103,25 @@ class ValidationUtils {
     return usernameRegex.hasMatch(value) && value.length >= 3 && value.length <= 20;
   }
 
+  // Matricule format: 4 letters followed by 2 digits, e.g. "ABCD12".
+  static final RegExp _matriculeRegex = RegExp(r'^[A-Za-z]{4}[0-9]{2}$');
+
+  static String? validateMatricule(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      return 'Le matricule est requis';
+    }
+    if (!_matriculeRegex.hasMatch(trimmed)) {
+      return 'Le matricule doit contenir 4 lettres suivies de 2 chiffres (ex: ABCD12)';
+    }
+    return null;
+  }
+
+  static bool isMatriculeValid(String? value) {
+    final trimmed = value?.trim() ?? '';
+    return _matriculeRegex.hasMatch(trimmed);
+  }
+
   static String? validateConfirmPassword(String? value, String password) {
     if (value == null || value.isEmpty) {
       return 'Veuillez confirmer votre mot de passe';

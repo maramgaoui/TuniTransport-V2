@@ -597,14 +597,23 @@ class _AuthScreenState extends State<AuthScreen>
       // matricule login so the async router redirect race is avoided.
       if (!isSignUp) {
         final user = _authController.currentUser;
+        debugPrint('[GoogleDbg] after signIn: user=${user?.uid} '
+            'acting=${_authController.isActingAsUser}');
         if (user != null) {
           final session = await _authController.resolveSession(user);
+          debugPrint('[GoogleDbg] resolved role=${session.role.name} '
+              'isPrivileged=${session.isPrivileged} '
+              'acting=${_authController.isActingAsUser}');
           if (!mounted) return;
           if (session.isPrivileged && !AuthController.instance.isActingAsUser) {
+            debugPrint('[GoogleDbg] navigating to /admin');
             AuthController.instance.switchToAdminMode();
             context.go('/admin');
             return;
           }
+          debugPrint('[GoogleDbg] NOT navigating to admin');
+        } else {
+          debugPrint('[GoogleDbg] currentUser is NULL — admin redirect skipped');
         }
       }
 

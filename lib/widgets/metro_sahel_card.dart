@@ -7,7 +7,6 @@ class MetroSahelCard extends StatelessWidget {
 
   const MetroSahelCard({super.key, required this.result});
 
-  bool get _noTrainToday => result.arrivalTime == 'TOMORROW';
   bool get _isBus => result.lineType == 'sts_sahel';
 
   String get _durationLabel {
@@ -45,13 +44,11 @@ class MetroSahelCard extends StatelessWidget {
       gradientColors:   gradientColors,
       departureStation: result.fromStationName,
       arrivalStation:   result.toStationName,
-      departureTime:    _noTrainToday ? null : result.departureTime,
-      arrivalTime:      _noTrainToday ? null : result.arrivalTime,
+      departureTime:    result.departureTime,
+      arrivalTime:      result.arrivalTime == 'TOMORROW' ? null : result.arrivalTime,
       durationLabel:    _durationLabel,
       tarif:            '${result.price.toStringAsFixed(3)} ${MetroSahelResult.currency}',
       isActive:         result.isActive,
-      noServiceTonight: _noTrainToday,
-      tomorrowTime:     _noTrainToday ? result.departureTime : null,
     );
   }
 }

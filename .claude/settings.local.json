@@ -35,7 +35,11 @@
       "Bash(flutter devices *)",
       "Bash(flutter run *)",
       "Bash(flutter attach *)",
-      "Bash(python -m pip install pdfplumber -q)"
+      "Bash(python -m pip install pdfplumber -q)",
+      "Bash(npm list *)",
+      "Bash(python scripts/office/soffice.py --headless --convert-to pdf \"C:/Users/Snaws/Desktop/TuniTransport_Presentation.pptx\")",
+      "Bash(python -m markitdown \"C:/Users/Snaws/Desktop/TuniTransport_Presentation.pptx\")",
+      "Bash(pip install *)"
     ]
   }
 }

@@ -455,6 +455,11 @@ class _JourneyInputScreenState extends State<JourneyInputScreen> {
 
     return Scaffold(
       key: const Key('journey_input_screen'),
+      // Keep the layout fixed when the keyboard opens: the departure/arrival
+      // fields stay in place and the keyboard simply overlays the bottom,
+      // instead of the whole screen scrolling up. The HomeScreen shell also
+      // disables resize for this tab so it doesn't shrink the body first.
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(

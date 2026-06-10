@@ -15,8 +15,18 @@ class NotificationController extends ChangeNotifier {
   NotificationController._();
 
   static final NotificationController instance = NotificationController._();
-  static const String _storageKey = 'local_notifications_v2';
+  static const String _storageKeyBase = 'local_notifications_v2';
   static const String _l10nPrefix = 'l10n:';
+
+  // Per-user local cache key. Keeping each account's cache under its own key
+  // means sign-out never has to delete it (no cross-account leak on a shared
+  // device — user B simply reads their own key), so notifications survive a
+  // sign-out / sign-in cycle.
+  String _storageKeyForUid(String? uid) =>
+      (uid == null || uid.isEmpty) ? _storageKeyBase : '${_storageKeyBase}_$uid';
+
+  String get _currentStorageKey =>
+      _storageKeyForUid(AuthController.instance.currentUser?.uid);
 
   final List<NotificationModel> _notifications = [];
   SharedPreferences? _prefs;
@@ -31,19 +41,126 @@ class NotificationController extends ChangeNotifier {
   // last write always reflects the most recent state.
   Future<void> _persistQueue = Future.value();
 
-  /// Clears in-memory and persisted notification data immediately on sign-out.
-  /// Prevents stale notifications from leaking to the next account on a
-  /// shared device before the next user's [initialize()] runs.
+  // Real-time listener on the global `notifications` collection so admin
+  // broadcasts reach recipients live (a one-time get only loads what existed at
+  // login). Filtered to the user's audience in-memory; cancelled on sign-out.
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _broadcastSub;
+  String? _broadcastListenerUid;
+
+  // The signed-in user's account creation time. Broadcasts created before this
+  // are skipped so a freshly registered user does not inherit older admin
+  // notifications. Null = no filter (unknown registration time).
+  DateTime? _registeredAt;
+
+  /// Clears only the in-memory list on sign-out so the UI does not show the
+  /// previous user's notifications. The persisted copy (per-user local cache +
+  /// Firestore) is intentionally KEPT — sign-out must never delete a user's
+  /// notifications; they are restored when the same user signs back in.
+  /// Cross-account leakage is prevented by the per-user storage key
+  /// ([_storageKeyForUid]) and by the user-switch guard in [initialize].
   Future<void> resetForSignOut() async {
+    _stopBroadcastListener();
+    _registeredAt = null;
     _notifications.clear();
     _initialized = false;
     _initializedForUid = null;
     _prefs = null;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_storageKey);
-    } catch (_) {}
     notifyListeners();
+  }
+
+  static List<String> _broadcastTargetsForRole(String role) {
+    switch (role) {
+      case 'super_admin':
+        return const ['all', 'admins', 'super_admins'];
+      case 'admin':
+        return const ['all', 'admins'];
+      default:
+        return const ['all'];
+    }
+  }
+
+  /// Adds any broadcast docs the user is targeted by that aren't already in the
+  /// list. Returns true if the list changed (caller decides when to notify).
+  bool _ingestBroadcastDocs(
+    Iterable<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+    List<String> targets,
+  ) {
+    var changed = false;
+    for (final doc in docs) {
+      final data = doc.data();
+      final target = (data['target'] as String?) ?? 'all';
+      if (!targets.contains(target)) continue;
+
+      final broadcastId = 'broadcast_${doc.id}';
+      if (_notifications.any((n) => n.id == broadcastId)) continue;
+
+      final title = (data['title'] as String?) ?? '';
+      final body = (data['message'] as String?) ?? '';
+      if (title.isEmpty && body.isEmpty) continue;
+
+      final ts = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+      // Skip broadcasts sent before this user registered.
+      if (_registeredAt != null && ts.isBefore(_registeredAt!)) continue;
+
+      _notifications.add(NotificationModel(
+        id: broadcastId,
+        title: title,
+        body: body,
+        type: NotificationType.system,
+        timestamp: ts,
+        isRead: false,
+      ));
+      changed = true;
+    }
+    if (changed) {
+      _notifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    }
+    return changed;
+  }
+
+  /// Subscribes to new admin broadcasts so they appear the moment they are sent.
+  /// Orders only by `createdAt` (no composite index needed) and filters the
+  /// audience in-memory.
+  Future<void> _startBroadcastListener() async {
+    final uid = AuthController.instance.currentUser?.uid;
+    if (uid == null) return;
+    if (_broadcastSub != null && _broadcastListenerUid == uid) return;
+
+    await _broadcastSub?.cancel();
+    _broadcastListenerUid = uid;
+
+    final db = GetIt.I<FirebaseFirestore>();
+    var targets = const ['all'];
+    try {
+      final userDoc = await db.collection(Col.users).doc(uid).get();
+      final role = (userDoc.data()?['role'] as String?) ?? 'user';
+      targets = _broadcastTargetsForRole(role);
+      _registeredAt = (userDoc.data()?['createdAt'] as Timestamp?)?.toDate();
+    } catch (_) {}
+
+    _broadcastSub = db
+        .collection(Col.notifications)
+        .orderBy('createdAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .listen(
+      (snap) {
+        if (_ingestBroadcastDocs(snap.docs, targets)) {
+          notifyListeners();
+        }
+      },
+      onError: (Object e) {
+        if (kDebugMode) {
+          debugPrint('[NotificationController] Broadcast listener error: $e');
+        }
+      },
+    );
+  }
+
+  void _stopBroadcastListener() {
+    unawaited(_broadcastSub?.cancel());
+    _broadcastSub = null;
+    _broadcastListenerUid = null;
   }
 
   @override
@@ -73,10 +190,35 @@ class NotificationController extends ChangeNotifier {
       await ensureSystemAnnouncement();
       _initialized = true;
       _initializedForUid = uid;
+      // Subscribe for live admin broadcasts so they arrive without a refresh.
+      await _startBroadcastListener();
     } catch (e) {
       if (kDebugMode) debugPrint('[NotificationController] Initialization error: $e');
     } finally {
       _isLoading = false;
+      // The loaders above append to _notifications without notifying; notify
+      // once here so the notifications screen (an AnimatedBuilder on this
+      // controller) repaints when a post-login / refresh load completes.
+      notifyListeners();
+    }
+  }
+
+  /// Re-fetches notifications from Firestore + admin broadcasts WITHOUT clearing
+  /// the in-memory list (loaders dedupe by id). Use this to pick up new admin
+  /// broadcasts while the user is already signed in — e.g. when the
+  /// notifications tab is opened.
+  Future<void> refresh() async {
+    if (_isLoading) return;
+    _isLoading = true;
+    try {
+      await _loadFromFirestore();
+      await _loadBroadcastNotifications();
+      await ensureSystemAnnouncement();
+    } catch (e) {
+      if (kDebugMode) debugPrint('[NotificationController] Refresh error: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -110,6 +252,14 @@ class NotificationController extends ChangeNotifier {
   void addFromRemoteMessage(RemoteMessage message) {
     final data = message.data;
 
+    // Admin broadcasts carry the source doc id and are added to the in-app list
+    // by the real-time Firestore listener ([_startBroadcastListener]). Skipping
+    // them here prevents a second copy when an FCM push for the same broadcast
+    // is delivered in the foreground / on open. Non-broadcast pushes (e.g.
+    // account-status changes) carry no docId and are still handled below.
+    final broadcastDocId = data['docId']?.toString() ?? '';
+    if (broadcastDocId.isNotEmpty) return;
+
     String title;
     String body;
 
@@ -133,14 +283,10 @@ class NotificationController extends ChangeNotifier {
 
     final type = _typeFromString(data['type']?.toString());
 
+    // Broadcasts already returned above, so this is a non-broadcast push.
     final String id;
-    final rawDocId = data['docId']?.toString();
     final rawId = message.messageId;
-    if (rawDocId != null && rawDocId.isNotEmpty) {
-      // Stable ID matching _loadBroadcastNotifications() so FCM delivery and
-      // startup load don't produce duplicate entries for the same broadcast.
-      id = 'broadcast_$rawDocId';
-    } else if (rawId != null && rawId.isNotEmpty) {
+    if (rawId != null && rawId.isNotEmpty) {
       id = rawId;
     } else {
       final bucket = DateTime.now().millisecondsSinceEpoch ~/ 120000;
@@ -238,7 +384,7 @@ class NotificationController extends ChangeNotifier {
 
   Future<void> _loadFromStorage() async {
     _prefs = await SharedPreferences.getInstance();
-    final raw = _prefs!.getString(_storageKey);
+    final raw = _prefs!.getString(_currentStorageKey);
     if (raw == null || raw.isEmpty) return;
 
     try {
@@ -262,14 +408,17 @@ class NotificationController extends ChangeNotifier {
   // written in call order, and each write sees the state at its own moment.
   Future<void> _persistToStorage() {
     final snapshot = _notifications.map((item) => item.toJson()).toList();
-    _persistQueue = _persistQueue.whenComplete(() => _runPersist(snapshot));
+    // Capture the key at call time so the write always lands in the key of the
+    // user who owned the list when persistence was requested.
+    final key = _currentStorageKey;
+    _persistQueue = _persistQueue.whenComplete(() => _runPersist(snapshot, key));
     return _persistQueue;
   }
 
-  Future<void> _runPersist(List<Map<String, dynamic>> payload) async {
+  Future<void> _runPersist(List<Map<String, dynamic>> payload, String key) async {
     try {
       final prefs = _prefs ?? await SharedPreferences.getInstance();
-      await prefs.setString(_storageKey, jsonEncode(payload));
+      await prefs.setString(key, jsonEncode(payload));
     } catch (e) {
       if (kDebugMode) debugPrint('[NotificationController] Failed to persist to storage: $e');
     }
@@ -291,48 +440,17 @@ class NotificationController extends ChangeNotifier {
       final db = GetIt.I<FirebaseFirestore>();
       final userDoc = await db.collection(Col.users).doc(uid).get();
       final role = (userDoc.data()?['role'] as String?) ?? 'user';
+      final targets = _broadcastTargetsForRole(role);
 
-      final List<String> targets;
-      switch (role) {
-        case 'super_admin':
-          targets = ['all', 'admins', 'super_admins'];
-        case 'admin':
-          targets = ['all', 'admins'];
-        default:
-          targets = ['all'];
-      }
-
+      // Order by createdAt only (single-field, no composite index) and filter
+      // the audience in-memory via _ingestBroadcastDocs.
       final snap = await db
           .collection(Col.notifications)
-          .where('target', whereIn: targets)
+          .orderBy('createdAt', descending: true)
           .limit(50)
           .get();
 
-      bool changed = false;
-      for (final doc in snap.docs) {
-        final broadcastId = 'broadcast_${doc.id}';
-        if (_notifications.any((n) => n.id == broadcastId)) continue;
-
-        final data = doc.data();
-        final title = (data['title'] as String?) ?? '';
-        final body = (data['message'] as String?) ?? '';
-        if (title.isEmpty && body.isEmpty) continue;
-
-        final ts = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
-        _notifications.add(NotificationModel(
-          id: broadcastId,
-          title: title,
-          body: body,
-          type: NotificationType.system,
-          timestamp: ts,
-          isRead: false,
-        ));
-        changed = true;
-      }
-
-      if (changed) {
-        _notifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-      }
+      _ingestBroadcastDocs(snap.docs, targets);
     } catch (e) {
       if (kDebugMode) debugPrint('[NotificationController] Broadcast load failed: $e');
     }
